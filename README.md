@@ -7,7 +7,7 @@
 A next-generation, high-performance character chat client designed for speed and compatibility. 
 Built natively for **Android** and **Windows**, TavernRev brings the power of advanced AI roleplay to your pocket without the web-browser lag.
 
-*(Currently in Alpha v0.3.8)*
+*(Currently in Alpha v0.4.1)*
 
 ---
 
