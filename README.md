@@ -1,7 +1,7 @@
 # TavernRev *TR*
 
 > **⚠️ ALPHA RELEASE WARNING**
-> This software is in early development (v0.3.8). Bugs are expected.
+> This software is in early development (v0.4.1). Bugs are expected.
 > **Always backup your chats** (Export function) before updating or clearing data.
 
 A next-generation, high-performance character chat client designed for speed and compatibility. 
@@ -19,7 +19,9 @@ Built natively for **Android** and **Windows**, TavernRev brings the power of ad
 3. Enjoy full offline-capable UI with online AI backends.
 
 ### 💻 Windows
-*(Coming soon in Releases)*
+1. Download the latest `.msi` from the **Releases** tab
+2. Install it on your device (Windows 10 (1809+) or Windows 11 recommended. Windows 7/8.1 supported via WebView2 Runtime installation.)
+3. Enjoy full offline-capable UI with online AI backends.
 
 ---
 
