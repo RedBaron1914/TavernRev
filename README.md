@@ -1,4 +1,4 @@
-# TavernRev # <img src="design/icon.svg" width="32" height="32"> TavernRev
+# <img src="design/icon.svg" width="32" height="32"> TavernRev
 
 > **⚠️ ALPHA RELEASE WARNING**
 > This software is in early development (v0.5.1). Bugs are expected.
