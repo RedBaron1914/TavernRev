@@ -1,13 +1,13 @@
 # TavernRev *TR*
 
 > **⚠️ ALPHA RELEASE WARNING**
-> This software is in early development (v0.4.1). Bugs are expected.
+> This software is in early development (v0.5.1). Bugs are expected.
 > **Always backup your chats** (Export function) before updating or clearing data.
 
 A next-generation, high-performance character chat client designed for speed and compatibility. 
 Built natively for **Android** and **Windows**, TavernRev brings the power of advanced AI roleplay to your pocket without the web-browser lag.
 
-*(Currently in Alpha v0.4.1)*
+*(Currently in Alpha v0.5.1)*
 
 ---
 
