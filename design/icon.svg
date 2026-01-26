@@ -1,0 +1,11 @@
+<svg width="512" height="512" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="256" height="256" rx="50" fill="#1e293b"/>
+  <!-- Letter T -->
+  <path d="M48 64H128V84H98V134H78V84H48V64Z" fill="white"/>
+  <!-- Cursor (Underscore) -->
+  <rect x="73" y="174" width="30" height="8" rx="1" fill="#22d3ee" />
+  <!-- Letter R -->
+  <path d="M138 64H158V182H138V64Z" fill="white"/>
+  <path d="M158 64H188C210.091 64 228 81.9086 228 104C228 126.091 210.091 144 188 144H158V122H188C197.941 122 206 113.941 206 104C206 94.0589 197.941 86 188 86H158V64Z" fill="white"/>
+  <path d="M190 144L214 182H190L166 144H190Z" fill="white"/>
+</svg>
