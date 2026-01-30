@@ -1,13 +1,13 @@
 # <img src="design/icon.svg" width="32" height="32"> TavernRev
 
 > **⚠️ ALPHA RELEASE WARNING**
-> This software is in early development (v0.5.2). Bugs are expected.
+> This software is in early development (v0.6.0). Bugs are expected.
 > **Always backup your chats** (Export function) before updating or clearing data.
 
 A next-generation, high-performance character chat client designed for speed and compatibility. 
 Built natively for **Android** and **Windows**, TavernRev brings the power of advanced AI roleplay to your pocket without the web-browser lag.
 
-*(Currently in Alpha v0.5.2)*
+*(Currently in Alpha v0.6.0)*
 
 ---
 
@@ -45,11 +45,11 @@ Unlike web-wrappers, TavernRev is built on Rust. It handles chats with thousands
 ### ♻️ Compatibility
 - **SillyTavern Ready**: Import and Export your chats (`.jsonl`) seamlessy. Move your stories between PC and Mobile.
 - **V2 Character Cards**: Full support for the modern character card standard (PNG/JSON).
+- **Lorebooks!** Tried my best to implement them. They are not truly fully done, but they are supported now with nice GUI editor.
 
 ---
 
 ## 🔮 Coming Soon
-- Lorebooks (World Info)
 - Extensions System
 - Group Chats
 
