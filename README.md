@@ -1,13 +1,13 @@
 # <img src="design/icon.svg" width="32" height="32"> TavernRev
 
 > **⚠️ ALPHA RELEASE WARNING**
-> This software is in early development (v0.6.8). Bugs are expected.
+> This software is in early development (v0.7.0). Bugs are expected.
 > **Always backup your chats** (Export function) before updating or clearing data.
 
 A next-generation, high-performance character chat client designed for speed and compatibility. 
 Built natively for **Android** and **Windows**, TavernRev brings the power of advanced AI roleplay to your pocket without the web-browser lag.
 
-*(Currently in Alpha v0.6.8)*
+*(Currently in Alpha v0.7.0)*
 
 ---
 
@@ -49,7 +49,7 @@ Unlike web-wrappers, TavernRev is built on Rust. It handles chats with thousands
 ---
 
 ## 🔮 Coming Soon
-- Extensions System
+- Extensions System(Along with release of source code)
 - Group Chats
 - Vector storage
 - Native synchronization through Google/DropBox APIs
