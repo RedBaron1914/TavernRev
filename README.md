@@ -52,7 +52,7 @@ Unlike web-wrappers, TavernRev is built on Rust. It handles chats with thousands
 - Extensions System(Along with release of source code)
 - Group Chats
 - Vector storage
-- Native synchronization through Google/DropBox APIs(Partially done with Dropbox API)
+- Native synchronization through Google/DropBox APIs(Partially done with Dropbox API right now)
 ---
 
 *TavernRev is an independent project compatible with the TavernAI ecosystem.*
