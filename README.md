@@ -1,13 +1,13 @@
 # <img src="design/icon.svg" width="32" height="32"> TavernRev
 
 > **⚠️ ALPHA RELEASE WARNING**
-> This software is in early development (v0.8.3). Bugs are expected.
+> This software is in early development (v0.8.4). Bugs are expected.
 > **Always backup your chats** (Export function) before updating or clearing data.
 
 A next-generation, high-performance character chat client designed for speed and compatibility. 
 Built natively for **Android** and **Windows**, TavernRev brings the power of advanced AI roleplay to your pocket without the web-browser lag.
 
-*(Currently in Alpha v0.8.3)*
+*(Currently in Alpha v0.8.4)*
 
 ---
 
@@ -27,6 +27,11 @@ Built natively for **Android** and **Windows**, TavernRev brings the power of ad
 
 ## 🔥 Why TavernRev?
 
+### ☁️ Multi-Cloud Synchronization
+- **Dropbox & Google Drive**: Keep your characters, personas, and chats in sync across all your devices.
+- **Delta Sync**: Only uploads what changed. Synchronize hundreds of chats in milliseconds.
+- **Deep Sync**: Extracts embedded World Info from character cards automatically during sync.
+
 ### 🚀 Speed & Native Feel
 Unlike web-wrappers, TavernRev is built on Rust. It handles chats with thousands of messages instantly, supports 120Hz scrolling, and respects your phone's safe areas and gestures.
 
@@ -37,9 +42,10 @@ Unlike web-wrappers, TavernRev is built on Rust. It handles chats with thousands
 - **Custom Backends**: Connect to Oobabooga, KoboldCPP, or any OpenAI-compatible API.
 
 ### ⚡ Power User Features
+- **Built-in System Console**: Debug errors and view logs directly inside the app (Settings -> Advanced).
 - **Branching Storylines**: Fork your chat at any point to explore "What if?" scenarios.
 - **Swipes & Rerolls**: Don't like an answer? Swipe for a new one. The app remembers all variations.
-- **Rich Text**: Full support for Markdown and HTML styling for immersive RP.
+- **Rich Text**: Full support for Markdown, KaTeX, and HTML styling for immersive RP.
 
 ### ♻️ Compatibility
 - **SillyTavern Ready**: Import and Export your chats (`.jsonl`) seamlessy. Move your stories between PC and Mobile.
@@ -52,7 +58,6 @@ Unlike web-wrappers, TavernRev is built on Rust. It handles chats with thousands
 - Extensions System(Along with release of source code)
 - Group Chats
 - Vector storage
-- Native synchronization through Google/DropBox APIs(Partially done with Dropbox API right now)
 ---
 
 *TavernRev is an independent project compatible with the TavernAI ecosystem.*
