@@ -1,13 +1,13 @@
 # <img src="design/icon.svg" width="32" height="32"> TavernRev
 
 > **⚠️ ALPHA RELEASE WARNING**
-> This software is in early development (v0.8.4). Bugs are expected.
+> This software is in early development (v0.9.0). Bugs are expected.
 > **Always backup your chats** (Export function) before updating or clearing data.
 
 A next-generation, high-performance character chat client designed for speed and compatibility. 
 Built natively for **Android** and **Windows**, TavernRev brings the power of advanced AI roleplay to your pocket without the web-browser lag.
 
-*(Currently in Alpha v0.8.4)*
+*(Currently in Alpha v0.9.0)*
 
 ---
 
@@ -26,6 +26,12 @@ Built natively for **Android** and **Windows**, TavernRev brings the power of ad
 ---
 
 ## 🔥 Why TavernRev?
+
+### 👥 Advanced Group Chats
+- **Multi-Character Support**: Create rooms with multiple characters.
+- **Smart Routing**: Natural (mention-based), Round Robin (List), or Manual speaker selection.
+- **Group Scenarios**: Define global contexts that all characters in the group respect.
+- **Mute & Talkativeness**: Fine-tune group dynamics by silencing bots or adjusting their chance to speak.
 
 ### ☁️ Multi-Cloud Synchronization
 - **Dropbox & Google Drive**: Keep your characters, personas, and chats in sync across all your devices.
@@ -46,6 +52,7 @@ Unlike web-wrappers, TavernRev is built on Rust. It handles chats with thousands
 - **Branching Storylines**: Fork your chat at any point to explore "What if?" scenarios.
 - **Swipes & Rerolls**: Don't like an answer? Swipe for a new one. The app remembers all variations.
 - **Rich Text**: Full support for Markdown, KaTeX, and HTML styling for immersive RP.
+- **Async Scripting (STScript)**: Advanced macros, variables, and logic (`/if`, `/wait`, `/delay`) executed in real-time.
 
 ### ♻️ Compatibility
 - **SillyTavern Ready**: Import and Export your chats (`.jsonl`) seamlessy. Move your stories between PC and Mobile.
@@ -56,7 +63,6 @@ Unlike web-wrappers, TavernRev is built on Rust. It handles chats with thousands
 
 ## 🔮 Coming Soon
 - Extensions System(Along with release of source code)
-- Group Chats
 - Vector storage
 ---
 
