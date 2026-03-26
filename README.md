@@ -1,13 +1,13 @@
 # <img src="design/icon.svg" width="32" height="32"> TavernRev
 
 > **⚠️ ALPHA RELEASE WARNING**
-> This software is in early development (v0.9.0). Bugs are expected.
+> This software is in early development (v0.9.1). Bugs are expected.
 > **Always backup your chats** (Export function) before updating or clearing data.
 
 A next-generation, high-performance character chat client designed for speed and compatibility. 
 Built natively for **Android** and **Windows**, TavernRev brings the power of advanced AI roleplay to your pocket without the web-browser lag.
 
-*(Currently in Alpha v0.9.0)*
+*(Currently in Alpha v0.9.1)*
 
 ---
 
@@ -59,11 +59,14 @@ Unlike web-wrappers, TavernRev is built on Rust. It handles chats with thousands
 - **V2 Character Cards**: Full support for the modern character card standard (PNG/JSON).
 - **Lorebooks!** Tried my best to implement them. They are not truly fully done, but they are supported now with nice GUI editor.
 
+### Long-Term Memory (RAG)
+- **Local Vector Database**: Seamlessly remember past conversations spanning thousands of messages using a lightning-fast, purely local SQLite + ONNX embedding engine.
+- **Multilingual Support**: Choose between specialized English models (`All-MiniLM`, `Nomic`) or comprehensive 100+ language brains (`Multilingual E5`).
+- **Complete Privacy**: All embeddings and math are computed locally on your CPU. No external python servers required.
 ---
 
 ## 🔮 Coming Soon
 - Extensions System(Along with release of source code)
-- Vector storage
 ---
 
 *TavernRev is an independent project compatible with the TavernAI ecosystem.*
