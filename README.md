@@ -55,7 +55,7 @@ Unlike web-wrappers, TavernRev is built on Rust. It handles chats with thousands
 - **Async Scripting (STScript)**: Advanced macros, variables, and logic (`/if`, `/wait`, `/delay`) executed in real-time.
 
 ### ♻️ Compatibility
-- **SillyTavern Ready**: Import and Export your chats (`.jsonl`) seamlessy. Move your stories between PC and Mobile.
+- **SillyTavern Ready**: Import and Export your chats (`.jsonl`) and presets seamlessy. Move your stories between PC and Mobile.
 - **V2 Character Cards**: Full support for the modern character card standard (PNG/JSON).
 - **Lorebooks!** Tried my best to implement them. They are not truly fully done, but they are supported now with nice GUI editor.
 
