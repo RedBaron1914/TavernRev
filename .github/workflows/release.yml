@@ -43,6 +43,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          work-dir: src-tauri
+
       - name: Install dependencies (Ubuntu only)
         if: matrix.os == 'ubuntu-22.04'
         run: |
@@ -97,6 +102,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          work-dir: src-tauri
 
       - name: Setup Java
         uses: actions/setup-java@v4
