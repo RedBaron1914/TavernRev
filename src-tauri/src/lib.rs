@@ -36,6 +36,15 @@ pub fn get_avatars_dir(app_handle: &AppHandle) -> PathBuf {
 #[cfg(not(target_os = "android"))]
 fn init_logging() {}
 
+#[cfg(target_os = "android")]
+fn init_logging() {
+    android_logger::init_once(
+        android_logger::Config::default()
+            .with_max_level(log::LevelFilter::Info)
+            .with_tag("TavernRev"),
+    );
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     init_logging();

@@ -2330,13 +2330,4 @@ pub async fn query_chat_memory(chat_id: i64, query_text: String, top_k: usize, t
     vector_memory::query_chat_memory(&conn, chat_id, &query_text, top_k, threshold)
 }
 
-#[cfg(target_os = "android")]
-fn init_logging() {
-    android_logger::init_once(
-        android_logger::Config::default()
-            .with_max_level(log::LevelFilter::Info)
-            .with_tag("TavernRev"),
-    );
-}
-
 
