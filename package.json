@@ -5,7 +5,7 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
-    "postinstall": "powershell -ExecutionPolicy Bypass -File ./scripts/download_onnx.ps1",
+    "postinstall": "node -e \"if(process.platform === 'win32') require('child_process').execSync('powershell -ExecutionPolicy Bypass -File ./scripts/download_onnx.ps1', {stdio: 'inherit'})\"",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
