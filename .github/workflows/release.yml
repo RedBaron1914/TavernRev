@@ -46,7 +46,7 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
-          work-dir: src-tauri
+          workspaces: "src-tauri"
 
       - name: Install dependencies (Ubuntu only)
         if: matrix.os == 'ubuntu-22.04'
@@ -106,7 +106,7 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
-          work-dir: src-tauri
+          workspaces: "src-tauri"
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -141,7 +141,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
-          asset_name: TavernRev-Android-${{ github.ref_name }}.apk
+          file: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
+          file_glob: true
           tag: ${{ github.ref_name }}
           overwrite: true
