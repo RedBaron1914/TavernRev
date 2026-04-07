@@ -138,10 +138,10 @@ jobs:
         run: pnpm tauri android build --apk
 
       - name: Upload APK to Release
-        uses: svenstaro/upload-release-action@v2
+        uses: softprops/action-gh-release@v2
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
-          file_glob: true
-          tag: ${{ github.ref_name }}
-          overwrite: true
+          files: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
+          draft: true
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

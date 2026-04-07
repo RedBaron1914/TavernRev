@@ -1,5 +1,6 @@
 /src/main/java/com/stoya/tavernrev/generated
 /src/main/jniLibs/**/*.so
+!/src/main/jniLibs/**/libonnxruntime.so
 /src/main/assets/tauri.conf.json
 /tauri.build.gradle.kts
 /proguard-tauri.pro
