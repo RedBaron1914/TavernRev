@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* Markdown Content Styling */
+.prose p {
+  margin-bottom: 1.25em !important; /* Force paragraph spacing */
+  line-height: 1.7;
+}
+
+.prose p:last-child {
+  margin-bottom: 0 !important;
+}
+
+.prose hr {
+  margin-top: 1.5em !important;
+  margin-bottom: 1.5em !important;
+  border-top-width: 1px;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Prevent overflow */
+.prose {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.prose > * {
+  max-width: 100%;
+}
+.prose img, .prose video, .prose table, .prose pre, .prose div {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* Container safety */
+.min-w-0 {
+    overflow-x: hidden;
+    overflow-y: clip;
+}
+
+/* Table Styling */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+.prose th, .prose td {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.6em;
+  text-align: left;
+}
+.prose th {
+  background-color: rgba(255, 255, 255, 0.05);
+  font-weight: bold;
+}
+
+/* Dialogue Highlight Helper */
+.text-teal-300 {
+  color: #5eead4; /* Tailwind teal-300 */
+}
+
+/* Splash Animation */
+@keyframes splash-bounce {
+  0%, 100% { transform: scale(1) rotate(-15deg); }
+  50% { transform: scale(1.1) rotate(-15deg); }
+}
+
+.animate-minecraft-splash {
+  animation: splash-bounce 0.4s ease-in-out infinite alternate;
+}

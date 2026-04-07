@@ -1,0 +1,84 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.bak
+
+node_modules
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Root artifacts
+dist
+dist-ssr
+*.local
+Снимок экрана*.png
+*.card.png
+*.png.bak
+NemoEngine.json
+inspect_card.py
+refactor.cjs
+main_gracebearer-aka-the-trad-wife-mommy-nueda-445ef4999e84_spec_v2.png
+module.png
+
+# Editor directories and files
+.vscode/
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- Rust / Tauri ---
+src-tauri/target
+src-tauri/gen/android/app/build
+src-tauri/gen/android/.gradle
+src-tauri/gen/schemas
+src-tauri/gen/android/local.properties
+src-tauri/.fastembed_cache
+src-tauri/onnx_extracted
+src-tauri/onnx.zip
+src-tauri/**/*.dll
+src-tauri/**/*.pdb
+src-tauri/**/*.so
+!src-tauri/gen/android/app/src/main/jniLibs/**/*.so
+src-tauri/**/*.dylib
+src-tauri/**/*.lib
+src-tauri/**/*.rlib
+src-tauri/**/*.aab
+src-tauri/**/*.apk
+src-tauri/**/*.db-journal
+src-tauri/**/*.db-wal
+
+# --- Test / Local Setup (UNCOMMENT IF NEEDED IN REPO) ---
+ActualSillyTavern/
+SillyTavern-Docs/
+backup_v0.9.3/
+*.bak
+
+# --- User Data (CRITICAL to ignore) ---
+# Ignore local database and logs
+src-tauri/tavern.db
+
+# Ignore user-generated content and local configs
+src-tauri/avatars/*
+!src-tauri/avatars/.gitkeep
+src-tauri/presets/*
+!src-tauri/presets/Default.json
+src-tauri/connections/*
+!src-tauri/connections/.gitkeep
+
+# System files
+Thumbs.db
+desktop.ini
+
+# Secrets
+.env

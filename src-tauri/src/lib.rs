@@ -1,0 +1,191 @@
+﻿mod database;
+pub mod prompt_engine;
+mod importer;
+use std::sync::{Arc, Mutex, atomic::AtomicBool};
+
+// --- MODULES ---
+mod api_client;
+pub mod commands;
+pub mod generation;
+mod transformers;
+pub mod script_engine;
+pub mod sync_manager;
+pub mod google_drive_manager;
+pub mod routing;
+pub mod vector_memory;
+
+pub struct GenerationState(pub Mutex<Option<Arc<AtomicBool>>>);
+pub struct StartupError(pub Mutex<Option<String>>);
+pub struct LastPrompt(pub Mutex<String>);
+
+use database::{init_db, DbState};
+use std::fs;
+use std::path::PathBuf;
+use tauri::{AppHandle, Manager};
+
+
+
+
+pub fn get_avatars_dir(app_handle: &AppHandle) -> PathBuf {
+    let app_dir = app_handle.path().app_data_dir().unwrap();
+    app_dir.join("avatars")
+}
+
+// --- Database Commands ---
+
+#[cfg(not(target_os = "android"))]
+fn init_logging() {}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    init_logging();
+    tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            let handle = app.handle().clone();
+            let startup_error = StartupError(Mutex::new(None));
+            
+            // Setup directories
+            let presets_dir = commands::get_presets_dir(&handle);
+            let _ = fs::create_dir_all(&presets_dir);
+            let _ = commands::seed_default_preset(&presets_dir);
+            
+            let connections_dir = commands::get_connections_dir(&handle);
+            let _ = fs::create_dir_all(&connections_dir);
+            let _ = commands::seed_default_connection(&connections_dir);
+
+            // Setup database
+            match init_db(handle) {
+                Ok(conn) => {
+                    log::info!("Database initialized successfully");
+                    app.manage(DbState(Mutex::new(conn)));
+                },
+                Err(e) => {
+                    let err_msg = format!("CRITICAL: Database initialization failed.\nError: {}\n\nTry clearing app data or reinstalling.", e);
+                    log::error!("{}", err_msg);
+                    eprintln!("{}", err_msg);
+                    *startup_error.0.lock().unwrap() = Some(err_msg);
+                }
+            }
+
+            app.manage(GenerationState(Mutex::new(None)));
+            app.manage(LastPrompt(Mutex::new(String::new())));
+            app.manage(startup_error);
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::get_startup_error,
+            commands::get_last_prompt,
+            commands::init_vector_model,
+            commands::init_custom_vector_model,
+            commands::build_chat_index,
+            commands::query_chat_memory,
+            // GROUPS
+            commands::create_group,
+            commands::get_groups,
+            commands::delete_group,
+            commands::update_group,
+            commands::get_group_members,
+            commands::add_group_member,
+            commands::remove_group_member,
+            commands::toggle_group_member_mute,
+            // DB
+            commands::get_characters,
+            commands::create_character,
+            commands::create_character_full,
+            commands::update_character,
+            commands::delete_character,
+            commands::export_character_json,
+            commands::import_character_card,
+            commands::get_user_personas,
+            commands::create_user_persona,
+            commands::update_user_persona,
+            commands::delete_user_persona,
+            commands::set_default_persona,
+            commands::update_chat_persona,
+            commands::create_chat,
+            commands::rename_chat,
+            commands::get_chats,
+            commands::delete_chat,
+            commands::export_chat_jsonl,
+            commands::import_chat_jsonl,
+            commands::save_export_file,
+            commands::branch_chat,
+            commands::get_messages,
+            commands::get_messages_paged,
+            commands::save_message,
+            commands::edit_message,
+            commands::delete_message,
+            commands::get_chat_stats,
+            commands::tokenize_text,
+            commands::get_modules_token_counts,
+            // Utils
+            commands::count_tokens,
+            commands::create_quick_reply,
+            commands::update_quick_reply,
+            commands::delete_quick_reply,
+            commands::get_quick_replies,
+            commands::create_regex_script,
+            commands::update_regex_script,
+            commands::delete_regex_script,
+            commands::get_regex_scripts,
+            commands::import_regex_scripts,
+            commands::process_input,
+            commands::read_image_base64,
+            commands::upload_avatar,
+            // Presets
+            commands::list_presets,
+            commands::load_preset,
+            commands::save_preset,
+            commands::delete_preset,
+            // Connections
+            commands::list_connection_profiles,
+            commands::load_connection_profile,
+            commands::save_connection_profile,
+            commands::delete_connection_profile,
+            // Lorebooks
+            commands::get_lorebooks,
+            commands::import_lorebook,
+            commands::create_lorebook,
+            commands::delete_lorebook,
+            commands::get_lore_entries,
+            commands::create_lore_entry,
+            commands::update_lore_entry,
+            commands::delete_lore_entry,
+            commands::get_chat_lorebooks,
+            commands::toggle_chat_lorebook,
+            commands::get_character_lorebooks,
+            commands::toggle_character_lorebook,
+            commands::toggle_global_lorebook,
+            commands::debug_lore_generation,
+            // Prompting
+            commands::assemble_prompt_command,
+            commands::process_macros_command,
+            commands::process_macros_debug,
+            generation::generate_reply,
+            generation::regenerate_reply,
+            generation::continue_reply,
+            generation::revert_message_tail,
+            generation::impersonate_user,
+            generation::swipe_message,
+            generation::stop_generation,
+            generation::sync_message_swipes,
+            commands::connect_dropbox,
+            commands::get_dropbox_status,
+            commands::logout_dropbox,
+            commands::connect_gdrive,
+            commands::get_gdrive_status,
+            commands::logout_gdrive,
+            commands::sync_push_all,
+            commands::sync_push_chat,
+            commands::sync_pull_all,
+            commands::save_extension_script,
+            commands::delete_extension_script,
+            commands::get_extension_scripts,
+            generation::summarize_chat,
+            generation::update_chat_memory,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+

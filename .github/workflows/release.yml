@@ -1,0 +1,131 @@
+name: Release Builds
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-desktop:
+    name: Build Desktop
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          # - os: macos-latest
+          #   target: x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install dependencies (Ubuntu only)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Download ONNX Runtime (Linux only)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          ONNX_VERSION=1.23.0
+          curl -L https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-linux-x64-${ONNX_VERSION}.tgz -o onnx.tgz
+          tar -xzf onnx.tgz
+          cp onnxruntime-linux-x64-${ONNX_VERSION}/lib/libonnxruntime.so.${ONNX_VERSION} src-tauri/libonnxruntime.so
+          rm -rf onnxruntime-linux-x64-${ONNX_VERSION} onnx.tgz
+
+      - name: Build Tauri App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAVERNREV_DROPBOX_KEY: ${{ secrets.TAVERNREV_DROPBOX_KEY }}
+          TAVERNREV_GDRIVE_ID: ${{ secrets.TAVERNREV_GDRIVE_ID }}
+          TAVERNREV_GDRIVE_SECRET: ${{ secrets.TAVERNREV_GDRIVE_SECRET }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'TavernRev ${{ github.ref_name }}'
+          releaseBody: 'See the changelog for details.'
+          releaseDraft: true
+          prerelease: false
+
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: sdkmanager "ndk;25.2.9519653" "build-tools;33.0.1"
+
+      - name: Set NDK Environment Variables
+        run: |
+          echo "NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Build APK
+        env:
+          TAVERNREV_DROPBOX_KEY: ${{ secrets.TAVERNREV_DROPBOX_KEY }}
+          TAVERNREV_GDRIVE_ID: ${{ secrets.TAVERNREV_GDRIVE_ID }}
+          TAVERNREV_GDRIVE_SECRET: ${{ secrets.TAVERNREV_GDRIVE_SECRET }}
+        run: pnpm tauri android build --release
+
+      - name: Upload APK to Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
+          asset_name: TavernRev-Android-${{ github.ref_name }}.apk
+          tag: ${{ github.ref_name }}
+          overwrite: true
