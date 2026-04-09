@@ -65,8 +65,7 @@ const converter = new showdown.Converter({
               text = text.replace(/^---$/gm, '<hr class="my-6 border-white/10" />');
               // 2. Dialogue Highlighting (Teal-300) - safe vs markdown links
               text = text.replace(/(?<!\]\()(?<!=\s*)"([^"]+)"/g, '<span class="text-teal-300">"$1"</span>');
-              text = text.replace(/“([^”]+)”/g, '<span class="text-teal-300">“$1”</span>');
-              text = text.replace(/«([^»]+)»/g, '<span class="text-teal-300">«$1»</span>');
+              text = text.replace(/Â«([^Â»]+)Â»/g, '<span class="text-teal-300">Â«$1Â»</span>');
               return text;
           }
       },
