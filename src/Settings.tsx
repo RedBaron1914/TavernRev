@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   ArrowLeft,
   Save,
-  Upload,
+  Download,
   Settings as SettingsIcon,
   SlidersHorizontal,
   Plus,
@@ -1791,7 +1791,7 @@ export default function Settings({
                 className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition cursor-pointer"
                 title="Import Preset"
               >
-                <Upload size={20} />
+                <Download size={20} />
                 <input
                   type="file"
                   accept=".json"
