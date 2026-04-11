@@ -101,8 +101,8 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
     // Replace markdown HR with HTML HR to avoid parser confusion with quotes
     finalContent = finalContent.replace(/^---$/gm, "\n<hr class='my-4 border-white/10' />\n");
 
-    // Supports multiple <think> and <thinking> blocks (crucial for "Continue")
-    const thoughtRegex = /<(think|thinking)>([\s\S]*?)(?:<\/\1>|$)/gi;
+    // Supports multiple reasoning tag variants (crucial for "Continue")
+    const thoughtRegex = /<(think|thinking|reasoning)>([\s\S]*?)(?:<\/\1>|$)/gi;
     let thoughtParts: string[] = [];
     let cleanContent = finalContent;
     
