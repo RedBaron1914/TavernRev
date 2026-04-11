@@ -930,7 +930,7 @@ const refreshCharacters = async () => {
             await navigator.share({
               files: [file],
 
-              title: "Export Chat",
+              title: "Download chat",
 
               text: `TavernRev Chat Export: ${filename}`,
             });
@@ -1648,18 +1648,27 @@ const refreshCharacters = async () => {
       <>
         {bgLayer}
         <div className="relative z-10 h-full flex flex-col bg-gray-950">
-            <div className="flex bg-black/50 p-1 rounded-xl m-4 w-fit">
-              <button 
-                onClick={() => setSelectMode("characters")}
-                className={`px-4 py-2 rounded-lg text-sm font-bold transition ${selectMode === "characters" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white"}`}
+            <div className="flex items-center justify-between m-4 gap-3">
+              <div className="flex bg-black/50 p-1 rounded-xl w-fit">
+                <button 
+                  onClick={() => setSelectMode("characters")}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition ${selectMode === "characters" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white"}`}
+                >
+                  Characters
+                </button>
+                <button 
+                  onClick={() => setSelectMode("groups")}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition ${selectMode === "groups" ? "bg-emerald-600 text-white" : "text-gray-400 hover:text-white"}`}
+                >
+                  Groups
+                </button>
+              </div>
+              <button
+                onClick={() => setCurrentView("settings")}
+                title="Settings"
+                className="p-3 bg-black/50 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition shrink-0"
               >
-                Characters
-              </button>
-              <button 
-                onClick={() => setSelectMode("groups")}
-                className={`px-4 py-2 rounded-lg text-sm font-bold transition ${selectMode === "groups" ? "bg-emerald-600 text-white" : "text-gray-400 hover:text-white"}`}
-              >
-                Groups
+                <SettingsIcon size={20} />
               </button>
             </div>
             
@@ -1757,7 +1766,7 @@ const refreshCharacters = async () => {
             )}
             <button
               onClick={handleExportChat}
-              title="Export Chat"
+              title="Download chat"
               className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition hidden sm:flex"
             >
               <Download size={20} />

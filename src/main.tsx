@@ -1,8 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { DebugConsole } from "./components/DebugConsole";
 import "./App.css";
 import "./services/Logger"; // Init logger
+
+const isConsoleWindow = new URLSearchParams(window.location.search).get("view") === "console";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -45,7 +48,7 @@ class ErrorBoundary extends React.Component<
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      {isConsoleWindow ? <DebugConsole standalone /> : <App />}
     </ErrorBoundary>
   </React.StrictMode>,
 );

@@ -1,4 +1,4 @@
-import { SlidersHorizontal, Plus, Trash2, Upload, Save, Ban, Settings as SettingsIcon, Eye } from "lucide-react";
+import { SlidersHorizontal, Plus, Trash2, Download, Save, Ban, Settings as SettingsIcon, Eye } from "lucide-react";
 import { Preset, InputField, SelectField, Slider, Toggle, REASONING_OPTIONS } from "../../Settings";
 
 interface TextGenTabProps {
@@ -68,7 +68,7 @@ export function TextGenTab({
             className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition cursor-pointer"
             title="Import Preset"
           >
-            <Upload size={20} />
+            <Download size={20} />
             <input
               type="file"
               accept=".json"
