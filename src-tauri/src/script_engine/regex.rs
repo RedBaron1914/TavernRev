@@ -1,6 +1,55 @@
-use regex::Regex;
+use fancy_regex::Regex;
 use crate::script_engine::Evaluator;
 use crate::database::RegexScript;
+
+fn normalize_regex_pattern(pattern: &str) -> String {
+    if !pattern.starts_with('/') || pattern.len() < 2 {
+        return pattern.to_string();
+    }
+
+    let mut escaped = false;
+    let mut closing_index = None;
+
+    for (idx, ch) in pattern.char_indices().skip(1) {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+
+        if ch == '\\' {
+            escaped = true;
+            continue;
+        }
+
+        if ch == '/' {
+            closing_index = Some(idx);
+        }
+    }
+
+    let Some(closing_index) = closing_index else {
+        return pattern.to_string();
+    };
+
+    let body = &pattern[1..closing_index];
+    let flags = &pattern[closing_index + 1..];
+    let mut prefix = String::new();
+
+    if flags.contains('i') {
+        prefix.push('i');
+    }
+    if flags.contains('m') {
+        prefix.push('m');
+    }
+    if flags.contains('s') {
+        prefix.push('s');
+    }
+
+    if prefix.is_empty() {
+        body.to_string()
+    } else {
+        format!("(?{}){}", prefix, body)
+    }
+}
 
 pub async fn process_regex_scripts(content: &str, placement: &str, scripts: &[RegexScript], evaluator: &mut Evaluator) -> String {
     let mut final_content = content.to_string();
@@ -13,7 +62,8 @@ pub async fn process_regex_scripts(content: &str, placement: &str, scripts: &[Re
         }
 
         // Apply Regex
-        if let Ok(re) = Regex::new(&script.regex) {
+        let normalized_pattern = normalize_regex_pattern(&script.regex);
+        if let Ok(re) = Regex::new(&normalized_pattern) {
             // Regex replacement (supports $1, $2 for captures)
             let replaced_cow = re.replace_all(&final_content, &script.replacement);
             let replaced = replaced_cow.to_string();
@@ -87,5 +137,12 @@ mod tests {
 
         let res = process_regex_scripts("I have an apple", "user", &scripts, &mut eval).await;
         assert_eq!(res, "I have an banana"); // The macro is evaluated AFTER replacement!
+    }
+
+    #[test]
+    fn test_normalize_js_regex_literal() {
+        assert_eq!(normalize_regex_pattern("/apple/g"), "apple");
+        assert_eq!(normalize_regex_pattern("/apple/is"), "(?is)apple");
+        assert_eq!(normalize_regex_pattern("apple"), "apple");
     }
 }

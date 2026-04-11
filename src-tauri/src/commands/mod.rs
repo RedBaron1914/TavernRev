@@ -1095,7 +1095,7 @@ pub async fn process_input(app_handle: AppHandle, chat_id: i64, input: String, d
 #[tauri::command]
 pub fn create_regex_script(name: String, regex: String, replacement: String, placement: String, db_state: tauri::State<DbState>) -> Result<i64, String> {
     let conn = db_state.0.lock().unwrap();
-    database::create_regex_script(&conn, &name, &regex, &replacement, &placement).map_err(|e| e.to_string())
+    database::create_regex_script(&conn, &name, &regex, &replacement, &placement, true).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1146,7 +1146,7 @@ pub fn delete_quick_reply(id: i64, db_state: tauri::State<DbState>) -> Result<()
 pub fn import_regex_scripts(scripts: Vec<database::RegexScript>, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap();
     for script in scripts {
-        database::create_regex_script(&conn, &script.script_name, &script.regex, &script.replacement, &script.placement).map_err(|e| e.to_string())?;
+        database::create_regex_script(&conn, &script.script_name, &script.regex, &script.replacement, &script.placement, script.run_on_markdown).map_err(|e| e.to_string())?;
     }
     Ok(())
 }

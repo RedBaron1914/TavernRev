@@ -118,6 +118,65 @@ export type Preset = {
   user_avatar_prompt: string;
 };
 
+type ImportedRegexScript = {
+  id?: number | string;
+  script_name?: string;
+  scriptName?: string;
+  regex?: string;
+  findRegex?: string;
+  replacement?: string;
+  replaceString?: string;
+  placement?: string | number[];
+  markdownOnly?: boolean;
+};
+
+const normalizeImportedRegexPlacement = (placement: ImportedRegexScript["placement"]): string => {
+  if (typeof placement === "string") {
+    const normalized = placement.toLowerCase();
+    if (normalized === "user" || normalized === "ai" || normalized === "both") {
+      return normalized;
+    }
+  }
+
+  if (Array.isArray(placement)) {
+    const hasUser = placement.includes(1);
+    const hasAi = placement.includes(2) || placement.includes(6);
+
+    if (hasUser && hasAi) return "both";
+    if (hasUser) return "user";
+    if (hasAi) return "ai";
+  }
+
+  return "both";
+};
+
+const normalizeImportedRegexScript = (script: ImportedRegexScript, fallbackId: number): RegexScript | null => {
+  const scriptName = script.script_name ?? script.scriptName;
+  const regex = script.regex ?? script.findRegex;
+
+  if (!scriptName || !regex) {
+    return null;
+  }
+
+  return {
+    id: typeof script.id === "number" ? script.id : fallbackId,
+    script_name: scriptName,
+    regex,
+    replacement: script.replacement ?? script.replaceString ?? "",
+    placement: normalizeImportedRegexPlacement(script.placement),
+    run_on_markdown: script.markdownOnly ?? true,
+  };
+};
+
+const parseImportedRegexScripts = (content: string, startId: number): RegexScript[] => {
+  const parsed = JSON.parse(content);
+  const rawScripts = Array.isArray(parsed) ? parsed : [parsed];
+
+  return rawScripts
+    .map((script, index) => normalizeImportedRegexScript(script, startId + index))
+    .filter((script): script is RegexScript => script !== null);
+};
+
 export type ApiType =
   | "chat_completion"
   | "text_completion"
@@ -1056,22 +1115,39 @@ export default function Settings({
   };
 
   const handleImportRegex = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-          try {
-              const json = JSON.parse(ev.target?.result as string);
-              if (Array.isArray(json)) {
-                  await invoke("import_regex_scripts", { scripts: json });
-                  await fetchRegexScripts();
-                  addToast("Imported " + json.length + " scripts.", "success");
-              }
-          } catch(err) { addToast("Invalid JSON: " + err, "error"); }
-      };
-      reader.readAsText(file);
-      e.target.value = "";
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+
+      try {
+          const contents = await Promise.all(
+              files.map(
+                  (file) =>
+                      new Promise<string>((resolve, reject) => {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => resolve(ev.target?.result as string);
+                          reader.onerror = () => reject(reader.error || new Error(`Failed to read ${file.name}`));
+                          reader.readAsText(file);
+                      }),
+              ),
+          );
+
+          const scripts = contents.flatMap((content, index) =>
+              parseImportedRegexScripts(content, index * 1000 + 1),
+          );
+
+          if (scripts.length === 0) {
+              addToast("No valid regex scripts found in selected files.", "error");
+              return;
+          }
+
+          await invoke("import_regex_scripts", { scripts });
+          await fetchRegexScripts();
+          addToast("Imported " + scripts.length + " scripts.", "success");
+      } catch(err) {
+          addToast("Invalid JSON: " + err, "error");
+      } finally {
+          e.target.value = "";
+      }
   };
 
   const handleCreateScript = async () => {

@@ -33,6 +33,7 @@ export function RegexTab({
             <input
               type="file"
               accept=".json"
+              multiple
               onChange={handleImportRegex}
               className="hidden"
             />
