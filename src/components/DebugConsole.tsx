@@ -1,9 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { logger, LogEntry, LogCategory } from "../services/Logger";
 import { Copy, Trash2, X, Terminal, Brain, ShieldAlert, Database, RefreshCw } from "lucide-react";
 
-export const DebugConsole = ({ onClose }: { onClose: () => void }) => {
+export const DebugConsole = ({
+  onClose,
+  standalone = false,
+}: {
+  onClose?: () => void;
+  standalone?: boolean;
+}) => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filter, setFilter] = useState<LogCategory>('all');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -37,6 +44,15 @@ export const DebugConsole = ({ onClose }: { onClose: () => void }) => {
       }
   };
 
+  const handleClose = async () => {
+    if (standalone) {
+      await getCurrentWindow().close();
+      return;
+    }
+
+    onClose?.();
+  };
+
   const tabs: {id: LogCategory, label: string, icon: any}[] = [
     { id: 'all', label: 'All', icon: Terminal },
     { id: 'ai', label: 'AI Prompt', icon: Brain },
@@ -56,7 +72,7 @@ export const DebugConsole = ({ onClose }: { onClose: () => void }) => {
           <button onClick={fetchPrompt} className="p-2 hover:bg-white/10 rounded text-emerald-400 flex items-center gap-1" title="Fetch Latest Prompt"><RefreshCw size={18}/></button>
           <button onClick={copyLogs} className="p-2 hover:bg-white/10 rounded text-blue-400" title="Copy Filtered"><Copy size={18}/></button>
           <button onClick={() => logger.clear()} className="p-2 hover:bg-white/10 rounded text-red-400" title="Clear All"><Trash2 size={18}/></button>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded text-gray-400"><X size={20}/></button>
+          <button onClick={() => void handleClose()} className="p-2 hover:bg-white/10 rounded text-gray-400"><X size={20}/></button>
         </div>
       </div>
 
