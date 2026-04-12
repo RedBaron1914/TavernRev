@@ -323,7 +323,9 @@ function App() {
   const [editingPersona, setEditingPersona] = useState<UserPersona | null>(
     null,
   );
-  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [sidebarVisible, setSidebarVisible] = useState(
+    () => localStorage.getItem("ui_sidebar_visible") !== "false",
+  );
   const [modelName, setModelName] = useState("Select Model");
   const [chatStats, setChatStats] = useState<ChatStats | null>(null);
   const [activeProfileName, setActiveProfileName] = useState<string | null>(localStorage.getItem("active_profile"));
@@ -336,6 +338,10 @@ function App() {
       localStorage.setItem("ui_bg_mode", bgMode);
       if (customBg) localStorage.setItem("ui_custom_bg", customBg);
   }, [bgMode, customBg]);
+
+  useEffect(() => {
+    localStorage.setItem("ui_sidebar_visible", sidebarVisible.toString());
+  }, [sidebarVisible]);
 
   // Generation State
   const [isGenerating, setIsGenerating] = useState(false);

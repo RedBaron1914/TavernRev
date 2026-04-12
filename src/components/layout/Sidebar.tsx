@@ -5,6 +5,7 @@ import {
   Download,
   Pencil,
   Trash2,
+  PanelLeftClose,
   MessageSquare,
   SlidersHorizontal,
   Type,
@@ -290,9 +291,21 @@ export function Sidebar({
       {sidebarVisible && (
         <aside
           className={`${
-            isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl w-80" : "w-72 relative"
+            isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl w-96" : "w-[21.6rem] relative"
           } bg-gray-900 border-r border-white/10 flex flex-col shrink-0 animate-in slide-in-from-left duration-300 pt-[env(safe-area-inset-top)]`}
         >
+          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <div className="text-xs font-bold uppercase tracking-[0.24em] text-gray-500">
+              Chat Sidebar
+            </div>
+            <button
+              onClick={() => setSidebarVisible(false)}
+              className="rounded-lg p-2 text-gray-400 transition hover:bg-white/10 hover:text-white"
+              title="Hide sidebar"
+            >
+              <PanelLeftClose size={18} />
+            </button>
+          </div>
           <div className="basis-[18%] min-h-[150px] border-b border-white/10 p-4">
             <div className="grid h-full grid-cols-3 gap-3">
               <button
