@@ -41,6 +41,16 @@ import { WorldInfoTab } from "./components/settings/WorldInfoTab";
 import { SyncTab } from "./components/settings/SyncTab";
 import { AdvancedTab } from "./components/settings/AdvancedTab";
 import { ExtensionsTab } from "./components/settings/ExtensionsTab";
+import {
+  coerceConnectionFieldValue,
+  coercePresetFieldValue,
+  fetchAvailableModels,
+  loadConnectionProfileFile,
+  loadPresetFile,
+  loadUiSettingsFromStorage,
+  saveConnectionProfileFile,
+  savePresetFile,
+} from "./components/settings/runtime";
 import { UserPersona, RegexScript, QuickReply } from "./types";
 import { ToastType } from "./components/Toast";
 
@@ -1041,9 +1051,7 @@ export default function Settings({
   // --- LOAD SPECIFIC DATA ---
   const loadPresetData = useCallback(async (fileName: string) => {
     try {
-      const content = await invoke<string>("load_preset", { fileName });
-      const parsed = JSON.parse(content);
-      const normalized = normalizePreset(parsed);
+      const normalized = await loadPresetFile(fileName);
       setFormData(normalized);
       setActivePresetFile(fileName);
       localStorage.setItem("active_preset", fileName);
@@ -1054,10 +1062,7 @@ export default function Settings({
 
   const loadConnectionProfile = useCallback(async (fileName: string) => {
     try {
-      const content = await invoke<string>("load_connection_profile", {
-        fileName,
-      });
-      setConnectionData(JSON.parse(content));
+      setConnectionData(await loadConnectionProfileFile(fileName));
       setActiveProfileName(fileName);
       localStorage.setItem("active_profile", fileName);
     } catch (e) {
@@ -1069,9 +1074,7 @@ export default function Settings({
   useEffect(() => {
     const initSelection = async () => {
       // Load UI Settings
-      const limit = parseInt(localStorage.getItem("ui_msg_limit") || "50");
-      const scale = parseFloat(localStorage.getItem("ui_content_scale") || "1.0");
-      setUiSettings({ msgLimit: limit, contentScale: scale });
+      setUiSettings(loadUiSettingsFromStorage());
 
       // Load Profiles
       try {
@@ -1210,14 +1213,9 @@ export default function Settings({
   useEffect(() => {
     const timer = setTimeout(() => {
       if (activeProfileName && connectionData) {
-        const content = JSON.stringify(
-          { ...connectionData, name: activeProfileName },
-          null,
-          2,
-        );
-        invoke("save_connection_profile", {
-          fileName: activeProfileName,
-          content,
+        saveConnectionProfileFile(activeProfileName, {
+          ...connectionData,
+          name: activeProfileName,
         }).catch(console.error);
       }
     }, 500);
@@ -1227,10 +1225,7 @@ export default function Settings({
   useEffect(() => {
     const timer = setTimeout(() => {
       if (activePresetFile && formData) {
-        invoke("save_preset", {
-          fileName: activePresetFile,
-          content: JSON.stringify(formData, null, 2),
-        }).catch(console.error);
+        savePresetFile(activePresetFile, formData).catch(console.error);
       }
     }, 500);
     return () => clearTimeout(timer);
@@ -1239,27 +1234,11 @@ export default function Settings({
   // --- HANDLERS ---
 
   const handleFieldChange = useCallback((field: keyof Preset, value: any) => {
-    const numFields = [
-      "temperature",
-      "top_p",
-      "top_k",
-      "top_a",
-      "min_p",
-      "repetition_penalty",
-      "presence_penalty",
-      "frequency_penalty",
-      "openai_max_tokens",
-      "seed",
-      "wi_scan_depth",
-      "wi_max_recursion",
-      "wi_token_budget",
-      "wi_context_percent",
-    ];
     setFormData((prev) => {
       if (!prev) return null;
       return {
         ...prev,
-        [field]: numFields.includes(field as string) ? Number(value) : value,
+        [field]: coercePresetFieldValue(field, value),
       };
     });
   }, []);
@@ -1268,8 +1247,10 @@ export default function Settings({
     field: keyof ConnectionProfile,
     value: any,
   ) => {
-    const val = field === "context_size" ? Number(value) : value;
-    setConnectionData((prev) => ({ ...prev, [field]: val }));
+    setConnectionData((prev) => ({
+      ...prev,
+      [field]: coerceConnectionFieldValue(field, value),
+    }));
   }, []);
 
 
@@ -1326,10 +1307,7 @@ export default function Settings({
       activePresetFile || "NewPreset.json",
     );
     if (fileName) {
-      await invoke("save_preset", {
-        fileName,
-        content: JSON.stringify(formData, null, 2),
-      });
+      await savePresetFile(fileName, formData);
       await refreshData();
       setActivePresetFile(fileName);
     }
@@ -1353,10 +1331,7 @@ export default function Settings({
         const normalized = normalizePreset(parsed);
 
         const fileName = file.name;
-        await invoke("save_preset", {
-          fileName,
-          content: JSON.stringify(normalized, null, 2),
-        });
+        await savePresetFile(fileName, normalized);
 
         await refreshData();
         setActivePresetFile(fileName);
@@ -1380,10 +1355,7 @@ export default function Settings({
     if (name) {
       if (!name.toLowerCase().endsWith(".json")) name += ".json";
       const profileToSave = { ...connectionData, name: name };
-      await invoke("save_connection_profile", {
-        fileName: name,
-        content: JSON.stringify(profileToSave, null, 2),
-      });
+      await saveConnectionProfileFile(name, profileToSave);
       await refreshData();
       setActiveProfileName(name);
       localStorage.setItem("active_profile", name);
@@ -1413,10 +1385,7 @@ export default function Settings({
     );
     if (name) {
       if (!name.toLowerCase().endsWith(".json")) name += ".json";
-      await invoke("save_preset", {
-        fileName: name,
-        content: JSON.stringify(DEFAULT_PRESET_VALUES, null, 2),
-      });
+      await savePresetFile(name, DEFAULT_PRESET_VALUES);
       await refreshData();
       setActivePresetFile(name);
     }
@@ -1520,61 +1489,9 @@ export default function Settings({
   const handleFetchModels = async () => {
     setFetchedModels([]);
     try {
-      if (connectionData.api_type === "horde") {
-        const res = await fetch(
-          "https://stablehorde.net/api/v2/status/models?type=text",
-        );
-        if (!res.ok) throw new Error(res.statusText);
-        const data = await res.json();
-        const models = data.map((m: any) => m.name).sort();
-        setFetchedModels(models);
-        addToast(`Fetched ${models.length} Horde models.`, "success");
-      } else if (
-        connectionData.api_type === "chat_completion" ||
-        connectionData.api_type === "text_completion"
-      ) {
-        let url = connectionData.base_url;
-        if (connectionData.chat_source === "openai")
-          url = "https://api.openai.com/v1";
-        if (connectionData.chat_source === "deepseek")
-          url = "https://api.deepseek.com";
-        if (connectionData.chat_source === "grok") url = "https://api.x.ai/v1";
-
-        // Normalize URL to get base for /models
-        // Remove endpoint suffixes
-        url = url
-          .replace(/\/chat\/completions\/?$/, "")
-          .replace(/\/completions\/?$/, "");
-        // Ensure no double slash but allow http://...
-        if (url.endsWith("/")) url = url.slice(0, -1);
-
-        const res = await fetch(`${url}/models`, {
-          headers: { Authorization: `Bearer ${connectionData.api_key}` },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const models = Array.isArray(data.data)
-          ? data.data.map((m: any) => m.id).sort()
-          : [];
-        setFetchedModels(models);
-        addToast(`Fetched ${models.length} models.`, "success");
-      } else if ((connectionData.api_type as string) === "google") {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models?key=${connectionData.api_key}`,
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const models = (data.models || [])
-          .filter((m: any) =>
-            m.supportedGenerationMethods?.includes("generateContent"),
-          )
-          .map((m: any) => m.name.replace("models/", ""))
-          .sort();
-        setFetchedModels(models);
-        addToast(`Fetched ${models.length} Gemini models.`, "success");
-      } else {
-        addToast("Model fetching not supported for this API type yet.", "info");
-      }
+      const result = await fetchAvailableModels(connectionData);
+      setFetchedModels(result.models);
+      addToast(result.message, result.type);
     } catch (e: any) {
       console.error(e);
       addToast("Error fetching models: " + e.message, "error");

@@ -1,5 +1,5 @@
 import { SlidersHorizontal, Plus, Trash2, Download, Save, Ban, Settings as SettingsIcon, Eye } from "lucide-react";
-import { Preset, InputField, SelectField, Slider, Toggle, REASONING_OPTIONS } from "../../Settings";
+import { InputField, Preset, REASONING_OPTIONS, SelectField, Slider, Toggle } from "./shared";
 
 interface TextGenTabProps {
   activePresetFile: string | null;

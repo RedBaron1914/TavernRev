@@ -1,5 +1,5 @@
 import { SlidersHorizontal, MessageSquare, FileText } from "lucide-react";
-import { Slider, MacroTester } from "../../Settings";
+import { MacroTester, Slider } from "./shared";
 
 interface UserSettingsTabProps {
   uiSettings: { msgLimit: number; contentScale: number };

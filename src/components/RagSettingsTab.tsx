@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Brain } from "lucide-react";
-import { Toggle, InputField } from "../Settings";
+import { Toggle, InputField } from "./settings/shared";
 
 export const RagSettingsTab = ({ 
   chatId,

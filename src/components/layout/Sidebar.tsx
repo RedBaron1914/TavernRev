@@ -12,6 +12,7 @@ import {
   BrainCircuit,
 } from "lucide-react";
 import { Chat } from "../../types";
+import { RagSettingsTab } from "../RagSettingsTab";
 
 type SidebarTab =
   | "chats"
@@ -32,6 +33,7 @@ interface SidebarProps {
   setActiveChatId: (id: number) => void;
   handleRenameChat: (id: number, name: string) => void;
   handleDeleteChat: (id: number, name: string) => void;
+  addToast: (msg: string, type?: "info" | "error" | "success") => void;
 }
 
 export function Sidebar({
@@ -46,6 +48,7 @@ export function Sidebar({
   setActiveChatId,
   handleRenameChat,
   handleDeleteChat,
+  addToast,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>("chats");
 
@@ -127,6 +130,14 @@ export function Sidebar({
             </div>
           ))}
         </nav>
+      );
+    }
+
+    if (activeTab === "long-term-memory") {
+      return (
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3">
+          <RagSettingsTab chatId={activeChatId} addToast={addToast} />
+        </div>
       );
     }
 

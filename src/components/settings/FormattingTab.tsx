@@ -1,5 +1,5 @@
 import { LayoutTemplate, MessageSquare } from "lucide-react";
-import { Preset, ConnectionProfile, Toggle, TextAreaField, InputField } from "../../Settings";
+import { ConnectionProfile, InputField, Preset, TextAreaField, Toggle } from "./shared";
 
 interface FormattingTabProps {
   connectionData: ConnectionProfile;

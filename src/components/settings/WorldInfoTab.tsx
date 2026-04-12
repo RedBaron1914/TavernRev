@@ -1,5 +1,5 @@
 import { Globe } from "lucide-react";
-import { Preset, Slider, Toggle } from "../../Settings";
+import { Preset, Slider, Toggle } from "./shared";
 import LorebookEditor from "../LorebookEditor";
 
 interface WorldInfoTabProps {
