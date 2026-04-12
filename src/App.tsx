@@ -1,15 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Menu,
   Settings as SettingsIcon,
   Pencil,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Activity,
   UserCircle,
-  Download,
-  CloudUpload,
   Check,
   X,
   FilePlus,
@@ -34,6 +30,7 @@ import { CharacterEditor } from "./components/character/CharacterEditor";
 import { CharacterSelect } from "./components/character/CharacterSelect";
 import { MessageInput } from "./components/chat/MessageInput";
 import { MessageActions } from "./components/chat/MessageActions";
+import { ChatHeader } from "./components/chat/ChatHeader";
 import { Sidebar } from "./components/layout/Sidebar";
 import { ChatMemoryModal } from "./components/ChatMemoryModal";
 import { TavernAPI } from "./services/PluginAPI";
@@ -1375,6 +1372,25 @@ const refreshCharacters = async () => {
     }
   };
 
+  const handleContextOverflow = async () => {
+    if (!activeChatId) return;
+    try {
+      const count = await invoke<number>("auto_exclude_context_overflow", {
+        chatId: activeChatId,
+        excludePercent: 50,
+      });
+      await fetchMessages(activeChatId);
+      triggerAutoSync(activeChatId);
+      if (count > 0) {
+        addToast(`Moved ${count} oldest message${count > 1 ? "s" : ""} to hidden (context overflow)`, "info");
+      } else {
+        addToast("No active messages to hide", "info");
+      }
+    } catch (e) {
+      addToast("Context overflow failed: " + e, "error");
+    }
+  };
+
   const handleDelete = async (mode: "swipe" | "message" | "branch") => {
     if (deletingMessageId && activeChatId) {
       if (deletingMessageId < 0) {
@@ -1772,73 +1788,23 @@ const refreshCharacters = async () => {
       {/* MAIN VIEW */}
       <main className="flex-1 flex flex-col min-w-0 relative">
         {/* HEADER */}
-        <header className="h-16 flex items-center justify-between px-4 bg-gray-900/50 backdrop-blur-md border-b border-white/10 shrink-0 pt-[env(safe-area-inset-top)] h-[calc(4rem+env(safe-area-inset-top))]">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <button
-              onClick={() => setSidebarVisible(!sidebarVisible)}
-              className="p-2 hover:bg-white/10 rounded-lg text-gray-400 transition mr-1 shrink-0"
-            >
-              <Menu size={20} />
-            </button>
-            <Avatar
-              src={activeGroupId && activeGroup ? (activeGroup.avatar || "default.png") : (activeCharacter?.avatar || "default.png")}
-              name={activeGroupId && activeGroup ? activeGroup.name : (activeCharacter?.name || "Tavern")}
-            />
-            <div className="flex flex-col min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm leading-tight truncate">
-                  {activeGroupId && activeGroup ? activeGroup.name : (activeCharacter?.name || "Tavern")}
-                </span>
-                <button
-                  onClick={() => activeGroupId ? setIsEditingGroup(true) : setIsEditingCharacter(true)}
-                  className="text-gray-500 hover:text-white transition p-0.5 rounded shrink-0"
-                >
-                  <Pencil size={12} />
-                </button>
-              </div>
-              <div className="text-[10px] text-cyan-400 font-mono truncate">
-                {modelName}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0 ml-2">
-            {autoSyncStatus !== "idle" && (
-                <div className={`p-2 hidden sm:flex items-center justify-center transition-all duration-500 ${autoSyncStatus === "success" ? "text-emerald-400" : autoSyncStatus === "error" ? "text-red-400" : "text-blue-400"}`} title={`Auto-Sync: ${autoSyncStatus}`}>
-                    {autoSyncStatus === "syncing" && <CloudUpload size={16} className="animate-pulse" />}
-                    {autoSyncStatus === "success" && <Check size={16} className="animate-in fade-in" />}
-                    {autoSyncStatus === "error" && <X size={16} />}
-                </div>
-            )}
-            <button
-              onClick={handleExportChat}
-              title="Download chat"
-              className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition hidden sm:flex"
-            >
-              <Download size={20} />
-            </button>
-            <button
-              onClick={fetchStats}
-              title="Chat Stats"
-              className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition"
-            >
-              <Activity size={20} />
-            </button>
-            <button
-              onClick={() => setShowPersonaModal(true)}
-              title="Switch Persona"
-              className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition"
-            >
-              <UserCircle size={20} />
-            </button>
-            <div className="w-px h-6 bg-white/10 mx-1" />
-            <button
-              onClick={() => setCurrentView("settings")}
-              className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition"
-            >
-              <SettingsIcon size={20} />
-            </button>
-          </div>
-        </header>
+        <ChatHeader
+          modelName={modelName}
+          activeChatId={activeChatId}
+          activeProfileName={activeProfileName}
+          activeCharacter={activeCharacter ?? null}
+          activeGroupId={activeGroupId}
+          activeGroup={activeGroup ?? null}
+          autoSyncStatus={autoSyncStatus}
+          onToggleSidebar={() => setSidebarVisible(!sidebarVisible)}
+          onEditCharacter={() => setIsEditingCharacter(true)}
+          onEditGroup={() => setIsEditingGroup(true)}
+          onExportChat={handleExportChat}
+          onContextOverflow={handleContextOverflow}
+          onStats={fetchStats}
+          onPersona={() => setShowPersonaModal(true)}
+          onSettings={() => setCurrentView("settings")}
+        />
 
         {/* MESSAGES */}
         <div
