@@ -1892,16 +1892,16 @@ const refreshCharacters = async () => {
                                      )}
                                      <div className={`flex gap-1 transition-opacity ${isMobile ? (activeMessageId === msg.id ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100"}`}>
                                           {!isUser && (
-                                              <button onClick={(e) => { e.stopPropagation(); handleContinue(msg.id); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Continue"><Play size={12}/></button>
+                                              <button onClick={(e) => { e.stopPropagation(); handleContinue(msg.id); }} className="flex items-center gap-1 p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5 text-[10px]" title="Continue"><Play size={12}/><span>Continue</span></button>
                                           )}
                                           {!isUser && (
-                                              <button onClick={(e) => { e.stopPropagation(); handleRegenerate(msg.id); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Regenerate"><RefreshCw size={12}/></button>
+                                              <button onClick={(e) => { e.stopPropagation(); handleRegenerate(msg.id); }} className="flex items-center gap-1 p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5 text-[10px]" title="Regenerate"><RefreshCw size={12}/><span>Regen</span></button>
                                           )}
-                                          <button onClick={(e) => { e.stopPropagation(); handleBranch(msg.id); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Branch"><GitBranch size={12}/></button>
-                                          <button onClick={(e) => { e.stopPropagation(); handleStartEdit(msg); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Edit"><Pencil size={12}/></button>
-                                           <button onClick={(e) => { e.stopPropagation(); handleToggleExclude(msg.id, !!msg.extra?.exclude_from_prompt); }} className={`p-1.5 rounded hover:bg-white/5 ${msg.extra?.exclude_from_prompt ? "text-amber-400" : "text-gray-500 hover:text-white"}`} title={msg.extra?.exclude_from_prompt ? "Include in prompt" : "Exclude from prompt"}>{msg.extra?.exclude_from_prompt ? <Eye size={12}/> : <EyeOff size={12}/>}</button>
+                                           <button onClick={(e) => { e.stopPropagation(); handleBranch(msg.id); }} className="flex items-center gap-1 p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5 text-[10px]" title="Branch"><GitBranch size={12}/><span>Branch</span></button>
+                                           <button onClick={(e) => { e.stopPropagation(); handleStartEdit(msg); }} className="flex items-center gap-1 p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5 text-[10px]" title="Edit"><Pencil size={12}/><span>Edit</span></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleToggleExclude(msg.id, !!msg.extra?.exclude_from_prompt); }} className={`flex items-center gap-1 p-1.5 rounded hover:bg-white/5 text-[10px] ${msg.extra?.exclude_from_prompt ? "text-amber-400" : "text-gray-500 hover:text-white"}`} title={msg.extra?.exclude_from_prompt ? "Include in prompt" : "Exclude from prompt"}>{msg.extra?.exclude_from_prompt ? <Eye size={12}/> : <EyeOff size={12}/>}<span>{msg.extra?.exclude_from_prompt ? "Show" : "Hide"}</span></button>
                                            {!(!hasMore && index === 0) && (
-                                              <button onClick={(e) => { e.stopPropagation(); setDeletingMessageId(msg.id); }} className="p-1.5 text-gray-500 hover:text-red-400 rounded hover:bg-white/5" title="Delete"><Trash2 size={12}/></button>
+                                               <button onClick={(e) => { e.stopPropagation(); setDeletingMessageId(msg.id); }} className="flex items-center gap-1 p-1.5 text-gray-500 hover:text-red-400 rounded hover:bg-white/5 text-[10px]" title="Delete"><Trash2 size={12}/><span>Delete</span></button>
                                           )}
                                      </div>
                                  </div>
@@ -2003,33 +2003,39 @@ const refreshCharacters = async () => {
                                                                        images={msg.images}
                                                                      />                                                   
                                                    <div className="absolute -top-3 right-0 md:opacity-0 group-hover:opacity-100 opacity-100 flex gap-1 bg-gray-900/80 rounded-lg p-0.5 border border-white/10 backdrop-blur transition-opacity">
-                          <button
-                            onClick={() => handleBranch(msg.id)}
-                            className="p-1 text-gray-400 hover:text-white"
-                            title="Branch Chat"
-                          >
-                            <GitBranch size={12} />
-                          </button>
-                          <button
-                            onClick={() => handleStartEdit(msg)}
-                            className="p-1 text-gray-400 hover:text-white"
-                          >
-                            <Pencil size={12} />
-                          </button>
-                          <button
-                            onClick={() => handleToggleExclude(msg.id, !!msg.extra?.exclude_from_prompt)}
-                            className={`p-1 ${msg.extra?.exclude_from_prompt ? "text-amber-400" : "text-gray-400 hover:text-white"}`}
-                            title={msg.extra?.exclude_from_prompt ? "Include in prompt" : "Exclude from prompt"}
-                          >
-                            {msg.extra?.exclude_from_prompt ? <Eye size={12}/> : <EyeOff size={12}/>}
-                          </button>
+                           <button
+                             onClick={() => handleBranch(msg.id)}
+                             className="flex items-center gap-1 p-1 text-gray-400 hover:text-white text-[10px]"
+                             title="Branch Chat"
+                           >
+                             <GitBranch size={12} />
+                             <span>Branch</span>
+                           </button>
+                           <button
+                             onClick={() => handleStartEdit(msg)}
+                             className="flex items-center gap-1 p-1 text-gray-400 hover:text-white text-[10px]"
+                             title="Edit"
+                           >
+                             <Pencil size={12} />
+                             <span>Edit</span>
+                           </button>
+                           <button
+                             onClick={() => handleToggleExclude(msg.id, !!msg.extra?.exclude_from_prompt)}
+                             className={`flex items-center gap-1 p-1 text-[10px] ${msg.extra?.exclude_from_prompt ? "text-amber-400" : "text-gray-400 hover:text-white"}`}
+                             title={msg.extra?.exclude_from_prompt ? "Include in prompt" : "Exclude from prompt"}
+                           >
+                             {msg.extra?.exclude_from_prompt ? <Eye size={12}/> : <EyeOff size={12}/>}
+                             <span>{msg.extra?.exclude_from_prompt ? "Show" : "Hide"}</span>
+                           </button>
                           {!(!hasMore && index === 0) && (
-                              <button
-                                onClick={() => setDeletingMessageId(msg.id)}
-                                className="p-1 text-gray-400 hover:text-red-400"
-                              >
-                                <Trash2 size={12} />
-                              </button>
+                               <button
+                                 onClick={() => setDeletingMessageId(msg.id)}
+                                 className="flex items-center gap-1 p-1 text-gray-400 hover:text-red-400 text-[10px]"
+                                 title="Delete"
+                               >
+                                 <Trash2 size={12} />
+                                 <span>Delete</span>
+                               </button>
                           )}
                         </div>{" "}
                       </div>
