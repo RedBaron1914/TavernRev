@@ -717,7 +717,13 @@ pub fn import_lorebook(json_data: String, db_state: tauri::State<DbState>) -> Re
 #[tauri::command]
 pub fn get_chat_lorebooks(chat_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<i64>, String> {
     let conn = db_state.0.lock().unwrap();
-    database::get_chat_lorebooks(&conn, chat_id).map_err(|e| e.to_string())
+    database::get_chat_lorebook_ids(&conn, chat_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_chat_lorebook_links(chat_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<database::LorebookLink>, String> {
+    let conn = db_state.0.lock().unwrap();
+    database::get_chat_lorebook_links(&conn, chat_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -727,9 +733,21 @@ pub fn toggle_chat_lorebook(chat_id: i64, book_id: i64, active: bool, db_state: 
 }
 
 #[tauri::command]
+pub fn set_chat_lorebook_enabled(chat_id: i64, book_id: i64, enabled: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
+    let conn = db_state.0.lock().unwrap();
+    database::set_chat_lorebook_enabled(&conn, chat_id, book_id, enabled).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn get_character_lorebooks(character_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<i64>, String> {
     let conn = db_state.0.lock().unwrap();
-    database::get_character_lorebooks(&conn, character_id).map_err(|e| e.to_string())
+    database::get_character_lorebook_ids(&conn, character_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_character_lorebook_links(character_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<database::LorebookLink>, String> {
+    let conn = db_state.0.lock().unwrap();
+    database::get_character_lorebook_links(&conn, character_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -739,12 +757,27 @@ pub fn toggle_character_lorebook(character_id: i64, book_id: i64, active: bool, 
 }
 
 #[tauri::command]
-pub fn toggle_global_lorebook(book_id: i64, active: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-
+pub fn set_character_lorebook_enabled(character_id: i64, book_id: i64, enabled: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap();
+    database::set_character_lorebook_enabled(&conn, character_id, book_id, enabled).map_err(|e| e.to_string())
+}
 
+#[tauri::command]
+pub fn toggle_global_lorebook(book_id: i64, active: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
+    let conn = db_state.0.lock().unwrap();
     database::toggle_global_lorebook(&conn, book_id, active).map_err(|e| e.to_string())
+}
 
+#[tauri::command]
+pub fn set_global_lorebook_enabled(book_id: i64, enabled: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
+    let conn = db_state.0.lock().unwrap();
+    database::set_global_lorebook_enabled(&conn, book_id, enabled).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn set_lorebook_excluded_from_global(book_id: i64, excluded: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
+    let conn = db_state.0.lock().unwrap();
+    database::set_lorebook_excluded_from_global(&conn, book_id, excluded).map_err(|e| e.to_string())
 }
 
 

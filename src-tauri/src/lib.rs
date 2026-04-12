@@ -1,5 +1,6 @@
 ﻿mod database;
 pub mod message_extra;
+pub mod lorebook;
 pub mod prompt_engine;
 mod importer;
 use std::sync::{Arc, Mutex, atomic::AtomicBool};
@@ -164,10 +165,16 @@ pub fn run() {
             commands::update_lore_entry,
             commands::delete_lore_entry,
             commands::get_chat_lorebooks,
+            commands::get_chat_lorebook_links,
             commands::toggle_chat_lorebook,
             commands::get_character_lorebooks,
+            commands::get_character_lorebook_links,
             commands::toggle_character_lorebook,
             commands::toggle_global_lorebook,
+            commands::set_global_lorebook_enabled,
+            commands::set_lorebook_excluded_from_global,
+            commands::set_chat_lorebook_enabled,
+            commands::set_character_lorebook_enabled,
             commands::debug_lore_generation,
             // Prompting
             commands::assemble_prompt_command,
