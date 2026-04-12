@@ -351,13 +351,15 @@ pub async fn summarize_chat(chat_id: i64, profile_name: String, preset_name: Str
         role: "system".to_string(),
         content: "[System Note: Summarize the key events, current state, and character dynamics of the following chat log. Keep it concise. Focus purely on facts that are useful to remember later. Do not include meta-commentary.]".to_string(),
         name: None,
-        images: None
+        images: None,
+        db_id: None,
     });
     messages.push(crate::prompt_engine::Message {
         role: "user".to_string(),
         content: chat_log,
         name: None,
-        images: None
+        images: None,
+        db_id: None,
     });
     
     match profile.api_type.as_str() {

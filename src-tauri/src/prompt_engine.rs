@@ -53,6 +53,8 @@ pub struct Message {
     pub name: Option<String>,
     #[serde(default)]
     pub images: Option<Vec<String>>,
+    #[serde(default)]
+    pub db_id: Option<i64>,
 }
 
 #[derive(Clone, Debug)]
@@ -325,7 +327,7 @@ pub async fn assemble_prompt(
     evaluator: &mut Evaluator,
     token_budget: usize,
     new_example_chat_prompt: String
-) -> (Vec<Message>, HashMap<String, String>) {
+) -> (Vec<Message>, HashMap<String, String>, Vec<i64>) {
     let bpe = cl100k_base().unwrap();
     let count_tokens = |text: &str| bpe.encode_with_special_tokens(text).len();
 
@@ -462,7 +464,8 @@ pub async fn assemble_prompt(
             role: m.role.clone(),
             content: process_text(evaluator, &m.content, &ctx_map).await,
             name: m.name.clone(),
-            images: m.images.clone()
+            images: m.images.clone(),
+            db_id: m.db_id,
         });
     }
 
@@ -471,7 +474,7 @@ pub async fn assemble_prompt(
         let depth = module.injection_depth as usize;
         let processed = process_text(evaluator, &module.content, &ctx_map).await;
         if processed.trim().is_empty() { continue; }
-        let msg = Message { role: module.role.clone(), content: processed, name: None, images: None };
+        let msg = Message { role: module.role.clone(), content: processed, name: None, images: None, db_id: None };
         if depth <= history_with_injections.len() { history_with_injections.insert(history_with_injections.len() - depth, msg); } else { history_with_injections.insert(0, msg); }
     }
 
@@ -481,7 +484,7 @@ pub async fn assemble_prompt(
         let processed = process_text(evaluator, &entry.content, &ctx_map).await;
         if processed.trim().is_empty() { continue; }
         let role = match entry.position.as_str() { "at_depth_user" => "user", "at_depth_assistant" => "assistant", _ => "system" };
-        let msg = Message { role: role.to_string(), content: processed, name: None, images: None };
+        let msg = Message { role: role.to_string(), content: processed, name: None, images: None, db_id: None };
         if depth <= history_with_injections.len() { history_with_injections.insert(history_with_injections.len() - depth, msg); } else { history_with_injections.insert(0, msg); }
     }
 
@@ -504,7 +507,7 @@ pub async fn assemble_prompt(
                 persona_inserted = true;
                 let content = if module.content.trim().is_empty() { user_description } else { &module.content };
                 let processed = process_text(evaluator, content, &ctx_map).await;
-                if !processed.trim().is_empty() { msgs.push(Message { role: module.role.clone(), content: processed, name: None, images: None }); }
+                if !processed.trim().is_empty() { msgs.push(Message { role: module.role.clone(), content: processed, name: None, images: None, db_id: None }); }
             },
             "worldInfo" | "worldInfoBefore" | "worldInfoAfter" => {
                 lore_inserted = true;
@@ -514,7 +517,7 @@ pub async fn assemble_prompt(
                     _ => if !lore_text_generic.is_empty() { &lore_text_generic } else { &module.content }
                 };
                 let processed = process_text(evaluator, content, &ctx_map).await;
-                if !processed.trim().is_empty() { msgs.push(Message { role: module.role.clone(), content: processed, name: None, images: None }); }
+                if !processed.trim().is_empty() { msgs.push(Message { role: module.role.clone(), content: processed, name: None, images: None, db_id: None }); }
             },
             "charDescription" | "charPersonality" | "scenario" | "firstMessage" => {
                 char_inserted = true;
@@ -528,7 +531,7 @@ pub async fn assemble_prompt(
                     }
                 } else { &module.content };
                 let processed = process_text(evaluator, content_src, &ctx_map).await;
-                if !processed.trim().is_empty() { msgs.push(Message { role: module.role.clone(), content: processed, name: None, images: None }); }
+                if !processed.trim().is_empty() { msgs.push(Message { role: module.role.clone(), content: processed, name: None, images: None, db_id: None }); }
             },
             "mesExamples" => {
                 char_inserted = true;
@@ -546,7 +549,7 @@ pub async fn assemble_prompt(
                         format!("\n{}\n", new_example_chat_prompt)
                     };
                     let formatted = processed.replace("<START>", &example_separator);
-                    msgs.push(Message { role: module.role.clone(), content: formatted.trim().to_string(), name: None, images: None });
+                    msgs.push(Message { role: module.role.clone(), content: formatted.trim().to_string(), name: None, images: None, db_id: None });
                 }
             },
             "authorNote" | "authorsNote" => {
@@ -555,11 +558,11 @@ pub async fn assemble_prompt(
                 block.push_str(&module.content);
                 if !lore_text_after_an.is_empty() { block.push('\n'); block.push_str(&lore_text_after_an); }
                 let processed = process_text(evaluator, &block, &ctx_map).await;
-                if !processed.trim().is_empty() { msgs.push(Message { role: module.role.clone(), content: processed, name: None, images: None }); }
+                if !processed.trim().is_empty() { msgs.push(Message { role: module.role.clone(), content: processed, name: None, images: None, db_id: None }); }
             },
             _ => {
                 let processed = process_text(evaluator, &module.content, &ctx_map).await;
-                if !processed.trim().is_empty() { msgs.push(Message { role: module.role.clone(), content: processed, name: None, images: None }); }
+                if !processed.trim().is_empty() { msgs.push(Message { role: module.role.clone(), content: processed, name: None, images: None, db_id: None }); }
             }
         }
         if !msgs.is_empty() { parts.push((module.injection_order, msgs)); }
@@ -575,17 +578,17 @@ pub async fn assemble_prompt(
         if !char_data.personality.is_empty() { fallback.push_str(&char_data.personality); fallback.push('\n'); }
         if !char_data.scenario.is_empty() { fallback.push_str(&char_data.scenario); }
         if !fallback.is_empty() {
-            parts.push((0, vec![Message { role: "system".to_string(), content: fallback, name: None, images: None }]));
+            parts.push((0, vec![Message { role: "system".to_string(), content: fallback, name: None, images: None, db_id: None }]));
         }
     }
     
     if !persona_inserted && !persona_disabled && !user_description.is_empty() {
         let idx = if !char_inserted && !char_desc_disabled { 1 } else { 0 };
-        parts.push((idx, vec![Message { role: "system".to_string(), content: user_description.to_string(), name: None, images: None }]));
+        parts.push((idx, vec![Message { role: "system".to_string(), content: user_description.to_string(), name: None, images: None, db_id: None }]));
     }
 
     if !lore_inserted && !lore_text_generic.is_empty() {
-        parts.push((0, vec![Message { role: "system".to_string(), content: lore_text_generic, name: None, images: None }]));
+        parts.push((0, vec![Message { role: "system".to_string(), content: lore_text_generic, name: None, images: None, db_id: None }]));
     }
 
     // --- 6. TOKEN BUDGETING ---
@@ -594,6 +597,7 @@ pub async fn assemble_prompt(
     let history_budget = if budget_limit > static_tokens { budget_limit - static_tokens } else if budget_limit > 0 { 0 } else { usize::MAX };
     
     let mut trimmed_history = Vec::new();
+    let mut trimmed_db_ids = Vec::new();
     
     if budget_limit == usize::MAX {
         trimmed_history = history_with_injections;
@@ -602,15 +606,18 @@ pub async fn assemble_prompt(
         for mut msg in history_with_injections.into_iter().rev() {
             let c = count_tokens(&msg.content);
             if used + c > history_budget { 
+                if let Some(id) = msg.db_id {
+                    trimmed_db_ids.push(id);
+                }
                 let remaining = history_budget.saturating_sub(used);
                 if remaining > 20 {
                     let chars: Vec<char> = msg.content.chars().collect();
-                    let keep_chars = remaining * 3; // Rough approximation: 1 token ~ 3 chars
+                    let keep_chars = remaining * 3;
                     if chars.len() > keep_chars {
                         msg.content = chars[chars.len() - keep_chars..].iter().collect();
                         trimmed_history.insert(0, msg);
-                    } else {
-                        trimmed_history.insert(0, msg);
+                    } else if let Some(id) = msg.db_id {
+                        trimmed_db_ids.push(id);
                     }
                 }
                 break;
@@ -629,7 +636,7 @@ pub async fn assemble_prompt(
     parts.sort_by_key(|k| k.0);
     let final_prompt: Vec<Message> = parts.into_iter().flat_map(|(_, msgs)| msgs).collect();
     
-    (final_prompt, evaluator.get_vars())
+    (final_prompt, evaluator.get_vars(), trimmed_db_ids)
 }
 
 #[cfg(test)]
@@ -649,9 +656,9 @@ mod tests {
     #[tokio::test]
     async fn test_history_trimming() {
         let history = vec![
-            Message { role: "user".to_string(), content: "Msg 1".to_string(), name: None, images: None },
-            Message { role: "char".to_string(), content: "Msg 2".to_string(), name: None, images: None },
-            Message { role: "user".to_string(), content: "Msg 3".to_string(), name: None, images: None },
+            Message { role: "user".to_string(), content: "Msg 1".to_string(), name: None, images: None, db_id: None },
+            Message { role: "char".to_string(), content: "Msg 2".to_string(), name: None, images: None, db_id: None },
+            Message { role: "user".to_string(), content: "Msg 3".to_string(), name: None, images: None, db_id: None },
         ];
         
         let modules = vec![
@@ -663,7 +670,7 @@ mod tests {
         let wi = WISettings { depth: 0, recursive: false, case_sensitive: false, match_whole_words: false, max_recursion: 0, token_budget: 0, include_names: false, insertion_strategy: "".to_string() };
 
         // Budget for approx 1.5 messages (each msg is ~2 tokens + overhead)
-        let (msgs, _) = assemble_prompt(modules, history, char_data, "User", "", vec![], wi, &mut eval, 5, String::new()).await;
+        let (msgs, _, _) = assemble_prompt(modules, history, char_data, "User", "", vec![], wi, &mut eval, 5, String::new()).await;
         
         // Should only have 1 message (the last one)
         assert_eq!(msgs.len(), 1);
@@ -723,8 +730,8 @@ mod tests {
         ];
         
         let history = vec![
-            Message { role: "user".to_string(), content: "Hello".to_string(), name: None, images: None },
-            Message { role: "assistant".to_string(), content: "I am half-finished".to_string(), name: None, images: None },
+            Message { role: "user".to_string(), content: "Hello".to_string(), name: None, images: None, db_id: None },
+            Message { role: "assistant".to_string(), content: "I am half-finished".to_string(), name: None, images: None, db_id: None },
         ];
         
         let char_data = CharacterData::default();
@@ -734,7 +741,7 @@ mod tests {
             max_recursion: 0, token_budget: 1000, include_names: false, insertion_strategy: "char_first".to_string(),
         };
 
-        let (msgs, _) = assemble_prompt(modules, history, char_data, "User", "", vec![], wi, &mut eval, 1000, String::new()).await;
+        let (msgs, _, _) = assemble_prompt(modules, history, char_data, "User", "", vec![], wi, &mut eval, 1000, String::new()).await;
         
         for (i, m) in msgs.iter().enumerate() {
             println!("[{}] {}: {}", i, m.role, m.content);
