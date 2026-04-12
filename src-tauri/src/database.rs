@@ -1653,29 +1653,14 @@ pub fn set_message_prompt_excluded(
     excluded: bool,
     reason: Option<&str>,
 ) -> Result<()> {
-    let existing_extra: String = conn
-        .query_row(
-            "SELECT extra FROM messages WHERE id = ?1",
-            params![id],
-            |row| row.get::<_, Option<String>>(0),
-        )?
-        .unwrap_or_else(default_extra);
-
-    let mut parsed = MessageExtra::from_str(&existing_extra);
-    parsed.exclude_from_prompt = excluded;
-    parsed.exclude_reason = if excluded {
-        Some(reason.unwrap_or("manual").to_string())
-    } else {
-        None
-    };
-
-    let serialized = parsed.to_str()?;
-    conn.execute(
-        "UPDATE messages SET extra = ?1 WHERE id = ?2",
-        rusqlite::params![serialized, id],
-    )?;
-
-    Ok(())
+    MessageExtra::update(conn, id, |extra| {
+        extra.exclude_from_prompt = excluded;
+        extra.exclude_reason = if excluded {
+            Some(reason.unwrap_or("manual").to_string())
+        } else {
+            None
+        };
+    })
 }
 
 pub fn update_message_swipes(conn: &Connection, id: i64, swipes: &Vec<String>) -> Result<()> {
