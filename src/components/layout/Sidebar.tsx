@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   Type,
   BookOpen,
+  Library,
   BrainCircuit,
 } from "lucide-react";
 import { Chat } from "../../types";
@@ -16,6 +17,7 @@ import { RagSettingsTab } from "../RagSettingsTab";
 import { FormattingTab } from "../settings/FormattingTab";
 import { TextGenTab } from "../settings/TextGenTab";
 import { DEFAULT_CONNECTION_PROFILE } from "../settings/shared";
+import LorebookEditor from "../LorebookEditor";
 import { WorldInfoTab } from "../settings/WorldInfoTab";
 import { useActiveConnectionProfile, useActivePreset } from "../settings/runtime";
 
@@ -24,6 +26,7 @@ type SidebarTab =
   | "response-config"
   | "response-formatting"
   | "world-info"
+  | "lorebooks"
   | "long-term-memory";
 
 interface SidebarProps {
@@ -84,6 +87,7 @@ export function Sidebar({
       icon: Type,
     },
     { id: "world-info", label: "World info", icon: BookOpen },
+    { id: "lorebooks", label: "Lorebooks", icon: Library },
     {
       id: "long-term-memory",
       label: "Long-term memory",
@@ -174,6 +178,19 @@ export function Sidebar({
             characterId={characterId}
             addToast={addToast}
             compact
+            showLorebooks={false}
+          />
+        </div>
+      );
+    }
+
+    if (activeTab === "lorebooks") {
+      return (
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3 min-h-0">
+          <LorebookEditor
+            chatId={activeChatId}
+            characterId={characterId}
+            addToast={addToast}
           />
         </div>
       );

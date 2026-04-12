@@ -9,6 +9,7 @@ interface WorldInfoTabProps {
   characterId: number | null;
   addToast: (msg: string, type?: "success" | "error" | "info") => void;
   compact?: boolean;
+  showLorebooks?: boolean;
 }
 
 export function WorldInfoTab({
@@ -18,6 +19,7 @@ export function WorldInfoTab({
   characterId,
   addToast,
   compact = false,
+  showLorebooks = true,
 }: WorldInfoTabProps) {
   return (
     <div className="h-full flex flex-col gap-4">
@@ -121,13 +123,15 @@ export function WorldInfoTab({
           </div>
         </div>
       </div>
-      <div className="flex-1 min-h-0">
-        <LorebookEditor
-          chatId={chatId}
-          characterId={characterId}
-          addToast={addToast}
-        />
-      </div>
+      {showLorebooks && (
+        <div className="flex-1 min-h-0">
+          <LorebookEditor
+            chatId={chatId}
+            characterId={characterId}
+            addToast={addToast}
+          />
+        </div>
+      )}
     </div>
   );
 }
