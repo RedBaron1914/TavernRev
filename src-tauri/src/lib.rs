@@ -124,6 +124,7 @@ pub fn run() {
             commands::get_messages_paged,
             commands::save_message,
             commands::edit_message,
+            commands::set_message_prompt_excluded,
             commands::delete_message,
             commands::get_chat_stats,
             commands::tokenize_text,

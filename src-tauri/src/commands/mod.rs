@@ -461,6 +461,18 @@ pub fn edit_message(id: i64, content: String, db_state: tauri::State<DbState>) -
 }
 
 #[tauri::command]
+pub fn set_message_prompt_excluded(
+    id: i64,
+    excluded: bool,
+    reason: Option<String>,
+    db_state: tauri::State<DbState>,
+) -> Result<(), String> {
+    let conn = db_state.0.lock().unwrap();
+    database::set_message_prompt_excluded(&conn, id, excluded, reason.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn delete_message(id: i64, mode: String, chat_id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap();
     match mode.as_str() {

@@ -112,6 +112,13 @@ pub struct Message {
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
+pub struct MessageExtraMetadata {
+    pub exclude_from_prompt: bool,
+    pub exclude_reason: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(default)]
 pub struct Group {
     #[serde(default)]
     pub id: i64,
@@ -234,6 +241,18 @@ pub fn delete_memory_vectors(conn: &Connection, chat_id: i64) -> Result<()> {
 
 fn default_extra() -> String {
     "{}".to_string()
+}
+
+pub fn parse_message_extra(extra: &str) -> MessageExtraMetadata {
+    serde_json::from_str(extra).unwrap_or_default()
+}
+
+pub fn serialize_message_extra(extra: &MessageExtraMetadata) -> Result<String> {
+    serde_json::to_string(extra).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))
+}
+
+pub fn message_is_excluded_from_prompt(message: &Message) -> bool {
+    parse_message_extra(&message.extra).exclude_from_prompt
 }
 
 fn generate_uuid() -> String {
@@ -1630,6 +1649,37 @@ pub fn edit_message(conn: &Connection, id: i64, new_content: &str) -> Result<()>
         "UPDATE messages SET content = ?1, swipes = ?2 WHERE id = ?3",
         rusqlite::params![new_content, new_swipes_json, id],
     )?;
+    Ok(())
+}
+
+pub fn set_message_prompt_excluded(
+    conn: &Connection,
+    id: i64,
+    excluded: bool,
+    reason: Option<&str>,
+) -> Result<()> {
+    let existing_extra: String = conn
+        .query_row(
+            "SELECT extra FROM messages WHERE id = ?1",
+            params![id],
+            |row| row.get::<_, Option<String>>(0),
+        )?
+        .unwrap_or_else(default_extra);
+
+    let mut parsed = parse_message_extra(&existing_extra);
+    parsed.exclude_from_prompt = excluded;
+    parsed.exclude_reason = if excluded {
+        Some(reason.unwrap_or("manual").to_string())
+    } else {
+        None
+    };
+
+    let serialized = serialize_message_extra(&parsed)?;
+    conn.execute(
+        "UPDATE messages SET extra = ?1 WHERE id = ?2",
+        rusqlite::params![serialized, id],
+    )?;
+
     Ok(())
 }
 
