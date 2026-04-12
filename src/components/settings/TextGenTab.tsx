@@ -40,11 +40,11 @@ export function TextGenTab({
             Configuration
           </span>
         </div>
-        <div className={`${compact ? "grid grid-cols-1 gap-2" : "flex gap-2 items-center"}`}>
+        <div className={`${compact ? "grid grid-cols-4 gap-2" : "flex gap-2 items-center"}`}>
           <select
             value={activePresetFile || ""}
             onChange={(e) => loadPresetData(e.target.value)}
-            className={`bg-gray-950 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500 ${compact ? "w-full" : "max-w-[150px]"}`}
+            className={`bg-gray-950 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500 ${compact ? "col-span-4 w-full" : "max-w-[150px]"}`}
           >
             {presetsList.map((f) => (
               <option key={f} value={f}>
@@ -52,22 +52,22 @@ export function TextGenTab({
               </option>
             ))}
           </select>
-          <button
-            onClick={handleCreatePreset}
-            className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-emerald-400 hover:text-emerald-300 transition"
-            title="New Preset"
-          >
-            <Plus size={20} />
+            <button
+              onClick={handleCreatePreset}
+              className={`bg-gray-800 hover:bg-gray-700 rounded-lg text-emerald-400 hover:text-emerald-300 transition ${compact ? "h-11 w-full flex items-center justify-center" : "p-2"}`}
+              title="New Preset"
+            >
+              <Plus size={20} />
           </button>
-          <button
-            onClick={handleDeletePreset}
-            className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-red-400 hover:text-red-300 transition"
-            title="Delete Preset"
-          >
-            <Trash2 size={20} />
+            <button
+              onClick={handleDeletePreset}
+              className={`bg-gray-800 hover:bg-gray-700 rounded-lg text-red-400 hover:text-red-300 transition ${compact ? "h-11 w-full flex items-center justify-center" : "p-2"}`}
+              title="Delete Preset"
+            >
+              <Trash2 size={20} />
           </button>
           <label
-            className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition cursor-pointer"
+            className={`bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition cursor-pointer ${compact ? "h-11 w-full flex items-center justify-center" : "p-2"}`}
             title="Import Preset"
           >
             <Download size={20} />
@@ -78,12 +78,12 @@ export function TextGenTab({
               className="hidden"
             />
           </label>
-          <button
-            onClick={handleExportPreset}
-            className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition"
-            title="Save/Export Preset"
-          >
-            <Save size={20} />
+            <button
+              onClick={handleExportPreset}
+              className={`bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition ${compact ? "h-11 w-full flex items-center justify-center" : "p-2"}`}
+              title="Save/Export Preset"
+            >
+              <Save size={20} />
           </button>
         </div>
       </div>
