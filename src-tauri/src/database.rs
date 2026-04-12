@@ -106,7 +106,7 @@ pub struct Message {
     pub is_system: bool,
     #[serde(
         default = "default_extra",
-        serialize_with = "serialize_extra_as_object"
+        serialize_with = "crate::database::serialize_extra_as_object"
     )]
     pub extra: String,
     #[serde(default)]
