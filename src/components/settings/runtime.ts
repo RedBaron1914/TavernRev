@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ConnectionProfile, Preset } from "./shared";
 
@@ -295,5 +296,163 @@ export const fetchAvailableModels = async (connectionData: ConnectionProfile) =>
     models: [] as string[],
     message: "Model fetching not supported for this API type yet.",
     type: "info" as const,
+  };
+};
+
+export const useActivePreset = () => {
+  const [presetsList, setPresetsList] = useState<string[]>([]);
+  const [activePresetFile, setActivePresetFile] = useState<string | null>(null);
+  const [formData, setFormData] = useState<Preset | null>(null);
+
+  const refreshPresets = useCallback(async () => {
+    const presetFiles = await invoke<string[]>("list_presets");
+    setPresetsList(presetFiles);
+    return presetFiles;
+  }, []);
+
+  const loadPresetData = useCallback(async (fileName: string) => {
+    const normalized = await loadPresetFile(fileName);
+    setFormData(normalized);
+    setActivePresetFile(fileName);
+    localStorage.setItem("active_preset", fileName);
+    return normalized;
+  }, []);
+
+  useEffect(() => {
+    const initPresetSelection = async () => {
+      try {
+        const presetFiles = await refreshPresets();
+        const storedPreset = localStorage.getItem("active_preset");
+
+        if (storedPreset && presetFiles.includes(storedPreset)) {
+          await loadPresetData(storedPreset);
+        } else if (presetFiles.length > 0) {
+          await loadPresetData(presetFiles[0]);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    initPresetSelection();
+  }, [loadPresetData, refreshPresets]);
+
+  useEffect(() => {
+    if (activePresetFile) {
+      loadPresetData(activePresetFile).catch(console.error);
+    }
+  }, [activePresetFile, loadPresetData]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activePresetFile && formData) {
+        savePresetFile(activePresetFile, formData).catch(console.error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [activePresetFile, formData]);
+
+  const handleFieldChange = useCallback((field: keyof Preset, value: unknown) => {
+    setFormData((prev) => {
+      if (!prev) return null;
+
+      return {
+        ...prev,
+        [field]: coercePresetFieldValue(field, value),
+      };
+    });
+  }, []);
+
+  return {
+    presetsList,
+    activePresetFile,
+    setActivePresetFile,
+    formData,
+    setFormData,
+    refreshPresets,
+    loadPresetData,
+    handleFieldChange,
+  };
+};
+
+export const useActiveConnectionProfile = (defaultProfile: ConnectionProfile) => {
+  const [connectionProfiles, setConnectionProfiles] = useState<string[]>([]);
+  const [activeProfileName, setActiveProfileName] = useState<string | null>(null);
+  const [connectionData, setConnectionData] = useState<ConnectionProfile>(defaultProfile);
+
+  const refreshConnectionProfiles = useCallback(async () => {
+    const profileFiles = await invoke<string[]>("list_connection_profiles").catch(() => []);
+    setConnectionProfiles(profileFiles);
+    return profileFiles;
+  }, []);
+
+  const loadConnectionProfile = useCallback(async (fileName: string) => {
+    const profile = await loadConnectionProfileFile(fileName);
+    setConnectionData(profile);
+    setActiveProfileName(fileName);
+    localStorage.setItem("active_profile", fileName);
+    return profile;
+  }, []);
+
+  useEffect(() => {
+    const initConnectionSelection = async () => {
+      try {
+        const profileFiles = await refreshConnectionProfiles();
+        const storedProfile = localStorage.getItem("active_profile");
+
+        if (storedProfile && profileFiles.includes(storedProfile)) {
+          await loadConnectionProfile(storedProfile);
+        } else if (profileFiles.length > 0) {
+          await loadConnectionProfile(profileFiles[0]);
+        } else {
+          setConnectionData(defaultProfile);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    initConnectionSelection();
+  }, [defaultProfile, loadConnectionProfile, refreshConnectionProfiles]);
+
+  useEffect(() => {
+    if (activeProfileName) {
+      loadConnectionProfile(activeProfileName).catch(console.error);
+    }
+  }, [activeProfileName, loadConnectionProfile]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeProfileName && connectionData) {
+        saveConnectionProfileFile(activeProfileName, {
+          ...connectionData,
+          name: activeProfileName,
+        }).catch(console.error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [activeProfileName, connectionData]);
+
+  const handleConnectionChange = useCallback(
+    (field: keyof ConnectionProfile, value: unknown) => {
+      setConnectionData((prev) => ({
+        ...prev,
+        [field]: coerceConnectionFieldValue(field, value),
+      }));
+    },
+    [],
+  );
+
+  return {
+    connectionProfiles,
+    activeProfileName,
+    setActiveProfileName,
+    connectionData,
+    setConnectionData,
+    refreshConnectionProfiles,
+    loadConnectionProfile,
+    handleConnectionChange,
   };
 };

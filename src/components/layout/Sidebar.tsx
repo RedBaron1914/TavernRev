@@ -13,6 +13,11 @@ import {
 } from "lucide-react";
 import { Chat } from "../../types";
 import { RagSettingsTab } from "../RagSettingsTab";
+import { FormattingTab } from "../settings/FormattingTab";
+import { TextGenTab } from "../settings/TextGenTab";
+import { DEFAULT_CONNECTION_PROFILE } from "../settings/shared";
+import { WorldInfoTab } from "../settings/WorldInfoTab";
+import { useActiveConnectionProfile, useActivePreset } from "../settings/runtime";
 
 type SidebarTab =
   | "chats"
@@ -30,6 +35,7 @@ interface SidebarProps {
   handleImportChat: (file: File) => void;
   chats: Chat[];
   activeChatId: number | null;
+  characterId: number | null;
   setActiveChatId: (id: number) => void;
   handleRenameChat: (id: number, name: string) => void;
   handleDeleteChat: (id: number, name: string) => void;
@@ -45,12 +51,21 @@ export function Sidebar({
   handleImportChat,
   chats,
   activeChatId,
+  characterId,
   setActiveChatId,
   handleRenameChat,
   handleDeleteChat,
   addToast,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>("chats");
+  const {
+    presetsList,
+    activePresetFile,
+    formData,
+    loadPresetData,
+    handleFieldChange,
+  } = useActivePreset();
+  const { connectionData } = useActiveConnectionProfile(DEFAULT_CONNECTION_PROFILE);
 
   const tabs: {
     id: SidebarTab;
@@ -136,7 +151,92 @@ export function Sidebar({
     if (activeTab === "long-term-memory") {
       return (
         <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3">
-          <RagSettingsTab chatId={activeChatId} addToast={addToast} />
+          <RagSettingsTab chatId={activeChatId} addToast={addToast} compact />
+        </div>
+      );
+    }
+
+    if (activeTab === "world-info") {
+      if (!formData) {
+        return (
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 text-sm text-gray-400">
+            Loading world info settings...
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3">
+          <WorldInfoTab
+            formData={formData}
+            handleFieldChange={handleFieldChange}
+            chatId={activeChatId}
+            characterId={characterId}
+            addToast={addToast}
+            compact
+          />
+        </div>
+      );
+    }
+
+    if (activeTab === "response-formatting") {
+      if (!formData) {
+        return (
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 text-sm text-gray-400">
+            Loading formatting settings...
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3">
+          <FormattingTab
+            connectionData={connectionData}
+            formData={formData}
+            handleFieldChange={handleFieldChange}
+            compact
+          />
+        </div>
+      );
+    }
+
+    if (activeTab === "response-config") {
+      if (!formData) {
+        return (
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 text-sm text-gray-400">
+            Loading response configuration...
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3">
+          <TextGenTab
+            activePresetFile={activePresetFile}
+            presetsList={presetsList}
+            loadPresetData={loadPresetData}
+            handleCreatePreset={() => setCurrentView("settings")}
+            handleDeletePreset={() => setCurrentView("settings")}
+            handleImportPreset={() => setCurrentView("settings")}
+            handleExportPreset={() => setCurrentView("settings")}
+            formData={formData}
+            handleFieldChange={handleFieldChange}
+            renderPromptManager={() => (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2 text-sm text-gray-400">
+                <div className="text-xs font-bold uppercase tracking-[0.24em] text-gray-500">
+                  Prompt Manager
+                </div>
+                <p>Prompt manager is still available in the full Settings screen.</p>
+                <button
+                  onClick={() => setCurrentView("settings")}
+                  className="mt-2 rounded-lg border border-indigo-500/30 bg-indigo-600/15 px-3 py-2 text-sm font-medium text-indigo-100 transition hover:bg-indigo-600/25"
+                >
+                  Open Full Settings
+                </button>
+              </div>
+            )}
+            compact
+          />
         </div>
       );
     }

@@ -42,15 +42,17 @@ import { SyncTab } from "./components/settings/SyncTab";
 import { AdvancedTab } from "./components/settings/AdvancedTab";
 import { ExtensionsTab } from "./components/settings/ExtensionsTab";
 import {
+  DEFAULT_PRESET_VALUES,
   coerceConnectionFieldValue,
-  coercePresetFieldValue,
   fetchAvailableModels,
   loadConnectionProfileFile,
-  loadPresetFile,
   loadUiSettingsFromStorage,
+  normalizePreset,
   saveConnectionProfileFile,
   savePresetFile,
+  useActivePreset,
 } from "./components/settings/runtime";
+import { DEFAULT_CONNECTION_PROFILE } from "./components/settings/shared";
 import { UserPersona, RegexScript, QuickReply } from "./types";
 import { ToastType } from "./components/Toast";
 
@@ -212,246 +214,6 @@ export type ConnectionProfile = {
   model_id: string;
   post_processing: PostProcessing;
   context_size: number;
-};
-
-const DEFAULT_PRESET_VALUES: Preset = {
-  model_name: "",
-  temperature: 1.0,
-  top_p: 0.8,
-  top_k: 0,
-  top_a: 0,
-  min_p: 0,
-  repetition_penalty: 1.0,
-  presence_penalty: 0.0,
-  frequency_penalty: 0.0,
-  openai_max_tokens: 4096,
-  stream_openai: true,
-  seed: -1,
-  prompts: [],
-  impersonation_prompt: "",
-  continue_nudge_prompt: "",
-  stop_strings: "",
-  instruct_mode_enabled: true,
-  input_sequence: "### Instruction:\n",
-  output_sequence: "### Response:\n",
-  system_sequence: "### System:\n",
-  wi_format: "{0}",
-  scenario_format: "{{scenario}}",
-  personality_format: "{{personality}}",
-  names_behavior: 0,
-  send_if_empty: "",
-  new_chat_prompt: "",
-  new_group_chat_prompt: "",
-  new_example_chat_prompt: "",
-  group_nudge_prompt: "",
-  assistant_prefill: "",
-  assistant_impersonation: "",
-  reasoning_effort: "",
-  show_thoughts: true,
-  wi_scan_depth: 5,
-  wi_recursive: true,
-  wi_case_sensitive: false,
-  wi_match_whole_words: true,
-  wi_max_recursion: 5,
-  wi_token_budget: 0,
-  wi_context_percent: 0,
-  wi_include_names: true,
-  wi_insertion_strategy: "char_first",
-  squash_system_messages: false,
-  request_images: true,
-  send_char_avatar: false,
-  send_user_avatar: false,
-  char_avatar_prompt: "This is your appearance.",
-  user_avatar_prompt: "This is {{user}}'s appearance.",
-};
-
-// ... (ST_DEFAULT_ORDER and normalizePreset logic)
-export const DEFAULT_CONNECTION_PROFILE: ConnectionProfile = {
-  name: "Default",
-  api_type: "chat_completion",
-  chat_source: "custom",
-  base_url: "http://127.0.0.1:5000/v1",
-  api_key: "",
-  model_id: "",
-  post_processing: "none",
-  context_size: 4096,
-};
-
-// Exact default order from SillyTavern source code
-const ST_DEFAULT_ORDER = [
-  "main",
-  "worldInfoBefore",
-  "personaDescription",
-  "charDescription",
-  "charPersonality",
-  "scenario",
-  "enhanceDefinitions",
-  "nsfw",
-  "worldInfoAfter",
-  "dialogueExamples",
-  "chatHistory",
-  "jailbreak",
-  "groupNudge",
-];
-
-// --- COMPATIBILITY LAYER ---
-
-const normalizePreset = (data: any): Preset => {
-  let rawPrompts = Array.isArray(data.prompts) ? data.prompts : [];
-  let promptOrderList: any[] = [];
-
-  // 1. DETECT SILLEYTAVERN STRUCTURE (Explicit Order)
-  if (Array.isArray(data.prompt_order) && data.prompt_order.length > 0) {
-    if (
-      data.prompt_order[0].order &&
-      Array.isArray(data.prompt_order[0].order)
-    ) {
-      // Nested structure: [{ character_id: ..., order: [...] }]
-      const entry = data.prompt_order.reduce((prev: any, current: any) => {
-        const prevLen = Array.isArray(prev?.order) ? prev.order.length : 0;
-        const currLen = Array.isArray(current?.order)
-          ? current.order.length
-          : 0;
-        return currLen > prevLen ? current : prev;
-      }, data.prompt_order[0]);
-
-      promptOrderList = entry?.order || [];
-      console.log(
-        `Selected prompt_order with ${promptOrderList.length} items (CharID: ${entry?.character_id})`,
-      );
-    } else {
-      // Flat list
-      promptOrderList = data.prompt_order;
-    }
-  }
-
-  // 2. APPLY SORTING
-  if (promptOrderList.length > 0) {
-    // Option A: Explicit order found
-    const orderMap = new Map();
-    const enabledMap = new Map();
-
-    promptOrderList.forEach((item: any, index: number) => {
-      const id = typeof item === "string" ? item : item?.identifier;
-      if (id) {
-        orderMap.set(id, index);
-        if (typeof item !== "string" && item.enabled !== undefined)
-          enabledMap.set(id, item.enabled);
-      }
-    });
-
-    // Assign sorting index
-    rawPrompts = rawPrompts.map((p: any, idx: number) => {
-      let sortIndex = 999999;
-      let isEnabled = p.enabled ?? false;
-
-      if (orderMap.has(p.identifier)) {
-        sortIndex = orderMap.get(p.identifier);
-        if (enabledMap.has(p.identifier))
-          isEnabled = enabledMap.get(p.identifier);
-      } else if (p.name && orderMap.has(p.name)) {
-        sortIndex = orderMap.get(p.name);
-        if (enabledMap.has(p.name)) isEnabled = enabledMap.get(p.name);
-      } else {
-        // Item NOT in prompt_order (Orphan).
-        sortIndex = 999999 + idx;
-      }
-
-      return {
-        ...p,
-        _sortIndex: sortIndex,
-        enabled: isEnabled,
-      };
-    });
-
-    rawPrompts.sort((a: any, b: any) => a._sortIndex - b._sortIndex);
-  } else {
-    // Option B: No order found -> Use Improved Heuristic
-    const defaultOrderMap = new Map(
-      ST_DEFAULT_ORDER.map((id, index) => [id, index]),
-    );
-    const systemPrompts = [];
-    const customPrompts = [];
-
-    for (let i = 0; i < rawPrompts.length; i++) {
-      const p = rawPrompts[i];
-      p._originalIdx = i;
-      if (defaultOrderMap.has(p.identifier)) systemPrompts.push(p);
-      else customPrompts.push(p);
-    }
-
-    customPrompts.sort((a: any, b: any) => {
-      const orderA = Number(a.injection_order ?? a.depth ?? 0);
-      const orderB = Number(b.injection_order ?? b.depth ?? 0);
-      if (orderA !== orderB) return orderB - orderA;
-      return a._originalIdx - b._originalIdx;
-    });
-
-    const mappedCustom = customPrompts.map((p: any, idx: number) => ({
-      ...p,
-      _sortIndex: -10000 + idx,
-      enabled: p.enabled ?? true,
-    }));
-
-    const mappedSystem = systemPrompts.map((p: any) => ({
-      ...p,
-      _sortIndex: defaultOrderMap.get(p.identifier)!,
-      enabled:
-        p.enabled ??
-        ["main", "chatHistory", "charDescription"].includes(p.identifier),
-    }));
-
-    rawPrompts = [...mappedCustom, ...mappedSystem];
-    rawPrompts.sort((a: any, b: any) => a._sortIndex - b._sortIndex);
-  }
-
-  // Enforce explicit order for backend based on UI sort
-  rawPrompts = rawPrompts.map((p: any, idx: number) => ({
-      ...p,
-      injection_order: idx
-  }));
-
-  return {
-    ...DEFAULT_PRESET_VALUES,
-    ...data,
-    temperature:
-      data.temperature ?? data.temp ?? DEFAULT_PRESET_VALUES.temperature,
-    repetition_penalty:
-      data.repetition_penalty ??
-      data.rep_pen ??
-      DEFAULT_PRESET_VALUES.repetition_penalty,
-    presence_penalty:
-      data.presence_penalty ??
-      data.pres_pen ??
-      DEFAULT_PRESET_VALUES.presence_penalty,
-    frequency_penalty:
-      data.frequency_penalty ??
-      data.freq_pen ??
-      DEFAULT_PRESET_VALUES.frequency_penalty,
-    openai_max_tokens:
-      data.openai_max_tokens ??
-      data.max_length ??
-      DEFAULT_PRESET_VALUES.openai_max_tokens,
-    prompts: rawPrompts.map((p: any, idx: number) => ({
-      ...p,
-      identifier: p.identifier || `imported_${idx}_${Date.now()}`,
-      name: p.name || "Untitled",
-      content: p.content || "",
-      role: p.role || "system",
-      enabled:
-        p.enabled ??
-        ["main", "chatHistory", "charDescription"].includes(p.identifier),
-      injection_order: Number(p.injection_order ?? p.depth ?? 0),
-      injection_depth: Number(p.injection_depth ?? p.depth ?? 4),
-      injection_position: Number(p.injection_position ?? p.position ?? 0),
-      system_prompt: !!p.system_prompt,
-      marker: !!p.marker,
-      forbid_overrides: !!p.forbid_overrides,
-      injection_trigger: Array.isArray(p.injection_trigger)
-        ? p.injection_trigger
-        : [],
-    })),
-  };
 };
 
 // --- HELPER COMPONENTS ---
@@ -900,9 +662,16 @@ export default function Settings({
   const [activeTab, setActiveTab] = useState("connection");
 
   // Data State
-  const [presetsList, setPresetsList] = useState<string[]>([]);
-  const [activePresetFile, setActivePresetFile] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Preset | null>(null);
+  const {
+    presetsList,
+    activePresetFile,
+    setActivePresetFile,
+    formData,
+    setFormData,
+    refreshPresets,
+    loadPresetData,
+    handleFieldChange,
+  } = useActivePreset();
   const [userPersonas, setUserPersonas] = useState<UserPersona[]>([]);
   const [regexScripts, setRegexScripts] = useState<RegexScript[]>([]);
 
@@ -1027,8 +796,7 @@ export default function Settings({
 
   const refreshData = useCallback(async () => {
     try {
-      const pList = await invoke<string[]>("list_presets");
-      setPresetsList(pList);
+      await refreshPresets();
 
       try {
         const uList = await invoke<UserPersona[]>("get_user_personas");
@@ -1047,18 +815,6 @@ export default function Settings({
   }, []);
 
 
-
-  // --- LOAD SPECIFIC DATA ---
-  const loadPresetData = useCallback(async (fileName: string) => {
-    try {
-      const normalized = await loadPresetFile(fileName);
-      setFormData(normalized);
-      setActivePresetFile(fileName);
-      localStorage.setItem("active_preset", fileName);
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
 
   const loadConnectionProfile = useCallback(async (fileName: string) => {
     try {
@@ -1089,19 +845,9 @@ export default function Settings({
           }
       } catch(e) { console.error(e); }
 
-      // Load Presets
-      try {
-          const pList = await invoke<string[]>("list_presets");
-          const storedPreset = localStorage.getItem("active_preset");
-          if (storedPreset && pList.includes(storedPreset)) {
-            await loadPresetData(storedPreset);
-          } else if (pList.length > 0) {
-            await loadPresetData(pList[0]);
-          }
-      } catch(e) { console.error(e); }
     };
     initSelection();
-  }, [loadConnectionProfile, loadPresetData]);
+  }, [loadConnectionProfile]);
 
   const handleExportRegex = async () => {
       try {
@@ -1203,9 +949,6 @@ export default function Settings({
     fetchQuickReplies();
   }, [refreshData, fetchRegexScripts, fetchQuickReplies]);
   useEffect(() => {
-    if (activePresetFile) loadPresetData(activePresetFile);
-  }, [activePresetFile, loadPresetData]);
-  useEffect(() => {
     if (activeProfileName) loadConnectionProfile(activeProfileName);
   }, [activeProfileName, loadConnectionProfile]);
 
@@ -1222,26 +965,7 @@ export default function Settings({
     return () => clearTimeout(timer);
   }, [connectionData, activeProfileName]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (activePresetFile && formData) {
-        savePresetFile(activePresetFile, formData).catch(console.error);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [formData, activePresetFile]);
-
   // --- HANDLERS ---
-
-  const handleFieldChange = useCallback((field: keyof Preset, value: any) => {
-    setFormData((prev) => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        [field]: coercePresetFieldValue(field, value),
-      };
-    });
-  }, []);
 
   const handleConnectionChange = useCallback((
     field: keyof ConnectionProfile,
@@ -1308,7 +1032,7 @@ export default function Settings({
     );
     if (fileName) {
       await savePresetFile(fileName, formData);
-      await refreshData();
+      await refreshPresets();
       setActivePresetFile(fileName);
     }
   };
@@ -1333,7 +1057,7 @@ export default function Settings({
         const fileName = file.name;
         await savePresetFile(fileName, normalized);
 
-        await refreshData();
+        await refreshPresets();
         setActivePresetFile(fileName);
         localStorage.setItem("active_preset", fileName);
         setFormData(normalized);
@@ -1371,7 +1095,7 @@ export default function Settings({
     if (!confirm(`Delete preset ${activePresetFile}?`)) return;
     try {
       await invoke("delete_preset", { fileName: activePresetFile });
-      await refreshData();
+      await refreshPresets();
       setActivePresetFile("Default.json");
     } catch (e) {
       addToast("Error: " + e, "error");
@@ -1386,7 +1110,7 @@ export default function Settings({
     if (name) {
       if (!name.toLowerCase().endsWith(".json")) name += ".json";
       await savePresetFile(name, DEFAULT_PRESET_VALUES);
-      await refreshData();
+      await refreshPresets();
       setActivePresetFile(name);
     }
   };

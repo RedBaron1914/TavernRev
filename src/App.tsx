@@ -1722,7 +1722,7 @@ const refreshCharacters = async () => {
         />
       )}
 
-      <Sidebar isMobile={isMobile} sidebarVisible={sidebarVisible} setSidebarVisible={setSidebarVisible} setCurrentView={setCurrentView} handleNewChat={handleNewChat} handleImportChat={handleImportChat} chats={chats} activeChatId={activeChatId} setActiveChatId={setActiveChatId} handleRenameChat={handleRenameChat} handleDeleteChat={handleDeleteChat} addToast={addToast} />
+      <Sidebar isMobile={isMobile} sidebarVisible={sidebarVisible} setSidebarVisible={setSidebarVisible} setCurrentView={setCurrentView} handleNewChat={handleNewChat} handleImportChat={handleImportChat} chats={chats} activeChatId={activeChatId} characterId={activeCharacterId} setActiveChatId={setActiveChatId} handleRenameChat={handleRenameChat} handleDeleteChat={handleDeleteChat} addToast={addToast} />
 
       {/* MAIN VIEW */}
       <main className="flex-1 flex flex-col min-w-0 relative">

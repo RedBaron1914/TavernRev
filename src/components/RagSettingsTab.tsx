@@ -6,9 +6,11 @@ import { Toggle, InputField } from "./settings/shared";
 export const RagSettingsTab = ({ 
   chatId,
   addToast,
+  compact = false,
 }: { 
   chatId: number | null;
   addToast: (msg: string, type?: "info" | "error" | "success") => void;
+  compact?: boolean;
 }) => {
   const [ragEnabled, setRagEnabled] = useState(localStorage.getItem("rag_enabled") === "true");
   const [ragModel, setRagModel] = useState(localStorage.getItem("rag_model") || "MultilingualE5Small");
@@ -34,15 +36,15 @@ export const RagSettingsTab = ({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-6">
-        <div className="flex items-center justify-between pb-4 border-b border-white/5">
+      <div className={`bg-gray-900/30 rounded-2xl border border-white/5 space-y-6 ${compact ? "p-4" : "p-6"}`}>
+        <div className={`pb-4 border-b border-white/5 ${compact ? "space-y-3" : "flex items-center justify-between"}`}>
           <div>
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               <Brain size={24} className="text-purple-400" /> Long-Term Memory (RAG)
             </h3>
             <p className="text-sm text-gray-400 mt-1">Automatically embed and recall past chat history using local AI models.</p>
           </div>
-          <Toggle field="ragEnabled" value={ragEnabled} onChange={() => setRagEnabled(!ragEnabled)} />
+          <Toggle label="Enabled" field="ragEnabled" value={ragEnabled} onChange={() => setRagEnabled(!ragEnabled)} />
         </div>
 
         <div className={`space-y-6 transition-opacity duration-300 ${ragEnabled ? "opacity-100" : "opacity-50 pointer-events-none"}`}>
@@ -75,7 +77,7 @@ export const RagSettingsTab = ({
 
           <div className="pt-4 border-t border-white/5">
             <h4 className="text-sm font-bold text-gray-300 mb-4">Indexing Strategy</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <InputField
                 label="Messages per Chunk"
                 type="number"
@@ -95,7 +97,7 @@ export const RagSettingsTab = ({
 
           <div className="pt-4 border-t border-white/5">
             <h4 className="text-sm font-bold text-gray-300 mb-4">Retrieval Strategy</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <div>
                 <div className="flex justify-between mb-2">
                   <label className="text-sm font-bold text-gray-400">Top-K Results</label>
@@ -141,7 +143,7 @@ export const RagSettingsTab = ({
             </p>
           </div>
 
-          <div className="pt-4 flex gap-3">
+          <div className={`pt-4 ${compact ? "grid grid-cols-1 gap-3" : "flex gap-3"}`}>
             <button
               onClick={async () => {
                 try {
