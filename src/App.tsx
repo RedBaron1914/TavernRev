@@ -1,14 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Menu,
-  Play,
   Settings as SettingsIcon,
   Pencil,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  GitBranch,
-  Trash2,
   Activity,
   UserCircle,
   Download,
@@ -17,8 +14,6 @@ import {
   X,
   FilePlus,
   Plus,
-  EyeOff,
-  Eye,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -38,6 +33,7 @@ import { StatsModal } from "./components/chat/StatsModal";
 import { CharacterEditor } from "./components/character/CharacterEditor";
 import { CharacterSelect } from "./components/character/CharacterSelect";
 import { MessageInput } from "./components/chat/MessageInput";
+import { MessageActions } from "./components/chat/MessageActions";
 import { Sidebar } from "./components/layout/Sidebar";
 import { ChatMemoryModal } from "./components/ChatMemoryModal";
 import { TavernAPI } from "./services/PluginAPI";
@@ -1917,23 +1913,25 @@ const refreshCharacters = async () => {
                                              <span className="font-mono">{(msg.swipe_id || 0) + 1}/{displaySwipes.length}</span>
                                              <button onClick={(e) => { e.stopPropagation(); handleSwipe(msg.id, "right", msg.swipe_id||0, displaySwipes.length); }} className="hover:text-white"><ChevronRight size={10}/></button>
                                          </div>
-                                     )}
-                                     <div className={`flex gap-1 transition-opacity ${isMobile ? (activeMessageId === msg.id ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100"}`}>
-                                          {!isUser && (
-                                              <button onClick={(e) => { e.stopPropagation(); handleContinue(msg.id); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Continue"><Play size={12}/></button>
-                                          )}
-                                          {!isUser && (
-                                              <button onClick={(e) => { e.stopPropagation(); handleRegenerate(msg.id); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Regenerate"><RefreshCw size={12}/></button>
-                                          )}
-                                          <button onClick={(e) => { e.stopPropagation(); handleBranch(msg.id); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Branch"><GitBranch size={12}/></button>
-                                          <button onClick={(e) => { e.stopPropagation(); handleStartEdit(msg); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Edit"><Pencil size={12}/></button>
-                                           <button onClick={(e) => { e.stopPropagation(); handleToggleExclude(msg.id, !!msg.extra?.exclude_from_prompt); }} className={`p-1.5 rounded hover:bg-white/5 ${msg.extra?.exclude_from_prompt ? "text-amber-400" : "text-gray-500 hover:text-white"}`} title={msg.extra?.exclude_from_prompt ? "Include in prompt" : "Exclude from prompt"}>{msg.extra?.exclude_from_prompt ? <Eye size={12}/> : <EyeOff size={12}/>}</button>
-                                           {!(!hasMore && index === 0) && (
-                                              <button onClick={(e) => { e.stopPropagation(); setDeletingMessageId(msg.id); }} className="p-1.5 text-gray-500 hover:text-red-400 rounded hover:bg-white/5" title="Delete"><Trash2 size={12}/></button>
-                                          )}
-                                     </div>
-                                 </div>
-                             </div>
+                                      )}
+                                      <MessageActions
+                                        message={msg}
+                                        isUser={isUser}
+                                        isFirst={!hasMore && index === 0}
+                                        variant="document"
+                                        isMobile={isMobile}
+                                        activeMessageId={activeMessageId}
+                                        onContinue={handleContinue}
+                                        onRegenerate={handleRegenerate}
+                                        onBranch={handleBranch}
+                                        onEdit={handleStartEdit}
+                                        onToggleExclude={handleToggleExclude}
+                                        onDelete={setDeletingMessageId}
+                                        showGenerationActions
+                                        isGenerating={isGenerating}
+                                      />
+                                  </div>
+                              </div>
 
                              <div className="min-w-0 pl-0 md:pl-0">
                                  {editingMessageId === msg.id ? (
@@ -2030,37 +2028,21 @@ const refreshCharacters = async () => {
                                                                        charName={char?.name}
                                                                        images={msg.images}
                                                                      />                                                   
-                                                   <div className="absolute -top-3 right-0 md:opacity-0 group-hover:opacity-100 opacity-100 flex gap-1 bg-gray-900/80 rounded-lg p-0.5 border border-white/10 backdrop-blur transition-opacity">
-                          <button
-                            onClick={() => handleBranch(msg.id)}
-                            className="p-1 text-gray-400 hover:text-white"
-                            title="Branch Chat"
-                          >
-                            <GitBranch size={12} />
-                          </button>
-                          <button
-                            onClick={() => handleStartEdit(msg)}
-                            className="p-1 text-gray-400 hover:text-white"
-                          >
-                            <Pencil size={12} />
-                          </button>
-                          <button
-                            onClick={() => handleToggleExclude(msg.id, !!msg.extra?.exclude_from_prompt)}
-                            className={`p-1 ${msg.extra?.exclude_from_prompt ? "text-amber-400" : "text-gray-400 hover:text-white"}`}
-                            title={msg.extra?.exclude_from_prompt ? "Include in prompt" : "Exclude from prompt"}
-                          >
-                            {msg.extra?.exclude_from_prompt ? <Eye size={12}/> : <EyeOff size={12}/>}
-                          </button>
-                          {!(!hasMore && index === 0) && (
-                              <button
-                                onClick={() => setDeletingMessageId(msg.id)}
-                                className="p-1 text-gray-400 hover:text-red-400"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                          )}
-                        </div>{" "}
-                      </div>
+                                                    <MessageActions
+                                                      message={msg}
+                                                      isUser={isUser}
+                                                      isFirst={!hasMore && index === 0}
+                                                      variant="bubbles"
+                                                      isMobile={isMobile}
+                                                      activeMessageId={activeMessageId}
+                                                      onContinue={handleContinue}
+                                                      onRegenerate={handleRegenerate}
+                                                      onBranch={handleBranch}
+                                                      onEdit={handleStartEdit}
+                                                      onToggleExclude={handleToggleExclude}
+                                                      onDelete={setDeletingMessageId}
+                                                    />{" "}
+                       </div>
 
                       {!isUser && (
                         <div className="flex gap-2 mt-1 text-gray-500 items-center select-none px-1">
