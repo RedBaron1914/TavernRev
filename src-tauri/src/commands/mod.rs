@@ -2,6 +2,7 @@
 use std::fs;
 use std::path::PathBuf;
 use crate::database::{self, DbState, Character, Chat, Message, UserPersona};
+use crate::message_extra::MessageExtra;
 use crate::{importer, prompt_engine, script_engine, vector_memory};
 use crate::prompt_engine::{PromptModule, CharacterData, WISettings};
 use crate::{StartupError, LastPrompt};
@@ -568,7 +569,6 @@ pub fn set_auto_trim_enabled(chat_id: i64, enabled: bool, db_state: tauri::State
 }
 
 #[tauri::command]
-
 pub fn delete_message(id: i64, mode: String, chat_id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap();
     match mode.as_str() {
@@ -887,7 +887,7 @@ pub async fn debug_lore_generation() -> Result<Vec<prompt_engine::Message>, Stri
     };
     
     let history = vec![
-        prompt_engine::Message { role: "user".to_string(), content: "Trigger mood check: {{getvar::mood}}".to_string(), name: None, images: None }
+        prompt_engine::Message { role: "user".to_string(), content: "Trigger mood check: {{getvar::mood}}".to_string(), name: None, images: None, db_id: None }
     ];
     
     let lore = vec![
@@ -912,7 +912,7 @@ pub async fn debug_lore_generation() -> Result<Vec<prompt_engine::Message>, Stri
         char_name: "Debug".to_string(),
         user_name: "User".to_string(),
     });
-    let (msgs, _) = prompt_engine::assemble_prompt(modules, history, char_data, "User", "", lore, wi_settings, &mut evaluator, 0, String::new()).await;
+    let (msgs, _, _) = prompt_engine::assemble_prompt(modules, history, char_data, "User", "", lore, wi_settings, &mut evaluator, 0, String::new()).await;
     Ok(msgs)
 }
 
@@ -943,7 +943,7 @@ pub async fn assemble_prompt_command(
         char_name: char_data.name.clone(),
         user_name: user_name.clone(),
     });
-    let (msgs, _) = prompt_engine::assemble_prompt(modules, history, char_data, &user_name, "", vec![], wi_settings, &mut evaluator, 0, String::new()).await;
+    let (msgs, _, _) = prompt_engine::assemble_prompt(modules, history, char_data, &user_name, "", vec![], wi_settings, &mut evaluator, 0, String::new()).await;
     msgs
 }
 
@@ -981,7 +981,7 @@ pub async fn process_macros_command(text: String, character: Character, user_nam
         char_name: char_data.name.clone(),
         user_name: user_name.clone(),
     });
-    let (msgs, _) = prompt_engine::assemble_prompt(vec![module], vec![], char_data, &user_name, "", vec![], wi_settings, &mut evaluator, 0, String::new()).await;
+    let (msgs, _, _) = prompt_engine::assemble_prompt(vec![module], vec![], char_data, &user_name, "", vec![], wi_settings, &mut evaluator, 0, String::new()).await;
     Ok(msgs.last().map(|m| m.content.clone()).unwrap_or_default())
 }
 
@@ -1035,7 +1035,7 @@ pub async fn process_macros_debug(text: String, character_id: i64, db_state: tau
         insertion_strategy: "char_first".to_string(),
     };
 
-    let (msgs, _) = prompt_engine::assemble_prompt(vec![module], vec![], char_data, "User", "", vec![], wi_settings, &mut evaluator, 0, String::new()).await;
+    let (msgs, _, _) = prompt_engine::assemble_prompt(vec![module], vec![], char_data, "User", "", vec![], wi_settings, &mut evaluator, 0, String::new()).await;
     
     if msgs.is_empty() {
         Ok(String::new())

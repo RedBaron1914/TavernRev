@@ -127,13 +127,11 @@ pub fn run() {
             commands::save_message,
             commands::edit_message,
             commands::set_message_prompt_excluded,
-
             commands::auto_exclude_context_overflow,
             commands::get_chat_message_stats,
             commands::get_context_stats,
             commands::get_auto_trim_enabled,
             commands::set_auto_trim_enabled,
-
             commands::delete_message,
             commands::get_chat_stats,
             commands::tokenize_text,
