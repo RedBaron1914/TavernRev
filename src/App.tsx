@@ -833,7 +833,7 @@ const refreshCharacters = async () => {
                             content: "",
                             timestamp: new Date().toISOString(),
                             is_system: false,
-                            extra: "{}",
+                            extra: {},
                         },
                     ]);
                     performGeneration(charId);

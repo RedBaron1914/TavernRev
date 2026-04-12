@@ -1,4 +1,5 @@
 ﻿mod database;
+pub mod message_extra;
 pub mod prompt_engine;
 mod importer;
 use std::sync::{Arc, Mutex, atomic::AtomicBool};

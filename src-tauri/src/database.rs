@@ -104,17 +104,13 @@ pub struct Message {
     pub swipe_id: usize,
     #[serde(default)]
     pub is_system: bool,
-    #[serde(default = "default_extra")]
+    #[serde(
+        default = "default_extra",
+        serialize_with = "serialize_extra_as_object"
+    )]
     pub extra: String,
     #[serde(default)]
     pub images: Option<Vec<String>>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Default)]
-#[serde(default)]
-pub struct MessageExtraMetadata {
-    pub exclude_from_prompt: bool,
-    pub exclude_reason: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -243,16 +239,15 @@ fn default_extra() -> String {
     "{}".to_string()
 }
 
-pub fn parse_message_extra(extra: &str) -> MessageExtraMetadata {
-    serde_json::from_str(extra).unwrap_or_default()
+fn serialize_extra_as_object<S: serde::Serializer>(extra: &str, s: S) -> Result<S::Ok, S::Error> {
+    let parsed: serde_json::Value = serde_json::from_str(extra).unwrap_or_default();
+    parsed.serialize(s)
 }
 
-pub fn serialize_message_extra(extra: &MessageExtraMetadata) -> Result<String> {
-    serde_json::to_string(extra).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))
-}
+pub use crate::message_extra::MessageExtra;
 
 pub fn message_is_excluded_from_prompt(message: &Message) -> bool {
-    parse_message_extra(&message.extra).exclude_from_prompt
+    MessageExtra::is_excluded_from_prompt(message)
 }
 
 fn generate_uuid() -> String {
@@ -1666,7 +1661,7 @@ pub fn set_message_prompt_excluded(
         )?
         .unwrap_or_else(default_extra);
 
-    let mut parsed = parse_message_extra(&existing_extra);
+    let mut parsed = MessageExtra::from_str(&existing_extra);
     parsed.exclude_from_prompt = excluded;
     parsed.exclude_reason = if excluded {
         Some(reason.unwrap_or("manual").to_string())
@@ -1674,7 +1669,7 @@ pub fn set_message_prompt_excluded(
         None
     };
 
-    let serialized = serialize_message_extra(&parsed)?;
+    let serialized = parsed.to_str()?;
     conn.execute(
         "UPDATE messages SET extra = ?1 WHERE id = ?2",
         rusqlite::params![serialized, id],
