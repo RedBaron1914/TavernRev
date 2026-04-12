@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Users,
   Plus,
@@ -62,6 +62,47 @@ export function Sidebar({
   addToast,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>("chats");
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem("sidebarWidth");
+    return saved ? Number(saved) : 346;
+  });
+  const sidebarWidthRef = useRef(sidebarWidth);
+  const resizingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startWidthRef = useRef(0);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    resizingRef.current = true;
+    startXRef.current = e.clientX;
+    startWidthRef.current = sidebarWidthRef.current;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const delta = e.clientX - startXRef.current;
+      const newWidth = Math.max(280, Math.min(800, startWidthRef.current + delta));
+      sidebarWidthRef.current = newWidth;
+      setSidebarWidth(newWidth);
+    };
+    const onMouseUp = () => {
+      if (!resizingRef.current) return;
+      resizingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      localStorage.setItem("sidebarWidth", String(sidebarWidthRef.current));
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
+
   const {
     presetsList,
     activePresetFile,
@@ -291,8 +332,9 @@ export function Sidebar({
       {sidebarVisible && (
         <aside
           className={`${
-            isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl w-96" : "w-[21.6rem] relative"
+            isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl w-96" : "relative"
           } bg-gray-900 border-r border-white/10 flex flex-col shrink-0 animate-in slide-in-from-left duration-300 pt-[env(safe-area-inset-top)]`}
+          style={!isMobile ? { width: sidebarWidth } : undefined}
         >
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
             <div className="text-xs font-bold uppercase tracking-[0.24em] text-gray-500">
@@ -358,6 +400,13 @@ export function Sidebar({
 
             {renderTabContent()}
           </div>
+          {!isMobile && (
+            <div
+              onMouseDown={handleResizeStart}
+              className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-indigo-500/30 transition-colors z-10"
+              title="Drag to resize"
+            />
+          )}
         </aside>
       )}
     </>
