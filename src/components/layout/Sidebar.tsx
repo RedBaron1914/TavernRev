@@ -348,25 +348,25 @@ export function Sidebar({
               <PanelLeftClose size={18} />
             </button>
           </div>
-          <div className="basis-[18%] min-h-[150px] border-b border-white/10 p-4">
-            <div className="grid h-full grid-cols-3 gap-3">
+          <div className="border-b border-white/10 px-3 py-2">
+            <div className="flex gap-1.5">
               <button
                 onClick={() => setCurrentView("character_select")}
-                className="flex h-full min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-2 text-center text-xs font-semibold text-gray-300 transition hover:bg-white/[0.08] hover:text-white"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-2 py-2 text-[11px] font-semibold text-gray-300 transition hover:bg-white/[0.08] hover:text-white"
               >
-                <Users size={20} />
-                <span>Change character</span>
+                <Users size={14} />
+                <span>Character</span>
               </button>
               <button
                 onClick={handleNewChat}
-                className="flex h-full min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border border-indigo-500/30 bg-indigo-600/15 px-2 text-center text-xs font-semibold text-indigo-100 transition hover:bg-indigo-600/25"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-indigo-500/30 bg-indigo-600/15 px-2 py-2 text-[11px] font-semibold text-indigo-100 transition hover:bg-indigo-600/25"
               >
-                <Plus size={20} />
-                <span>New chat</span>
+                <Plus size={14} />
+                <span>New</span>
               </button>
-              <label className="flex h-full min-h-[92px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-2 text-center text-xs font-semibold text-gray-300 transition hover:bg-white/[0.08] hover:text-white">
-                <Download size={20} />
-                <span>Import JSON</span>
+              <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-2 py-2 text-[11px] font-semibold text-gray-300 transition hover:bg-white/[0.08] hover:text-white">
+                <Download size={14} />
+                <span>Import</span>
                 <input
                   type="file"
                   accept=".jsonl"
