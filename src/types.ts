@@ -54,6 +54,11 @@ export type UserPersona = {
   memory: string;
 };
 
+export type MessageExtra = {
+  exclude_from_prompt?: boolean;
+  exclude_reason?: string | null;
+};
+
 export type Message = {
   id: number;
   chat_id: number;
@@ -65,6 +70,7 @@ export type Message = {
   swipes?: string[];
   swipe_id?: number;
   images?: string[];
+  extra?: MessageExtra;
 };
 
 export type Group = {

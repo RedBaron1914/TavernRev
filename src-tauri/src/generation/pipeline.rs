@@ -160,7 +160,7 @@ pub fn load_context(
         msgs_db
     };
 
-    let original_msgs: Vec<prompt_engine::Message> = filtered_db.into_iter().map(|m| {
+    let original_msgs: Vec<prompt_engine::Message> = filtered_db.into_iter().filter(|m| !database::message_is_excluded_from_prompt(m)).map(|m| {
         let mut final_content = m.content.clone();
         if character_id == 0 && m.role != "system" {
             let name_prefix = m.sender_name.clone().unwrap_or_else(|| {

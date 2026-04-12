@@ -104,7 +104,10 @@ pub struct Message {
     pub swipe_id: usize,
     #[serde(default)]
     pub is_system: bool,
-    #[serde(default = "default_extra")]
+    #[serde(
+        default = "default_extra",
+        serialize_with = "crate::database::serialize_extra_as_object"
+    )]
     pub extra: String,
     #[serde(default)]
     pub images: Option<Vec<String>>,
@@ -234,6 +237,17 @@ pub fn delete_memory_vectors(conn: &Connection, chat_id: i64) -> Result<()> {
 
 fn default_extra() -> String {
     "{}".to_string()
+}
+
+fn serialize_extra_as_object<S: serde::Serializer>(extra: &str, s: S) -> Result<S::Ok, S::Error> {
+    let parsed: serde_json::Value = serde_json::from_str(extra).unwrap_or_default();
+    parsed.serialize(s)
+}
+
+pub use crate::message_extra::MessageExtra;
+
+pub fn message_is_excluded_from_prompt(message: &Message) -> bool {
+    MessageExtra::is_excluded_from_prompt(message)
 }
 
 fn generate_uuid() -> String {
@@ -1631,6 +1645,22 @@ pub fn edit_message(conn: &Connection, id: i64, new_content: &str) -> Result<()>
         rusqlite::params![new_content, new_swipes_json, id],
     )?;
     Ok(())
+}
+
+pub fn set_message_prompt_excluded(
+    conn: &Connection,
+    id: i64,
+    excluded: bool,
+    reason: Option<&str>,
+) -> Result<()> {
+    MessageExtra::update(conn, id, |extra| {
+        extra.exclude_from_prompt = excluded;
+        extra.exclude_reason = if excluded {
+            Some(reason.unwrap_or("manual").to_string())
+        } else {
+            None
+        };
+    })
 }
 
 pub fn update_message_swipes(conn: &Connection, id: i64, swipes: &Vec<String>) -> Result<()> {

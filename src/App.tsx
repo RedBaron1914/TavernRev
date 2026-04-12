@@ -17,6 +17,8 @@ import {
   X,
   FilePlus,
   Plus,
+  EyeOff,
+  Eye,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -833,7 +835,7 @@ const refreshCharacters = async () => {
                             content: "",
                             timestamp: new Date().toISOString(),
                             is_system: false,
-                            extra: "{}",
+                            extra: {},
                         },
                     ]);
                     performGeneration(charId);
@@ -1333,6 +1335,19 @@ const refreshCharacters = async () => {
       } catch (e) {
         console.error(e);
       }
+    }
+  };
+
+  const handleToggleExclude = async (msgId: number, excluded: boolean) => {
+    try {
+      await invoke("set_message_prompt_excluded", {
+        id: msgId,
+        excluded: !excluded,
+      });
+      await fetchMessages(activeChatId!);
+      triggerAutoSync(activeChatId!);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -1854,7 +1869,7 @@ const refreshCharacters = async () => {
                 return (
                     <div 
                         key={msg.id} 
-                        className="group w-full py-4 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors px-4 md:px-0"
+                        className={`group w-full py-4 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors px-4 md:px-0 ${msg.extra?.exclude_from_prompt ? "opacity-40" : ""}`}
                         onClick={() => isMobile && setActiveMessageId(activeMessageId === msg.id ? null : msg.id)}
                     >
                         <div className="max-w-4xl mx-auto">
@@ -1884,7 +1899,8 @@ const refreshCharacters = async () => {
                                           )}
                                           <button onClick={(e) => { e.stopPropagation(); handleBranch(msg.id); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Branch"><GitBranch size={12}/></button>
                                           <button onClick={(e) => { e.stopPropagation(); handleStartEdit(msg); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Edit"><Pencil size={12}/></button>
-                                          {!(!hasMore && index === 0) && (
+                                           <button onClick={(e) => { e.stopPropagation(); handleToggleExclude(msg.id, !!msg.extra?.exclude_from_prompt); }} className={`p-1.5 rounded hover:bg-white/5 ${msg.extra?.exclude_from_prompt ? "text-amber-400" : "text-gray-500 hover:text-white"}`} title={msg.extra?.exclude_from_prompt ? "Include in prompt" : "Exclude from prompt"}>{msg.extra?.exclude_from_prompt ? <Eye size={12}/> : <EyeOff size={12}/>}</button>
+                                           {!(!hasMore && index === 0) && (
                                               <button onClick={(e) => { e.stopPropagation(); setDeletingMessageId(msg.id); }} className="p-1.5 text-gray-500 hover:text-red-400 rounded hover:bg-white/5" title="Delete"><Trash2 size={12}/></button>
                                           )}
                                      </div>
@@ -1926,7 +1942,7 @@ const refreshCharacters = async () => {
             return (
               <div
                 key={msg.id}
-                className={`flex gap-3 max-w-[90%] group ${isUser ? "ml-auto flex-row-reverse" : ""}`}
+                className={`flex gap-3 max-w-[90%] group ${isUser ? "ml-auto flex-row-reverse" : ""} ${msg.extra?.exclude_from_prompt ? "opacity-40" : ""}`}
               >
                 <Avatar
                   src={avatarSrc}
@@ -1999,6 +2015,13 @@ const refreshCharacters = async () => {
                             className="p-1 text-gray-400 hover:text-white"
                           >
                             <Pencil size={12} />
+                          </button>
+                          <button
+                            onClick={() => handleToggleExclude(msg.id, !!msg.extra?.exclude_from_prompt)}
+                            className={`p-1 ${msg.extra?.exclude_from_prompt ? "text-amber-400" : "text-gray-400 hover:text-white"}`}
+                            title={msg.extra?.exclude_from_prompt ? "Include in prompt" : "Exclude from prompt"}
+                          >
+                            {msg.extra?.exclude_from_prompt ? <Eye size={12}/> : <EyeOff size={12}/>}
                           </button>
                           {!(!hasMore && index === 0) && (
                               <button
