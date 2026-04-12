@@ -41,6 +41,7 @@ pub struct GenerationContext {
     pub original_msgs: Vec<prompt_engine::Message>,
     pub rag_config: Option<vector_memory::RagConfig>,
     pub nudge: Option<String>,
+    pub trimmed_db_ids: Vec<i64>,
 }
 
 pub fn load_context(
@@ -172,7 +173,8 @@ pub fn load_context(
             role: m.role,
             content: final_content,
             name: m.sender_name,
-            images: m.images 
+            images: m.images,
+            db_id: Some(m.id),
         }
     }).collect();
 
@@ -191,6 +193,7 @@ pub fn load_context(
         original_msgs,
         rag_config,
         nudge,
+        trimmed_db_ids: Vec::new(),
     })
 }
 
@@ -214,7 +217,8 @@ pub async fn prepare_prompt(
             role: "system".to_string(),
             content: prompt,
             name: None,
-            images: None
+            images: None,
+            db_id: None,
         });
     }
 
@@ -371,7 +375,9 @@ pub async fn prepare_prompt(
         }
     } else { 0 };
 
-    let (mut messages, updated_vars) = assemble_prompt(ctx.preset.prompts.clone(), msgs, char_data, &ctx.user_name, &ctx.user_desc, lore_entries, wi_settings, &mut evaluator, budget, ctx.preset.new_example_chat_prompt.clone()).await;
+    let (mut messages, updated_vars, trimmed_db_ids) = assemble_prompt(ctx.preset.prompts.clone(), msgs, char_data, &ctx.user_name, &ctx.user_desc, lore_entries, wi_settings, &mut evaluator, budget, ctx.preset.new_example_chat_prompt.clone()).await;
+
+    ctx.trimmed_db_ids = trimmed_db_ids;
 
     if ctx.preset.request_images {
         let app_data = app_handle.path().app_data_dir().unwrap_or_default();
@@ -382,7 +388,7 @@ pub async fn prepare_prompt(
             let path = avatars_dir.join(&ctx.char_obj.avatar);
             if let Some(b64) = load_image_base64(&path) {
                 let prompt = ctx.preset.char_avatar_prompt.replace("{{char}}", &ctx.char_obj.name).replace("{{user}}", &ctx.user_name);
-                visual_msgs.push(prompt_engine::Message { role: "user".to_string(), content: prompt, name: None, images: Some(vec![b64]) });
+                visual_msgs.push(prompt_engine::Message { role: "user".to_string(), content: prompt, name: None, images: Some(vec![b64]), db_id: None });
             }
         }
         
@@ -390,8 +396,7 @@ pub async fn prepare_prompt(
             let path = avatars_dir.join(&ctx.user_avatar);
             if let Some(b64) = load_image_base64(&path) {
                 let prompt = ctx.preset.user_avatar_prompt.replace("{{char}}", &ctx.char_obj.name).replace("{{user}}", &ctx.user_name);
-                visual_msgs.push(prompt_engine::Message { role: "user".to_string(), content: prompt, name: None, images: Some(vec![b64]) });
-            }
+                visual_msgs.push(prompt_engine::Message { role: "user".to_string(), content: prompt, name: None, images: Some(vec![b64]), db_id: None });            }
         }
         
         let insert_idx = messages.iter().position(|m| m.role != "system").unwrap_or(messages.len());
@@ -412,7 +417,8 @@ pub async fn prepare_prompt(
             role: "assistant".to_string(),
             content: ctx.preset.assistant_prefill.clone(),
             name: None,
-            images: None
+            images: None,
+            db_id: None,
         });
     }
 
@@ -591,7 +597,20 @@ pub async fn finalize_response(
         for (k, v) in new_globals {
             let _ = database::set_global_variable(&conn, &k, &v);
         }
-    }            
+    }
+
+    if !ctx.trimmed_db_ids.is_empty() {
+        let conn = db_state.0.lock().unwrap();
+        for &id in &ctx.trimmed_db_ids {
+            let _ = crate::message_extra::MessageExtra::update(&conn, id, |extra| {
+                if !extra.exclude_from_prompt {
+                    extra.exclude_from_prompt = true;
+                    extra.exclude_reason = Some("context_overflow".to_string());
+                }
+            });
+        }
+    }
+            
     Ok(final_response)
 }
 
