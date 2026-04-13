@@ -544,6 +544,30 @@ pub fn get_context_stats(
 }
 
 #[tauri::command]
+pub fn get_auto_trim_enabled(chat_id: i64, db_state: tauri::State<DbState>) -> Result<bool, String> {
+    let conn = db_state.0.lock().unwrap();
+    let enabled: bool = conn
+        .query_row(
+            "SELECT COALESCE(auto_trim_enabled, 1) FROM chats WHERE id = ?1",
+            rusqlite::params![chat_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    Ok(enabled)
+}
+
+#[tauri::command]
+pub fn set_auto_trim_enabled(chat_id: i64, enabled: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
+    let conn = db_state.0.lock().unwrap();
+    conn.execute(
+        "UPDATE chats SET auto_trim_enabled = ?1 WHERE id = ?2",
+        rusqlite::params![enabled as i32, chat_id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn delete_message(id: i64, mode: String, chat_id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap();
     match mode.as_str() {

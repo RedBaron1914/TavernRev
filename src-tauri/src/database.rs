@@ -555,6 +555,13 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
         );
     }
 
+    if !column_exists(&conn, "chats", "auto_trim_enabled")? {
+        let _ = conn.execute(
+            "ALTER TABLE chats ADD COLUMN auto_trim_enabled INTEGER NOT NULL DEFAULT 1",
+            [],
+        );
+    }
+
     // Triggers for Synchronization
     conn.execute_batch(
         "

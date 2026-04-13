@@ -26,6 +26,7 @@ import { Character, UserPersona, Chat, Message, ChatStats, Group, QuickReply } f
 import { GroupSelect } from "./components/GroupSelect";
 import { GroupEditor } from "./components/GroupEditor";
 import { StatsModal } from "./components/chat/StatsModal";
+import { ContextModal } from "./components/chat/ContextModal";
 import { CharacterEditor } from "./components/character/CharacterEditor";
 import { CharacterSelect } from "./components/character/CharacterSelect";
 import { MessageInput } from "./components/chat/MessageInput";
@@ -309,6 +310,8 @@ function App() {
   const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [chatMemory, setChatMemory] = useState("");
   const [showPersonaModal, setShowPersonaModal] = useState(false);
+  const [showContextModal, setShowContextModal] = useState(false);
+  const [contextPercent, setContextPercent] = useState(0);
   const [regenGreetingModal, setRegenGreetingModal] = useState<number | null>(null);
   const [customRegenNudge, setCustomRegenNudge] = useState("");
   const [isEditingCharacter, setIsEditingCharacter] = useState(false);
@@ -537,10 +540,21 @@ const refreshCharacters = async () => {
       setOffset(limit);
 
       setHasMore(newMsgs.length === limit);
+
+      invoke<{ tokens_used: number; context_size: number }>("get_context_stats", {
+        chatId,
+        profileName: activeProfileName || "Default",
+      }).then((s) => {
+        if (s.context_size > 0) {
+          setContextPercent(Math.min(100, Math.round((s.tokens_used / s.context_size) * 100)));
+        } else {
+          setContextPercent(0);
+        }
+      }).catch(() => {});
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [activeProfileName]);
 
   const handleLoadMore = async () => {
     if (!activeChatId) return;
@@ -1762,17 +1776,17 @@ const refreshCharacters = async () => {
         {/* HEADER */}
         <ChatHeader
           modelName={modelName}
-          activeChatId={activeChatId}
           activeProfileName={activeProfileName}
           activeCharacter={activeCharacter ?? null}
           activeGroupId={activeGroupId}
           activeGroup={activeGroup ?? null}
           autoSyncStatus={autoSyncStatus}
+          contextPercent={contextPercent}
           onToggleSidebar={() => setSidebarVisible(!sidebarVisible)}
           onEditCharacter={() => setIsEditingCharacter(true)}
           onEditGroup={() => setIsEditingGroup(true)}
           onExportChat={handleExportChat}
-          onContextOverflow={handleContextOverflow}
+          onOpenContextModal={() => setShowContextModal(true)}
           onStats={fetchStats}
           onPersona={() => setShowPersonaModal(true)}
           onSettings={() => setCurrentView("settings")}
@@ -2110,6 +2124,15 @@ const refreshCharacters = async () => {
           <StatsModal
             stats={chatStats}
             onClose={() => setShowStatsModal(false)}
+          />
+        )}
+
+        {showContextModal && activeChatId !== null && (
+          <ContextModal
+            chatId={activeChatId}
+            profileName={activeProfileName}
+            onTrim={handleContextOverflow}
+            onClose={() => setShowContextModal(false)}
           />
         )}
 
