@@ -42,6 +42,7 @@ pub struct GenerationContext {
     pub rag_config: Option<vector_memory::RagConfig>,
     pub nudge: Option<String>,
     pub trimmed_db_ids: Vec<i64>,
+    pub auto_trim_enabled: bool,
 }
 
 pub fn load_context(
@@ -178,6 +179,14 @@ pub fn load_context(
         }
     }).collect();
 
+    let auto_trim_enabled: bool = conn
+        .query_row(
+            "SELECT COALESCE(auto_trim_enabled, 1) FROM chats WHERE id = ?1",
+            rusqlite::params![chat_id],
+            |row| row.get(0),
+        )
+        .unwrap_or(true);
+
     Ok(GenerationContext {
         chat_id,
         real_char_id,
@@ -194,6 +203,7 @@ pub fn load_context(
         rag_config,
         nudge,
         trimmed_db_ids: Vec::new(),
+        auto_trim_enabled,
     })
 }
 
@@ -599,7 +609,7 @@ pub async fn finalize_response(
         }
     }
 
-    if !ctx.trimmed_db_ids.is_empty() {
+    if !ctx.trimmed_db_ids.is_empty() && ctx.auto_trim_enabled {
         let conn = db_state.0.lock().unwrap();
         for &id in &ctx.trimmed_db_ids {
             let _ = crate::message_extra::MessageExtra::update(&conn, id, |extra| {

@@ -473,6 +473,102 @@ pub fn set_message_prompt_excluded(
 }
 
 #[tauri::command]
+
+pub fn auto_exclude_context_overflow(
+    chat_id: i64,
+    exclude_percent: Option<f64>,
+    db_state: tauri::State<DbState>,
+) -> Result<usize, String> {
+    let conn = db_state.0.lock().unwrap();
+    let percent = exclude_percent.unwrap_or(50.0).clamp(1.0, 100.0);
+    MessageExtra::auto_exclude_context_overflow(&conn, chat_id, percent)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_chat_message_stats(
+    chat_id: i64,
+    db_state: tauri::State<DbState>,
+) -> Result<(usize, usize), String> {
+    let conn = db_state.0.lock().unwrap();
+    MessageExtra::get_chat_message_stats(&conn, chat_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_context_stats(
+    chat_id: i64,
+    profile_name: Option<String>,
+    app_handle: tauri::AppHandle,
+    db_state: tauri::State<DbState>,
+) -> Result<serde_json::Value, String> {
+    use tiktoken_rs::cl100k_base;
+    let conn = db_state.0.lock().unwrap();
+
+    let (total, excluded) = MessageExtra::get_chat_message_stats(&conn, chat_id)
+        .map_err(|e| e.to_string())?;
+    let overflow_count = MessageExtra::get_context_overflow_count(&conn, chat_id)
+        .map_err(|e| e.to_string())?;
+
+    let messages = database::get_messages(&conn, chat_id).map_err(|e| e.to_string())?;
+    let active: Vec<_> = messages.iter().filter(|m| !database::message_is_excluded_from_prompt(m)).collect();
+
+    let bpe = cl100k_base().map_err(|e| e.to_string())?;
+    let tokens_used: usize = active.iter().map(|m| bpe.encode_with_special_tokens(&m.content).len()).sum();
+
+    let context_size: usize = if let Some(name) = profile_name {
+        let dir = get_connections_dir(&app_handle);
+        let content = std::fs::read_to_string(dir.join(&name)).unwrap_or_default();
+        let profile: crate::api_client::ConnectionProfile = match serde_json::from_str(&content) {
+            Ok(p) => p,
+            Err(_) => return Ok(serde_json::json!({
+                "total_messages": total,
+                "excluded_messages": excluded,
+                "overflow_trimmed": overflow_count,
+                "tokens_used": tokens_used,
+                "context_size": 0,
+            })),
+        };
+        profile.context_size as usize
+    } else {
+        0
+    };
+
+    Ok(serde_json::json!({
+        "total_messages": total,
+        "excluded_messages": excluded,
+        "overflow_trimmed": overflow_count,
+        "tokens_used": tokens_used,
+        "context_size": context_size,
+    }))
+}
+
+#[tauri::command]
+pub fn get_auto_trim_enabled(chat_id: i64, db_state: tauri::State<DbState>) -> Result<bool, String> {
+    let conn = db_state.0.lock().unwrap();
+    let enabled: bool = conn
+        .query_row(
+            "SELECT COALESCE(auto_trim_enabled, 1) FROM chats WHERE id = ?1",
+            rusqlite::params![chat_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    Ok(enabled)
+}
+
+#[tauri::command]
+pub fn set_auto_trim_enabled(chat_id: i64, enabled: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
+    let conn = db_state.0.lock().unwrap();
+    conn.execute(
+        "UPDATE chats SET auto_trim_enabled = ?1 WHERE id = ?2",
+        rusqlite::params![enabled as i32, chat_id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+
 pub fn delete_message(id: i64, mode: String, chat_id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap();
     match mode.as_str() {
