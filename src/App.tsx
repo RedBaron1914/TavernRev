@@ -143,7 +143,7 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
     let cleanContent = finalContent;
 
     if (!isUser) {
-        cleanContent = finalContent.replace(pairedTagRegex, (match, tagName, innerContent) => {
+        cleanContent = finalContent.replace(pairedTagRegex, (_match, tagName, innerContent) => {
             const trimmed = String(innerContent).trim();
             if (!trimmed) return "";
 

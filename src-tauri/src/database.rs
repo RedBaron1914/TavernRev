@@ -1,7 +1,7 @@
-use rusqlite::{params, Connection, Result, OptionalExtension};
-use serde::{Serialize, Deserialize};
-use std::sync::Mutex;
+use rusqlite::{params, Connection, OptionalExtension, Result};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 
 // --- Data Structs ---
@@ -9,102 +9,164 @@ use tauri::{AppHandle, Manager};
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
 pub struct Character {
-    #[serde(default)] pub id: i64,
-    #[serde(default)] pub name: String,
-    #[serde(default)] pub avatar: String,
-    #[serde(default)] pub description: String,
-    #[serde(default)] pub personality: String,
-    #[serde(default)] pub scenario: String,
-    #[serde(default)] pub first_mes: String,
-    #[serde(default)] pub mes_example: String,
-    #[serde(default)] pub creator_notes: String,
-    #[serde(default)] pub tags: String, // JSON array
-    #[serde(default)] pub alternate_greetings: String, // JSON array
-    #[serde(default)] pub card_data: String, // Full JSON dump for extensions/lorebooks
-    #[serde(default)] pub created_at: String,
-    #[serde(default)] pub uuid: String,
-    #[serde(default)] pub updated_at: String,
-    #[serde(default)] pub is_muted: bool,
+    #[serde(default)]
+    pub id: i64,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub avatar: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub personality: String,
+    #[serde(default)]
+    pub scenario: String,
+    #[serde(default)]
+    pub first_mes: String,
+    #[serde(default)]
+    pub mes_example: String,
+    #[serde(default)]
+    pub creator_notes: String,
+    #[serde(default)]
+    pub tags: String, // JSON array
+    #[serde(default)]
+    pub alternate_greetings: String, // JSON array
+    #[serde(default)]
+    pub card_data: String, // Full JSON dump for extensions/lorebooks
+    #[serde(default)]
+    pub created_at: String,
+    #[serde(default)]
+    pub uuid: String,
+    #[serde(default)]
+    pub updated_at: String,
+    #[serde(default)]
+    pub is_muted: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
 pub struct UserPersona {
-    #[serde(default)] pub id: i64,
-    #[serde(default)] pub name: String,
-    #[serde(default)] pub avatar: String,
-    #[serde(default)] pub description: String,
-    #[serde(default)] pub is_default: bool,
+    #[serde(default)]
+    pub id: i64,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub avatar: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub is_default: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
 pub struct Chat {
-    #[serde(default)] pub id: i64,
-    #[serde(default)] pub character_id: i64,
-    #[serde(default)] pub user_persona_id: Option<i64>,
-    #[serde(default)] pub group_id: Option<i64>,
-    #[serde(default)] pub name: String,
-    #[serde(default)] pub created_at: String,
-    #[serde(default)] pub uuid: String,
-    #[serde(default)] pub updated_at: String,
-    #[serde(default)] pub memory: String,
+    #[serde(default)]
+    pub id: i64,
+    #[serde(default)]
+    pub character_id: i64,
+    #[serde(default)]
+    pub user_persona_id: Option<i64>,
+    #[serde(default)]
+    pub group_id: Option<i64>,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub created_at: String,
+    #[serde(default)]
+    pub uuid: String,
+    #[serde(default)]
+    pub updated_at: String,
+    #[serde(default)]
+    pub memory: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
 pub struct Message {
-    #[serde(default)] pub id: i64,
-    #[serde(default)] pub chat_id: i64,
-    #[serde(default)] pub role: String,
-    #[serde(default)] pub sender_id: Option<i64>,
-    #[serde(default)] pub sender_name: Option<String>,
-    #[serde(default)] pub content: String,
-    #[serde(default)] pub timestamp: String,
-    #[serde(default)] pub swipes: Vec<String>,
-    #[serde(default)] pub swipe_id: usize,
-    #[serde(default)] pub is_system: bool,
-    #[serde(default = "default_extra")] pub extra: String,
-    #[serde(default)] pub images: Option<Vec<String>>,
+    #[serde(default)]
+    pub id: i64,
+    #[serde(default)]
+    pub chat_id: i64,
+    #[serde(default)]
+    pub role: String,
+    #[serde(default)]
+    pub sender_id: Option<i64>,
+    #[serde(default)]
+    pub sender_name: Option<String>,
+    #[serde(default)]
+    pub content: String,
+    #[serde(default)]
+    pub timestamp: String,
+    #[serde(default)]
+    pub swipes: Vec<String>,
+    #[serde(default)]
+    pub swipe_id: usize,
+    #[serde(default)]
+    pub is_system: bool,
+    #[serde(default = "default_extra")]
+    pub extra: String,
+    #[serde(default)]
+    pub images: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
 pub struct Group {
-    #[serde(default)] pub id: i64,
-    #[serde(default)] pub name: String,
-    #[serde(default)] pub avatar: String,
-    #[serde(default)] pub scenario: String,
-    #[serde(default)] pub activation_strategy: i64, // 0 = Natural, 1 = List, 2 = Manual
-    #[serde(default)] pub generation_mode: i64,     // 0 = Swap, 1 = Join
-    #[serde(default)] pub allow_self_responses: bool,
-    #[serde(default)] pub created_at: String,
-    #[serde(default)] pub uuid: String,
-    #[serde(default)] pub updated_at: String,
+    #[serde(default)]
+    pub id: i64,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub avatar: String,
+    #[serde(default)]
+    pub scenario: String,
+    #[serde(default)]
+    pub activation_strategy: i64, // 0 = Natural, 1 = List, 2 = Manual
+    #[serde(default)]
+    pub generation_mode: i64, // 0 = Swap, 1 = Join
+    #[serde(default)]
+    pub allow_self_responses: bool,
+    #[serde(default)]
+    pub created_at: String,
+    #[serde(default)]
+    pub uuid: String,
+    #[serde(default)]
+    pub updated_at: String,
 }
-
-
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
 pub struct CloudGroupMember {
-    #[serde(default)] pub char_uuid: String,
-    #[serde(default)] pub sort_order: i64,
-    #[serde(default)] pub is_muted: bool,
+    #[serde(default)]
+    pub char_uuid: String,
+    #[serde(default)]
+    pub sort_order: i64,
+    #[serde(default)]
+    pub is_muted: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
 pub struct CloudGroup {
-    #[serde(default)] pub uuid: String,
-    #[serde(default)] pub name: String,
-    #[serde(default)] pub avatar: String,
-    #[serde(default)] pub scenario: String,
-    #[serde(default)] pub activation_strategy: i64,
-    #[serde(default)] pub generation_mode: i64,
-    #[serde(default)] pub allow_self_responses: bool,
-    #[serde(default)] pub updated_at: String,
-    #[serde(default)] pub members: Vec<CloudGroupMember>,
+    #[serde(default)]
+    pub uuid: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub avatar: String,
+    #[serde(default)]
+    pub scenario: String,
+    #[serde(default)]
+    pub activation_strategy: i64,
+    #[serde(default)]
+    pub generation_mode: i64,
+    #[serde(default)]
+    pub allow_self_responses: bool,
+    #[serde(default)]
+    pub updated_at: String,
+    #[serde(default)]
+    pub members: Vec<CloudGroupMember>,
 }
 
 pub struct MemoryVector {
@@ -113,10 +175,19 @@ pub struct MemoryVector {
     pub embedding: Vec<f32>,
 }
 
-pub fn insert_memory_vector(conn: &Connection, chat_id: i64, chunk_index: i64, text_content: &str, embedding: &[f32]) -> Result<i64> {
+pub fn insert_memory_vector(
+    conn: &Connection,
+    chat_id: i64,
+    chunk_index: i64,
+    text_content: &str,
+    embedding: &[f32],
+) -> Result<i64> {
     // Convert f32 array to little-endian bytes for BLOB storage
-    let bytes: Vec<u8> = embedding.iter().flat_map(|&f| f.to_le_bytes().to_vec()).collect();
-    
+    let bytes: Vec<u8> = embedding
+        .iter()
+        .flat_map(|&f| f.to_le_bytes().to_vec())
+        .collect();
+
     conn.execute(
         "INSERT INTO memory_vectors (chat_id, chunk_index, text_content, embedding) VALUES (?1, ?2, ?3, ?4)",
         rusqlite::params![chat_id, chunk_index, text_content, bytes],
@@ -130,7 +201,7 @@ pub fn get_chat_vectors(conn: &Connection, chat_id: i64) -> Result<Vec<MemoryVec
         let chunk_index: i64 = row.get(0)?;
         let text_content: String = row.get(1)?;
         let blob: Vec<u8> = row.get(2)?;
-        
+
         let mut embedding = Vec::new();
         for chunk in blob.chunks_exact(4) {
             if chunk.len() == 4 {
@@ -145,18 +216,25 @@ pub fn get_chat_vectors(conn: &Connection, chat_id: i64) -> Result<Vec<MemoryVec
             embedding,
         })
     })?;
-    
+
     let mut results = Vec::new();
-    for v in rows.flatten() { results.push(v); }
+    for v in rows.flatten() {
+        results.push(v);
+    }
     Ok(results)
 }
 
 pub fn delete_memory_vectors(conn: &Connection, chat_id: i64) -> Result<()> {
-    conn.execute("DELETE FROM memory_vectors WHERE chat_id = ?1", params![chat_id])?;
+    conn.execute(
+        "DELETE FROM memory_vectors WHERE chat_id = ?1",
+        params![chat_id],
+    )?;
     Ok(())
 }
 
-fn default_extra() -> String { "{}".to_string() }
+fn default_extra() -> String {
+    "{}".to_string()
+}
 
 fn generate_uuid() -> String {
     use rand::Rng;
@@ -189,7 +267,10 @@ fn column_exists(conn: &Connection, table: &str, column: &str) -> Result<bool> {
 }
 
 pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
-    let app_dir = app_handle.path().app_data_dir().expect("The app data directory should exist.");
+    let app_dir = app_handle
+        .path()
+        .app_data_dir()
+        .expect("The app data directory should exist.");
     std::fs::create_dir_all(&app_dir).ok();
     let db_path = app_dir.join("tavern.db");
 
@@ -204,7 +285,9 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
     }
     #[cfg(not(target_os = "android"))]
     {
-        let _ : String = conn.query_row("PRAGMA journal_mode = WAL", [], |row| row.get(0)).unwrap_or_default();
+        let _: String = conn
+            .query_row("PRAGMA journal_mode = WAL", [], |row| row.get(0))
+            .unwrap_or_default();
         let _ = conn.execute("PRAGMA synchronous = NORMAL;", []);
     }
 
@@ -217,7 +300,8 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
             tags TEXT DEFAULT '[]', alternate_greetings TEXT DEFAULT '[]',
             card_data TEXT DEFAULT '{}', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             uuid TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )", [],
+        )",
+        [],
     )?;
 
     conn.execute(
@@ -227,7 +311,8 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
             allow_self_responses BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             uuid TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )", [],
+        )",
+        [],
     )?;
 
     conn.execute(
@@ -237,7 +322,8 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
             PRIMARY KEY (group_id, character_id),
             FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE,
             FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE
-        )", [],
+        )",
+        [],
     )?;
 
     conn.execute(
@@ -257,7 +343,8 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
             FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE,
             FOREIGN KEY(user_persona_id) REFERENCES user_personas(id) ON DELETE SET NULL,
             FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE
-        )", [],
+        )",
+        [],
     )?;
 
     conn.execute(
@@ -282,7 +369,8 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
             embedding BLOB NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(chat_id) REFERENCES chats(id) ON DELETE CASCADE
-        )", [],
+        )",
+        [],
     )?;
 
     conn.execute(
@@ -290,7 +378,8 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
             chat_id INTEGER NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL,
             PRIMARY KEY(chat_id, key),
             FOREIGN KEY(chat_id) REFERENCES chats(id) ON DELETE CASCADE
-        )", [],
+        )",
+        [],
     )?;
 
     conn.execute(
@@ -319,11 +408,13 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
         "CREATE TABLE IF NOT EXISTS quick_replies (
             id INTEGER PRIMARY KEY, label TEXT NOT NULL, content TEXT NOT NULL,
             icon TEXT DEFAULT '', is_global BOOLEAN DEFAULT 1
-        )", [],
+        )",
+        [],
     )?;
 
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS global_variables (key TEXT PRIMARY KEY, value TEXT NOT NULL)", [],
+        "CREATE TABLE IF NOT EXISTS global_variables (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+        [],
     )?;
 
     // --- CORE MIGRATIONS (For Upgrades from v0.7.0) ---
@@ -332,14 +423,20 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
     }
     if !column_exists(&conn, "characters", "updated_at")? {
         conn.execute("ALTER TABLE characters ADD COLUMN updated_at TIMESTAMP", [])?;
-        conn.execute("UPDATE characters SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL", [])?;
+        conn.execute(
+            "UPDATE characters SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL",
+            [],
+        )?;
     }
     if !column_exists(&conn, "chats", "uuid")? {
         conn.execute("ALTER TABLE chats ADD COLUMN uuid TEXT", [])?;
     }
     if !column_exists(&conn, "chats", "updated_at")? {
         conn.execute("ALTER TABLE chats ADD COLUMN updated_at TIMESTAMP", [])?;
-        conn.execute("UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL", [])?;
+        conn.execute(
+            "UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL",
+            [],
+        )?;
     }
     if !column_exists(&conn, "chats", "memory")? {
         conn.execute("ALTER TABLE chats ADD COLUMN memory TEXT DEFAULT ''", [])?;
@@ -351,31 +448,61 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
             let ids: Vec<i64> = rows.filter_map(|r| r.ok()).collect();
             for id in ids {
                 let uuid = generate_uuid();
-                let _ = conn.execute("UPDATE characters SET uuid = ?1 WHERE id = ?2", rusqlite::params![uuid, id]);
+                let _ = conn.execute(
+                    "UPDATE characters SET uuid = ?1 WHERE id = ?2",
+                    rusqlite::params![uuid, id],
+                );
             }
         }
     }
-    
+
     if let Ok(mut stmt) = conn.prepare("SELECT id FROM chats WHERE uuid IS NULL") {
         if let Ok(rows) = stmt.query_map([], |r| r.get(0)) {
             let ids: Vec<i64> = rows.filter_map(|r| r.ok()).collect();
             for id in ids {
                 let uuid = generate_uuid();
-                let _ = conn.execute("UPDATE chats SET uuid = ?1 WHERE id = ?2", rusqlite::params![uuid, id]);
+                let _ = conn.execute(
+                    "UPDATE chats SET uuid = ?1 WHERE id = ?2",
+                    rusqlite::params![uuid, id],
+                );
             }
         }
     }
 
     // Migration check for V2 fields
     if !column_exists(&conn, "characters", "first_mes")? {
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN personality TEXT DEFAULT ''", []);
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN scenario TEXT DEFAULT ''", []);
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN first_mes TEXT DEFAULT ''", []);
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN mes_example TEXT DEFAULT ''", []);
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN creator_notes TEXT DEFAULT ''", []);
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN tags TEXT DEFAULT '[]'", []);
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN alternate_greetings TEXT DEFAULT '[]'", []);
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN card_data TEXT DEFAULT '{}'", []);
+        let _ = conn.execute(
+            "ALTER TABLE characters ADD COLUMN personality TEXT DEFAULT ''",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE characters ADD COLUMN scenario TEXT DEFAULT ''",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE characters ADD COLUMN first_mes TEXT DEFAULT ''",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE characters ADD COLUMN mes_example TEXT DEFAULT ''",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE characters ADD COLUMN creator_notes TEXT DEFAULT ''",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE characters ADD COLUMN tags TEXT DEFAULT '[]'",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE characters ADD COLUMN alternate_greetings TEXT DEFAULT '[]'",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE characters ADD COLUMN card_data TEXT DEFAULT '{}'",
+            [],
+        );
     }
 
     if !column_exists(&conn, "chats", "user_persona_id")? {
@@ -384,7 +511,10 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
 
     // --- GROUP CHATS MIGRATION (v0.9.0) ---
     if !column_exists(&conn, "chats", "group_id")? {
-        let _ = conn.execute("ALTER TABLE chats ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE", []);
+        let _ = conn.execute(
+            "ALTER TABLE chats ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE",
+            [],
+        );
     }
     if !column_exists(&conn, "messages", "sender_id")? {
         let _ = conn.execute("ALTER TABLE messages ADD COLUMN sender_id INTEGER", []);
@@ -400,7 +530,11 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
     );
 
     // Initialize default persona if table empty
-    if conn.query_row::<i64, _, _>("SELECT COUNT(*) FROM user_personas", [], |row| row.get(0)).unwrap_or(0) == 0 {
+    if conn
+        .query_row::<i64, _, _>("SELECT COUNT(*) FROM user_personas", [], |row| row.get(0))
+        .unwrap_or(0)
+        == 0
+    {
         let _ = conn.execute(
             "INSERT INTO user_personas (name, avatar, description, is_default) VALUES (?1, ?2, ?3, ?4)",
             rusqlite::params!["You", "user_default.png", "A weary traveler.", 1]
@@ -408,7 +542,8 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
     }
 
     // Triggers for Synchronization
-    conn.execute_batch("
+    conn.execute_batch(
+        "
         CREATE TRIGGER IF NOT EXISTS tr_update_char_timestamp 
         AFTER UPDATE ON characters
         BEGIN
@@ -462,7 +597,8 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
         BEGIN
             UPDATE groups SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.group_id;
         END;
-    ")?;
+    ",
+    )?;
 
     // Lorebooks and Cascades
     conn.execute(
@@ -471,7 +607,8 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
             PRIMARY KEY(chat_id, book_id),
             FOREIGN KEY(chat_id) REFERENCES chats(id) ON DELETE CASCADE,
             FOREIGN KEY(book_id) REFERENCES lorebooks(id) ON DELETE CASCADE
-        )", [],
+        )",
+        [],
     )?;
 
     conn.execute(
@@ -480,27 +617,49 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
             PRIMARY KEY(character_id, book_id),
             FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE,
             FOREIGN KEY(book_id) REFERENCES lorebooks(id) ON DELETE CASCADE
-        )", [],
+        )",
+        [],
     )?;
 
     // Migrations
-    let _ = conn.execute("ALTER TABLE lore_entries ADD COLUMN constant BOOLEAN DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE lore_entries ADD COLUMN priority INTEGER DEFAULT 100", []);
-    let _ = conn.execute("ALTER TABLE lore_entries ADD COLUMN probability INTEGER DEFAULT 100", []);
-    let _ = conn.execute("ALTER TABLE lore_entries ADD COLUMN position TEXT DEFAULT 'before_char'", []);
-    let _ = conn.execute("ALTER TABLE lore_entries ADD COLUMN depth INTEGER DEFAULT 4", []);
-    let _ = conn.execute("ALTER TABLE lorebooks ADD COLUMN is_global BOOLEAN DEFAULT 0", []);
+    let _ = conn.execute(
+        "ALTER TABLE lore_entries ADD COLUMN constant BOOLEAN DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE lore_entries ADD COLUMN priority INTEGER DEFAULT 100",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE lore_entries ADD COLUMN probability INTEGER DEFAULT 100",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE lore_entries ADD COLUMN position TEXT DEFAULT 'before_char'",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE lore_entries ADD COLUMN depth INTEGER DEFAULT 4",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE lorebooks ADD COLUMN is_global BOOLEAN DEFAULT 0",
+        [],
+    );
 
     seed_default_data(&conn)?;
 
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_chats_character_id ON chats(character_id)", [],
+        "CREATE INDEX IF NOT EXISTS idx_chats_character_id ON chats(character_id)",
+        [],
     )?;
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_chats_group_id ON chats(group_id)", [],
+        "CREATE INDEX IF NOT EXISTS idx_chats_group_id ON chats(group_id)",
+        [],
     )?;
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id)", [],
+        "CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id)",
+        [],
     )?;
 
     Ok(conn)
@@ -520,7 +679,8 @@ fn seed_default_data(conn: &Connection) -> Result<()> {
         create_character(conn, &char)?;
     }
     // Seed default user persona
-    if conn.query_row::<i64, _, _>("SELECT COUNT(*) FROM user_personas", [], |row| row.get(0))? == 0 {
+    if conn.query_row::<i64, _, _>("SELECT COUNT(*) FROM user_personas", [], |row| row.get(0))? == 0
+    {
         conn.execute(
             "INSERT INTO user_personas (name, avatar, description, is_default) VALUES (?1, ?2, ?3, 1)",
             ["You", "user_avatar.png", "A weary traveler arriving at the tavern."],
@@ -533,7 +693,11 @@ fn seed_default_data(conn: &Connection) -> Result<()> {
 
 // Characters
 pub fn create_character(conn: &Connection, char: &Character) -> Result<i64> {
-    let uuid = if char.uuid.is_empty() { generate_uuid() } else { char.uuid.clone() };
+    let uuid = if char.uuid.is_empty() {
+        generate_uuid()
+    } else {
+        char.uuid.clone()
+    };
     conn.execute(
         "INSERT INTO characters (name, avatar, description, personality, scenario, first_mes, mes_example, creator_notes, tags, alternate_greetings, card_data, uuid, updated_at) 
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, CURRENT_TIMESTAMP)",
@@ -555,9 +719,18 @@ pub fn update_character(conn: &Connection, char: &Character) -> Result<usize> {
             updated_at = CURRENT_TIMESTAMP
          WHERE id = ?12",
         rusqlite::params![
-            char.name, char.avatar, char.description, char.personality, char.scenario,
-            char.first_mes, char.mes_example, char.creator_notes, char.tags,
-            char.alternate_greetings, char.card_data, char.id
+            char.name,
+            char.avatar,
+            char.description,
+            char.personality,
+            char.scenario,
+            char.first_mes,
+            char.mes_example,
+            char.creator_notes,
+            char.tags,
+            char.alternate_greetings,
+            char.card_data,
+            char.id
         ],
     )
 }
@@ -566,36 +739,59 @@ pub fn delete_character(conn: &Connection, id: i64) -> Result<usize> {
     if id == 0 {
         return Err(rusqlite::Error::InvalidQuery); // Protect System character
     }
-    conn.execute(
-        "DELETE FROM characters WHERE id = ?1",
-        params![id],
-    )
+    conn.execute("DELETE FROM characters WHERE id = ?1", params![id])
 }
 
 pub fn get_characters(conn: &Connection) -> Result<Vec<Character>> {
     let sql = "SELECT id, name, avatar, description, personality, scenario, first_mes, mes_example, creator_notes, tags, alternate_greetings, card_data, created_at, uuid, updated_at FROM characters WHERE id > 0 ORDER BY created_at DESC";
     let mut stmt = conn.prepare(sql)?;
     let rows = stmt.query_map([], |row| {
-        Ok(Character { 
-            id: row.get("id")?, 
-            name: row.get::<_, Option<String>>("name")?.unwrap_or_else(|| "Unknown".to_string()), 
-            avatar: row.get::<_, Option<String>>("avatar")?.unwrap_or_default(), 
-            description: row.get::<_, Option<String>>("description")?.unwrap_or_default(),
-            personality: row.get::<_, Option<String>>("personality")?.unwrap_or_default(),
-            scenario: row.get::<_, Option<String>>("scenario")?.unwrap_or_default(),
-            first_mes: row.get::<_, Option<String>>("first_mes")?.unwrap_or_default(),
-            mes_example: row.get::<_, Option<String>>("mes_example")?.unwrap_or_default(),
-            creator_notes: row.get::<_, Option<String>>("creator_notes")?.unwrap_or_default(),
-            tags: row.get::<_, Option<String>>("tags")?.unwrap_or_else(|| "[]".to_string()),
-            alternate_greetings: row.get::<_, Option<String>>("alternate_greetings")?.unwrap_or_else(|| "[]".to_string()),
-            card_data: row.get::<_, Option<String>>("card_data")?.unwrap_or_else(|| "{}".to_string()),
-            created_at: row.get::<_, Option<String>>("created_at")?.unwrap_or_default(),
-            uuid: row.get::<_, Option<String>>("uuid")?.unwrap_or_else(|| "temp-uuid".to_string()),
-            updated_at: row.get::<_, Option<String>>("updated_at")?.unwrap_or_default(),
+        Ok(Character {
+            id: row.get("id")?,
+            name: row
+                .get::<_, Option<String>>("name")?
+                .unwrap_or_else(|| "Unknown".to_string()),
+            avatar: row.get::<_, Option<String>>("avatar")?.unwrap_or_default(),
+            description: row
+                .get::<_, Option<String>>("description")?
+                .unwrap_or_default(),
+            personality: row
+                .get::<_, Option<String>>("personality")?
+                .unwrap_or_default(),
+            scenario: row
+                .get::<_, Option<String>>("scenario")?
+                .unwrap_or_default(),
+            first_mes: row
+                .get::<_, Option<String>>("first_mes")?
+                .unwrap_or_default(),
+            mes_example: row
+                .get::<_, Option<String>>("mes_example")?
+                .unwrap_or_default(),
+            creator_notes: row
+                .get::<_, Option<String>>("creator_notes")?
+                .unwrap_or_default(),
+            tags: row
+                .get::<_, Option<String>>("tags")?
+                .unwrap_or_else(|| "[]".to_string()),
+            alternate_greetings: row
+                .get::<_, Option<String>>("alternate_greetings")?
+                .unwrap_or_else(|| "[]".to_string()),
+            card_data: row
+                .get::<_, Option<String>>("card_data")?
+                .unwrap_or_else(|| "{}".to_string()),
+            created_at: row
+                .get::<_, Option<String>>("created_at")?
+                .unwrap_or_default(),
+            uuid: row
+                .get::<_, Option<String>>("uuid")?
+                .unwrap_or_else(|| "temp-uuid".to_string()),
+            updated_at: row
+                .get::<_, Option<String>>("updated_at")?
+                .unwrap_or_default(),
             is_muted: false,
         })
     })?;
-    
+
     let mut results = Vec::new();
     for r in rows {
         match r {
@@ -615,22 +811,34 @@ pub fn get_character_by_id(conn: &Connection, id: i64) -> Result<Character> {
 
     let mut stmt = conn.prepare(sql)?;
     let mut rows = stmt.query_map(params![id], |row| {
-        Ok(Character { 
-            id: row.get("id")?, 
-            name: row.get("name")?, 
-            avatar: row.get("avatar")?, 
-            description: row.get("description")?, 
-            personality: row.get("personality")?, 
-            scenario: row.get("scenario")?, 
-            first_mes: row.get("first_mes")?, 
-            mes_example: row.get("mes_example")?, 
+        Ok(Character {
+            id: row.get("id")?,
+            name: row.get("name")?,
+            avatar: row.get("avatar")?,
+            description: row.get("description")?,
+            personality: row.get("personality")?,
+            scenario: row.get("scenario")?,
+            first_mes: row.get("first_mes")?,
+            mes_example: row.get("mes_example")?,
             creator_notes: row.get("creator_notes")?,
-            tags: row.get::<_, Option<String>>("tags")?.unwrap_or_else(|| "[]".to_string()),
-            alternate_greetings: row.get::<_, Option<String>>("alternate_greetings")?.unwrap_or_else(|| "[]".to_string()),
-            card_data: row.get::<_, Option<String>>("card_data")?.unwrap_or_else(|| "{}".to_string()),
-            created_at: row.get::<_, Option<String>>("created_at")?.unwrap_or_default(),
-            uuid: row.get::<_, Option<String>>("uuid")?.unwrap_or_else(|| "temp-uuid".to_string()),
-            updated_at: row.get::<_, Option<String>>("updated_at")?.unwrap_or_default(),
+            tags: row
+                .get::<_, Option<String>>("tags")?
+                .unwrap_or_else(|| "[]".to_string()),
+            alternate_greetings: row
+                .get::<_, Option<String>>("alternate_greetings")?
+                .unwrap_or_else(|| "[]".to_string()),
+            card_data: row
+                .get::<_, Option<String>>("card_data")?
+                .unwrap_or_else(|| "{}".to_string()),
+            created_at: row
+                .get::<_, Option<String>>("created_at")?
+                .unwrap_or_default(),
+            uuid: row
+                .get::<_, Option<String>>("uuid")?
+                .unwrap_or_else(|| "temp-uuid".to_string()),
+            updated_at: row
+                .get::<_, Option<String>>("updated_at")?
+                .unwrap_or_default(),
             is_muted: false,
         })
     })?;
@@ -665,35 +873,44 @@ pub fn get_groups(conn: &Connection) -> Result<Vec<Group>> {
             generation_mode: row.get::<_, Option<i64>>(5)?.unwrap_or(0),
             allow_self_responses: row.get::<_, Option<bool>>(6)?.unwrap_or(false),
             created_at: row.get::<_, Option<String>>(7)?.unwrap_or_default(),
-            uuid: row.get::<_, Option<String>>(8)?.unwrap_or_else(|| "temp-uuid".to_string()),
+            uuid: row
+                .get::<_, Option<String>>(8)?
+                .unwrap_or_else(|| "temp-uuid".to_string()),
             updated_at: row.get::<_, Option<String>>(9)?.unwrap_or_default(),
         })
     })?;
-    
+
     let mut results = Vec::new();
-    for g in rows.flatten() { results.push(g); }
+    for g in rows.flatten() {
+        results.push(g);
+    }
     Ok(results)
 }
 
 pub fn export_cloud_groups(conn: &Connection) -> Result<Vec<CloudGroup>> {
     let groups = get_groups(conn)?;
     let mut cloud_groups = Vec::new();
-    
+
     for g in groups {
-        let mut stmt = conn.prepare("
+        let mut stmt = conn.prepare(
+            "
             SELECT c.uuid, gm.sort_order, gm.is_muted 
             FROM group_members gm 
             JOIN characters c ON c.id = gm.character_id 
             WHERE gm.group_id = ?1
-        ")?;
-        let members = stmt.query_map([g.id], |row| {
-            Ok(CloudGroupMember {
-                char_uuid: row.get(0)?,
-                sort_order: row.get(1)?,
-                is_muted: row.get(2)?,
-            })
-        })?.filter_map(|r| r.ok()).collect();
-        
+        ",
+        )?;
+        let members = stmt
+            .query_map([g.id], |row| {
+                Ok(CloudGroupMember {
+                    char_uuid: row.get(0)?,
+                    sort_order: row.get(1)?,
+                    is_muted: row.get(2)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
         cloud_groups.push(CloudGroup {
             uuid: g.uuid,
             name: g.name,
@@ -706,7 +923,7 @@ pub fn export_cloud_groups(conn: &Connection) -> Result<Vec<CloudGroup>> {
             members,
         });
     }
-    
+
     Ok(cloud_groups)
 }
 
@@ -724,12 +941,18 @@ pub fn import_cloud_group(conn: &Connection, cg: &CloudGroup) -> Result<()> {
             allow_self_responses = excluded.allow_self_responses",
         rusqlite::params![cg.uuid, cg.name, cg.avatar, cg.scenario, cg.activation_strategy, cg.generation_mode, cg.allow_self_responses],
     )?;
-    
+
     // We inserted by UUID, but SQLite ON CONFLICT is on Primary Key. We need to handle UUID explicitly.
     // Wait, `groups` table does not have UNIQUE constraint on `uuid`!
     // Let's manually check if it exists.
-    let group_id: Option<i64> = conn.query_row("SELECT id FROM groups WHERE uuid = ?1", rusqlite::params![cg.uuid], |r| r.get(0)).ok();
-    
+    let group_id: Option<i64> = conn
+        .query_row(
+            "SELECT id FROM groups WHERE uuid = ?1",
+            rusqlite::params![cg.uuid],
+            |r| r.get(0),
+        )
+        .ok();
+
     let actual_group_id = if let Some(id) = group_id {
         conn.execute(
             "UPDATE groups SET name = ?1, avatar = ?2, scenario = ?3, activation_strategy = ?4, generation_mode = ?5, allow_self_responses = ?6, updated_at = ?7 WHERE id = ?8",
@@ -744,10 +967,13 @@ pub fn import_cloud_group(conn: &Connection, cg: &CloudGroup) -> Result<()> {
         )?;
         conn.last_insert_rowid()
     };
-    
+
     // Replace members
-    conn.execute("DELETE FROM group_members WHERE group_id = ?1", rusqlite::params![actual_group_id])?;
-    
+    conn.execute(
+        "DELETE FROM group_members WHERE group_id = ?1",
+        rusqlite::params![actual_group_id],
+    )?;
+
     for m in &cg.members {
         if let Some(char_id) = find_character_by_uuid(conn, &m.char_uuid)? {
             conn.execute(
@@ -756,7 +982,7 @@ pub fn import_cloud_group(conn: &Connection, cg: &CloudGroup) -> Result<()> {
             )?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -781,7 +1007,12 @@ pub fn remove_group_member(conn: &Connection, group_id: i64, character_id: i64) 
     Ok(())
 }
 
-pub fn toggle_group_member_mute(conn: &Connection, group_id: i64, character_id: i64, is_muted: bool) -> Result<()> {
+pub fn toggle_group_member_mute(
+    conn: &Connection,
+    group_id: i64,
+    character_id: i64,
+    is_muted: bool,
+) -> Result<()> {
     conn.execute(
         "UPDATE group_members SET is_muted = ?1 WHERE group_id = ?2 AND character_id = ?3",
         params![is_muted, group_id, character_id],
@@ -801,32 +1032,69 @@ pub fn get_group_members(conn: &Connection, group_id: i64) -> Result<Vec<Charact
 
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map(params![group_id], |row| {
-        Ok(Character { 
-            id: row.get("id")?, 
-            name: row.get::<_, Option<String>>("name")?.unwrap_or_else(|| "Unknown".to_string()), 
-            avatar: row.get::<_, Option<String>>("avatar")?.unwrap_or_default(), 
-            description: row.get::<_, Option<String>>("description")?.unwrap_or_default(),
-            personality: row.get::<_, Option<String>>("personality")?.unwrap_or_default(),
-            scenario: row.get::<_, Option<String>>("scenario")?.unwrap_or_default(),
-            first_mes: row.get::<_, Option<String>>("first_mes")?.unwrap_or_default(),
-            mes_example: row.get::<_, Option<String>>("mes_example")?.unwrap_or_default(),
-            creator_notes: row.get::<_, Option<String>>("creator_notes")?.unwrap_or_default(),
-            tags: row.get::<_, Option<String>>("tags")?.unwrap_or_else(|| "[]".to_string()),
-            alternate_greetings: row.get::<_, Option<String>>("alternate_greetings")?.unwrap_or_else(|| "[]".to_string()),
-            card_data: row.get::<_, Option<String>>("card_data")?.unwrap_or_else(|| "{}".to_string()),
-            created_at: row.get::<_, Option<String>>("created_at")?.unwrap_or_default(),
-            uuid: row.get::<_, Option<String>>("uuid")?.unwrap_or_else(|| "temp-uuid".to_string()),
-            updated_at: row.get::<_, Option<String>>("updated_at")?.unwrap_or_default(),
+        Ok(Character {
+            id: row.get("id")?,
+            name: row
+                .get::<_, Option<String>>("name")?
+                .unwrap_or_else(|| "Unknown".to_string()),
+            avatar: row.get::<_, Option<String>>("avatar")?.unwrap_or_default(),
+            description: row
+                .get::<_, Option<String>>("description")?
+                .unwrap_or_default(),
+            personality: row
+                .get::<_, Option<String>>("personality")?
+                .unwrap_or_default(),
+            scenario: row
+                .get::<_, Option<String>>("scenario")?
+                .unwrap_or_default(),
+            first_mes: row
+                .get::<_, Option<String>>("first_mes")?
+                .unwrap_or_default(),
+            mes_example: row
+                .get::<_, Option<String>>("mes_example")?
+                .unwrap_or_default(),
+            creator_notes: row
+                .get::<_, Option<String>>("creator_notes")?
+                .unwrap_or_default(),
+            tags: row
+                .get::<_, Option<String>>("tags")?
+                .unwrap_or_else(|| "[]".to_string()),
+            alternate_greetings: row
+                .get::<_, Option<String>>("alternate_greetings")?
+                .unwrap_or_else(|| "[]".to_string()),
+            card_data: row
+                .get::<_, Option<String>>("card_data")?
+                .unwrap_or_else(|| "{}".to_string()),
+            created_at: row
+                .get::<_, Option<String>>("created_at")?
+                .unwrap_or_default(),
+            uuid: row
+                .get::<_, Option<String>>("uuid")?
+                .unwrap_or_else(|| "temp-uuid".to_string()),
+            updated_at: row
+                .get::<_, Option<String>>("updated_at")?
+                .unwrap_or_default(),
             is_muted: row.get::<_, Option<bool>>("is_muted")?.unwrap_or(false),
         })
     })?;
-    
+
     let mut results = Vec::new();
-    for c in rows.flatten() { results.push(c); }
+    for c in rows.flatten() {
+        results.push(c);
+    }
     Ok(results)
 }
 
-pub fn update_group(conn: &Connection, id: i64, name: &str, avatar: &str, scenario: &str, activation_strategy: i64, generation_mode: i64, allow_self_responses: bool) -> Result<()> {
+pub fn update_group(
+    conn: &Connection,
+    id: i64,
+    name: &str,
+    avatar: &str,
+    scenario: &str,
+    activation_strategy: i64,
+    generation_mode: i64,
+    allow_self_responses: bool,
+) -> Result<()> {
     conn.execute(
         "UPDATE groups SET name = ?1, avatar = ?2, scenario = ?3, activation_strategy = ?4, generation_mode = ?5, allow_self_responses = ?6, updated_at = CURRENT_TIMESTAMP WHERE id = ?7",
         rusqlite::params![name, avatar, scenario, activation_strategy, generation_mode, allow_self_responses, id],
@@ -835,31 +1103,49 @@ pub fn update_group(conn: &Connection, id: i64, name: &str, avatar: &str, scenar
 }
 
 // User Personas
-pub fn create_user_persona(conn: &Connection, name: &str, avatar: &str, description: &str) -> Result<i64> {
+pub fn create_user_persona(
+    conn: &Connection,
+    name: &str,
+    avatar: &str,
+    description: &str,
+) -> Result<i64> {
     conn.execute(
         "INSERT INTO user_personas (name, avatar, description, is_default) VALUES (?1, ?2, ?3, 0)",
-        params![name, avatar, description]
+        params![name, avatar, description],
     )?;
     let id = conn.last_insert_rowid();
-    
+
     // If first one, make default
-    let count: i64 = conn.query_row("SELECT COUNT(*) FROM user_personas", [], |r| r.get(0)).unwrap_or(0);
+    let count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM user_personas", [], |r| r.get(0))
+        .unwrap_or(0);
     if count == 1 {
-        let _ = conn.execute("UPDATE user_personas SET is_default = 1 WHERE id = ?1", params![id]);
+        let _ = conn.execute(
+            "UPDATE user_personas SET is_default = 1 WHERE id = ?1",
+            params![id],
+        );
     }
     Ok(id)
 }
 
 pub fn set_default_persona(conn: &Connection, id: i64) -> Result<()> {
     conn.execute("UPDATE user_personas SET is_default = 0", [])?;
-    conn.execute("UPDATE user_personas SET is_default = 1 WHERE id = ?1", params![id])?;
+    conn.execute(
+        "UPDATE user_personas SET is_default = 1 WHERE id = ?1",
+        params![id],
+    )?;
     Ok(())
 }
 
 pub fn update_user_persona(conn: &Connection, persona: &UserPersona) -> Result<()> {
     conn.execute(
         "UPDATE user_personas SET name = ?1, avatar = ?2, description = ?3 WHERE id = ?4",
-        rusqlite::params![persona.name, persona.avatar, persona.description, persona.id],
+        rusqlite::params![
+            persona.name,
+            persona.avatar,
+            persona.description,
+            persona.id
+        ],
     )?;
     Ok(())
 }
@@ -869,7 +1155,8 @@ pub fn delete_user_persona(conn: &Connection, id: i64) -> Result<usize> {
 }
 
 pub fn get_user_personas(conn: &Connection) -> Result<Vec<UserPersona>> {
-    let mut stmt = conn.prepare("SELECT id, name, avatar, description, is_default FROM user_personas")?;
+    let mut stmt =
+        conn.prepare("SELECT id, name, avatar, description, is_default FROM user_personas")?;
     let rows = stmt.query_map([], |row| {
         Ok(UserPersona {
             id: row.get(0)?,
@@ -880,18 +1167,34 @@ pub fn get_user_personas(conn: &Connection) -> Result<Vec<UserPersona>> {
         })
     })?;
     let mut personas = Vec::new();
-    for row in rows { personas.push(row?); }
+    for row in rows {
+        personas.push(row?);
+    }
     Ok(personas)
 }
 pub fn update_chat_persona(conn: &Connection, chat_id: i64, persona_id: i64) -> Result<usize> {
-    conn.execute("UPDATE chats SET user_persona_id = ?1 WHERE id = ?2", rusqlite::params![persona_id, chat_id])
+    conn.execute(
+        "UPDATE chats SET user_persona_id = ?1 WHERE id = ?2",
+        rusqlite::params![persona_id, chat_id],
+    )
 }
 
 // Chats
-pub fn create_chat(conn: &Connection, character_id: i64, group_id: Option<i64>, name: &str) -> Result<i64> {
+pub fn create_chat(
+    conn: &Connection,
+    character_id: i64,
+    group_id: Option<i64>,
+    name: &str,
+) -> Result<i64> {
     let uuid = generate_uuid();
-    let default_persona_id: Option<i64> = conn.query_row("SELECT id FROM user_personas WHERE is_default = 1 LIMIT 1", [], |r| r.get(0)).ok();
-    
+    let default_persona_id: Option<i64> = conn
+        .query_row(
+            "SELECT id FROM user_personas WHERE is_default = 1 LIMIT 1",
+            [],
+            |r| r.get(0),
+        )
+        .ok();
+
     conn.execute(
         "INSERT INTO chats (character_id, group_id, name, uuid, user_persona_id) VALUES (?1, ?2, ?3, ?4, ?5)", 
         rusqlite::params![character_id, group_id, name, uuid, default_persona_id]
@@ -901,8 +1204,12 @@ pub fn create_chat(conn: &Connection, character_id: i64, group_id: Option<i64>, 
     // Prepare first message data (Read Phase)
     if group_id.is_none() && character_id != 0 {
         let first_mes_data: Option<(String, String)> = {
-            let mut stmt = conn.prepare("SELECT first_mes, alternate_greetings FROM characters WHERE id = ?1")?;
-            stmt.query_row(params![character_id], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))).ok()
+            let mut stmt = conn
+                .prepare("SELECT first_mes, alternate_greetings FROM characters WHERE id = ?1")?;
+            stmt.query_row(params![character_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .ok()
         }; // stmt dropped here
 
         // Insert First Message (Write Phase)
@@ -910,11 +1217,13 @@ pub fn create_chat(conn: &Connection, character_id: i64, group_id: Option<i64>, 
             if !first_mes.trim().is_empty() {
                 let mut swipes = vec![first_mes.clone()];
                 if let Ok(alts) = serde_json::from_str::<Vec<String>>(&alts_json) {
-                    let valid_alts: Vec<String> = alts.into_iter().filter(|s| !s.trim().is_empty()).collect();
+                    let valid_alts: Vec<String> =
+                        alts.into_iter().filter(|s| !s.trim().is_empty()).collect();
                     swipes.extend(valid_alts);
                 }
-                let swipes_json = serde_json::to_string(&swipes).unwrap_or_else(|_| "[]".to_string());
-                
+                let swipes_json =
+                    serde_json::to_string(&swipes).unwrap_or_else(|_| "[]".to_string());
+
                 let _ = conn.execute(
                     "INSERT INTO messages (chat_id, role, content, swipes, swipe_id, is_system, extra) VALUES (?1, ?2, ?3, ?4, 0, 0, '{}')", 
                     rusqlite::params![chat_id, "char", first_mes, swipes_json]
@@ -926,27 +1235,48 @@ pub fn create_chat(conn: &Connection, character_id: i64, group_id: Option<i64>, 
     Ok(chat_id)
 }
 pub fn rename_chat(conn: &Connection, id: i64, new_name: &str) -> Result<usize> {
-    conn.execute("UPDATE chats SET name = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2", rusqlite::params![new_name, id])
+    conn.execute(
+        "UPDATE chats SET name = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+        rusqlite::params![new_name, id],
+    )
 }
 
 pub fn export_chat_jsonl(conn: &Connection, chat_id: i64) -> Result<String, rusqlite::Error> {
     // 1. Get Chat Metadata for Header
     let has_uuid = column_exists(conn, "characters", "uuid").unwrap_or(false);
-    
-    let sql = format!("
+
+    let sql = format!(
+        "
         SELECT ch.name, char.name, ch.created_at, p.name{}
         FROM chats ch 
         JOIN characters char ON ch.character_id = char.id 
         LEFT JOIN user_personas p ON ch.user_persona_id = p.id
         WHERE ch.id = ?1",
-        if has_uuid { ", char.uuid" } else { ", '' as uuid" }
+        if has_uuid {
+            ", char.uuid"
+        } else {
+            ", '' as uuid"
+        }
     );
 
     let mut stmt = conn.prepare(&sql)?;
-    
-    let (_chat_name, char_name, create_date, persona_name, char_uuid): (String, String, String, Option<String>, String) = 
-        stmt.query_row([chat_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)))?;
-    
+
+    let (_chat_name, char_name, create_date, persona_name, char_uuid): (
+        String,
+        String,
+        String,
+        Option<String>,
+        String,
+    ) = stmt.query_row([chat_id], |row| {
+        Ok((
+            row.get(0)?,
+            row.get(1)?,
+            row.get(2)?,
+            row.get(3)?,
+            row.get(4)?,
+        ))
+    })?;
+
     let header = serde_json::json!({
         "user_name": persona_name.unwrap_or_else(|| "You".to_string()),
         "character_name": char_name,
@@ -954,7 +1284,7 @@ pub fn export_chat_jsonl(conn: &Connection, chat_id: i64) -> Result<String, rusq
         "create_date": create_date,
         "chat_metadata": {}
     });
-    
+
     let mut output = serde_json::to_string(&header).unwrap();
     output.push('\n');
 
@@ -988,21 +1318,31 @@ pub fn get_chats(conn: &Connection, character_id: i64, group_id: Option<i64>) ->
     let mut stmt = conn.prepare(sql)?;
     let query_param = group_id.unwrap_or(character_id);
     let rows = stmt.query_map(params![query_param], |row| {
-        Ok(Chat { 
-            id: row.get("id")?, 
-            character_id: row.get("character_id")?, 
-            user_persona_id: row.get("user_persona_id").ok(), 
+        Ok(Chat {
+            id: row.get("id")?,
+            character_id: row.get("character_id")?,
+            user_persona_id: row.get("user_persona_id").ok(),
             group_id: row.get("group_id").unwrap_or(None),
-            name: row.get::<_, Option<String>>("name")?.unwrap_or_else(|| "Untitled".to_string()), 
-            created_at: row.get::<_, Option<String>>("created_at")?.unwrap_or_default(),
-            uuid: row.get::<_, Option<String>>("uuid")?.unwrap_or_else(|| "temp-uuid".to_string()),
-            updated_at: row.get::<_, Option<String>>("updated_at")?.unwrap_or_default(),
+            name: row
+                .get::<_, Option<String>>("name")?
+                .unwrap_or_else(|| "Untitled".to_string()),
+            created_at: row
+                .get::<_, Option<String>>("created_at")?
+                .unwrap_or_default(),
+            uuid: row
+                .get::<_, Option<String>>("uuid")?
+                .unwrap_or_else(|| "temp-uuid".to_string()),
+            updated_at: row
+                .get::<_, Option<String>>("updated_at")?
+                .unwrap_or_default(),
             memory: row.get::<_, Option<String>>("memory")?.unwrap_or_default(),
         })
     })?;
-    
+
     let mut results = Vec::new();
-    for c in rows.flatten() { results.push(c); }
+    for c in rows.flatten() {
+        results.push(c);
+    }
     Ok(results)
 }
 
@@ -1021,50 +1361,74 @@ pub fn delete_chat(conn: &Connection, id: i64) -> Result<()> {
 }
 
 pub fn find_character_by_uuid(conn: &Connection, uuid: &str) -> Result<Option<i64>> {
-    conn.query_row("SELECT id FROM characters WHERE uuid = ?1", params![uuid], |r| r.get(0)).optional()
+    conn.query_row(
+        "SELECT id FROM characters WHERE uuid = ?1",
+        params![uuid],
+        |r| r.get(0),
+    )
+    .optional()
 }
 
 pub fn find_chat_by_uuid(conn: &Connection, uuid: &str) -> Result<Option<i64>> {
-    conn.query_row("SELECT id FROM chats WHERE uuid = ?1", params![uuid], |r| r.get(0)).optional()
+    conn.query_row("SELECT id FROM chats WHERE uuid = ?1", params![uuid], |r| {
+        r.get(0)
+    })
+    .optional()
 }
 
-pub fn import_chat_jsonl_data(conn: &Connection, character_id: i64, data: &str, chat_uuid: Option<&str>) -> Result<i64, String> {
+pub fn import_chat_jsonl_data(
+    conn: &Connection,
+    character_id: i64,
+    data: &str,
+    chat_uuid: Option<&str>,
+) -> Result<i64, String> {
     let mut lines = data.lines();
     let header_str = lines.next().ok_or("Empty file")?;
-    let header: serde_json::Value = serde_json::from_str(header_str).map_err(|e| format!("Invalid header: {}", e))?;
+    let header: serde_json::Value =
+        serde_json::from_str(header_str).map_err(|e| format!("Invalid header: {}", e))?;
     let chat_name = header["character_name"].as_str().unwrap_or("Imported Chat");
 
-    conn.execute("BEGIN TRANSACTION", []).map_err(|e| e.to_string())?;
+    conn.execute("BEGIN TRANSACTION", [])
+        .map_err(|e| e.to_string())?;
 
     // Create chat with UUID if provided
     let chat_id = match chat_uuid {
         Some(uuid) => {
             // Delete existing chat to avoid duplicates, inside the transaction
             if let Ok(Some(id)) = find_chat_by_uuid(conn, uuid) {
-                let _ = conn.execute("DELETE FROM messages WHERE chat_id = ?1", rusqlite::params![id]);
+                let _ = conn.execute(
+                    "DELETE FROM messages WHERE chat_id = ?1",
+                    rusqlite::params![id],
+                );
                 let _ = conn.execute("DELETE FROM chats WHERE id = ?1", rusqlite::params![id]);
             }
 
-            let default_persona_id: Option<i64> = conn.query_row("SELECT id FROM user_personas WHERE is_default = 1 LIMIT 1", [], |r| r.get(0)).ok();
+            let default_persona_id: Option<i64> = conn
+                .query_row(
+                    "SELECT id FROM user_personas WHERE is_default = 1 LIMIT 1",
+                    [],
+                    |r| r.get(0),
+                )
+                .ok();
             if let Err(e) = conn.execute("INSERT INTO chats (character_id, name, uuid, user_persona_id) VALUES (?1, ?2, ?3, ?4)", rusqlite::params![character_id, chat_name, uuid, default_persona_id]) {
                 let _ = conn.execute("ROLLBACK", []);
                 return Err(e.to_string());
             }
             conn.last_insert_rowid()
-        },
-        None => {
-            match create_chat(conn, character_id, None, chat_name) {
-                Ok(id) => id,
-                Err(e) => {
-                    let _ = conn.execute("ROLLBACK", []);
-                    return Err(e.to_string());
-                }
-            }
         }
+        None => match create_chat(conn, character_id, None, chat_name) {
+            Ok(id) => id,
+            Err(e) => {
+                let _ = conn.execute("ROLLBACK", []);
+                return Err(e.to_string());
+            }
+        },
     };
 
     for line in lines {
-        if line.trim().is_empty() { continue; }
+        if line.trim().is_empty() {
+            continue;
+        }
         let m_res: Result<serde_json::Value, _> = serde_json::from_str(line);
         let m = match m_res {
             Ok(v) => v,
@@ -1073,19 +1437,23 @@ pub fn import_chat_jsonl_data(conn: &Connection, character_id: i64, data: &str, 
                 return Err(format!("Invalid message line: {}", e));
             }
         };
-        
-        let role = if m["is_user"].as_bool().unwrap_or(false) { "user" } else { "char" };
+
+        let role = if m["is_user"].as_bool().unwrap_or(false) {
+            "user"
+        } else {
+            "char"
+        };
         let content = m["mes"].as_str().unwrap_or("");
         let timestamp = m["send_date"].as_str().unwrap_or("");
         let swipes_val = m["swipes"].clone();
-        
+
         // Fix manual escaping: securely serialize the swipes array
-        let swipes_str = if swipes_val.is_array() { 
-            serde_json::to_string(&swipes_val).unwrap_or_else(|_| "[]".to_string()) 
-        } else { 
-            serde_json::to_string(&vec![content]).unwrap_or_else(|_| "[]".to_string()) 
+        let swipes_str = if swipes_val.is_array() {
+            serde_json::to_string(&swipes_val).unwrap_or_else(|_| "[]".to_string())
+        } else {
+            serde_json::to_string(&vec![content]).unwrap_or_else(|_| "[]".to_string())
         };
-        
+
         let swipe_id = m["swipe_id"].as_u64().unwrap_or(0);
         let is_system = m["is_system"].as_bool().unwrap_or(false);
         let extra = m["extra"].to_string();
@@ -1107,20 +1475,26 @@ pub fn import_chat_jsonl_data(conn: &Connection, character_id: i64, data: &str, 
 pub fn set_chat_variable(conn: &Connection, chat_id: i64, key: &str, value: &str) -> Result<()> {
     conn.execute(
         "INSERT OR REPLACE INTO chat_variables (chat_id, key, value) VALUES (?1, ?2, ?3)",
-        rusqlite::params![chat_id, key, value]
+        rusqlite::params![chat_id, key, value],
     )?;
     Ok(())
 }
 
 pub fn delete_chat_variable(conn: &Connection, chat_id: i64, key: &str) -> Result<()> {
-    conn.execute("DELETE FROM chat_variables WHERE chat_id = ?1 AND key = ?2", params![chat_id, key])?;
+    conn.execute(
+        "DELETE FROM chat_variables WHERE chat_id = ?1 AND key = ?2",
+        params![chat_id, key],
+    )?;
     Ok(())
 }
 
-pub fn get_chat_variables(conn: &Connection, chat_id: i64) -> Result<std::collections::HashMap<String, String>> {
+pub fn get_chat_variables(
+    conn: &Connection,
+    chat_id: i64,
+) -> Result<std::collections::HashMap<String, String>> {
     let mut stmt = conn.prepare("SELECT key, value FROM chat_variables WHERE chat_id = ?1")?;
     let rows = stmt.query_map(params![chat_id], |row| Ok((row.get(0)?, row.get(1)?)))?;
-    
+
     let mut vars = std::collections::HashMap::new();
     for row in rows {
         let (k, v): (String, String) = row?;
@@ -1132,10 +1506,14 @@ pub fn get_chat_variables(conn: &Connection, chat_id: i64) -> Result<std::collec
 pub fn get_messages(conn: &Connection, chat_id: i64) -> Result<Vec<Message>> {
     let mut stmt = conn.prepare("SELECT id, chat_id, role, content, timestamp, swipes, swipe_id, is_system, extra, images, sender_id, sender_name FROM messages WHERE chat_id = ?1 ORDER BY id ASC")?;
     let iter = stmt.query_map(params![chat_id], |row| {
-        let swipes_str: String = row.get::<_, Option<String>>(5)?.unwrap_or_else(|| "[]".to_string());
+        let swipes_str: String = row
+            .get::<_, Option<String>>(5)?
+            .unwrap_or_else(|| "[]".to_string());
         let swipes: Vec<String> = serde_json::from_str(&swipes_str).unwrap_or_default();
         let swipe_id: usize = row.get::<_, Option<usize>>(6)?.unwrap_or(0);
-        let images_str: String = row.get::<_, Option<String>>(9)?.unwrap_or_else(|| "[]".to_string());
+        let images_str: String = row
+            .get::<_, Option<String>>(9)?
+            .unwrap_or_else(|| "[]".to_string());
         let images: Option<Vec<String>> = serde_json::from_str(&images_str).ok();
 
         Ok(Message {
@@ -1147,7 +1525,9 @@ pub fn get_messages(conn: &Connection, chat_id: i64) -> Result<Vec<Message>> {
             swipes,
             swipe_id,
             is_system: row.get::<_, i32>(7)? != 0,
-            extra: row.get::<_, Option<String>>(8)?.unwrap_or_else(|| "{}".to_string()),
+            extra: row
+                .get::<_, Option<String>>(8)?
+                .unwrap_or_else(|| "{}".to_string()),
             images,
             sender_id: row.get(10).unwrap_or(None),
             sender_name: row.get(11).unwrap_or(None),
@@ -1156,13 +1536,22 @@ pub fn get_messages(conn: &Connection, chat_id: i64) -> Result<Vec<Message>> {
     iter.collect()
 }
 
-pub fn get_messages_paged(conn: &Connection, chat_id: i64, limit: i64, offset: i64) -> Result<Vec<Message>> {
+pub fn get_messages_paged(
+    conn: &Connection,
+    chat_id: i64,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<Message>> {
     let mut stmt = conn.prepare("SELECT id, chat_id, role, content, timestamp, swipes, swipe_id, is_system, extra, images, sender_id, sender_name FROM messages WHERE chat_id = ?1 ORDER BY timestamp DESC, id DESC LIMIT ?2 OFFSET ?3")?;
     let iter = stmt.query_map(rusqlite::params![chat_id, limit, offset], |row| {
-        let swipes_str: String = row.get::<_, Option<String>>(5)?.unwrap_or_else(|| "[]".to_string());
+        let swipes_str: String = row
+            .get::<_, Option<String>>(5)?
+            .unwrap_or_else(|| "[]".to_string());
         let swipes: Vec<String> = serde_json::from_str(&swipes_str).unwrap_or_default();
         let swipe_id: usize = row.get::<_, Option<usize>>(6)?.unwrap_or(0);
-        let images_str: String = row.get::<_, Option<String>>(9)?.unwrap_or_else(|| "[]".to_string());
+        let images_str: String = row
+            .get::<_, Option<String>>(9)?
+            .unwrap_or_else(|| "[]".to_string());
         let images: Option<Vec<String>> = serde_json::from_str(&images_str).ok();
 
         Ok(Message {
@@ -1174,24 +1563,41 @@ pub fn get_messages_paged(conn: &Connection, chat_id: i64, limit: i64, offset: i
             swipes,
             swipe_id,
             is_system: row.get::<_, i32>(7)? != 0,
-            extra: row.get::<_, Option<String>>(8)?.unwrap_or_else(|| "{}".to_string()),
+            extra: row
+                .get::<_, Option<String>>(8)?
+                .unwrap_or_else(|| "{}".to_string()),
             images,
             sender_id: row.get(10).unwrap_or(None),
             sender_name: row.get(11).unwrap_or(None),
         })
-    })?;    
+    })?;
     let mut messages: Vec<Message> = iter.collect::<Result<_, _>>()?;
     messages.reverse();
     Ok(messages)
 }
 
-pub fn save_message(conn: &Connection, chat_id: i64, role: &str, content: &str, images: Option<Vec<String>>) -> Result<i64> {
+pub fn save_message(
+    conn: &Connection,
+    chat_id: i64,
+    role: &str,
+    content: &str,
+    images: Option<Vec<String>>,
+) -> Result<i64> {
     save_message_ext(conn, chat_id, role, content, images, None, None)
 }
 
-pub fn save_message_ext(conn: &Connection, chat_id: i64, role: &str, content: &str, images: Option<Vec<String>>, sender_id: Option<i64>, sender_name: Option<&str>) -> Result<i64> {
+pub fn save_message_ext(
+    conn: &Connection,
+    chat_id: i64,
+    role: &str,
+    content: &str,
+    images: Option<Vec<String>>,
+    sender_id: Option<i64>,
+    sender_name: Option<&str>,
+) -> Result<i64> {
     let swipes_json = serde_json::to_string(&vec![content]).unwrap_or_else(|_| "[]".to_string());
-    let images_json = serde_json::to_string(&images.unwrap_or_default()).unwrap_or_else(|_| "[]".to_string());
+    let images_json =
+        serde_json::to_string(&images.unwrap_or_default()).unwrap_or_else(|_| "[]".to_string());
 
     conn.execute(
         "INSERT INTO messages (chat_id, role, content, swipes, swipe_id, is_system, extra, images, sender_id, sender_name) VALUES (?1, ?2, ?3, ?4, 0, 0, '{}', ?5, ?6, ?7)",
@@ -1202,8 +1608,13 @@ pub fn save_message_ext(conn: &Connection, chat_id: i64, role: &str, content: &s
 pub fn edit_message(conn: &Connection, id: i64, new_content: &str) -> Result<()> {
     let swipes: Vec<String> = {
         let mut stmt = conn.prepare("SELECT swipes, swipe_id FROM messages WHERE id = ?1")?;
-        let (swipes_str, swipe_id): (String, usize) = stmt.query_row(params![id], |row| Ok((row.get(0).unwrap_or_else(|_| "[]".to_string()), row.get(1).unwrap_or(0))))?;
-        
+        let (swipes_str, swipe_id): (String, usize) = stmt.query_row(params![id], |row| {
+            Ok((
+                row.get(0).unwrap_or_else(|_| "[]".to_string()),
+                row.get(1).unwrap_or(0),
+            ))
+        })?;
+
         let mut s: Vec<String> = serde_json::from_str(&swipes_str).unwrap_or_default();
         if swipe_id < s.len() {
             s[swipe_id] = new_content.to_string();
@@ -1212,19 +1623,22 @@ pub fn edit_message(conn: &Connection, id: i64, new_content: &str) -> Result<()>
         }
         s
     };
-    
+
     let new_swipes_json = serde_json::to_string(&swipes).unwrap();
-    
+
     conn.execute(
         "UPDATE messages SET content = ?1, swipes = ?2 WHERE id = ?3",
-        rusqlite::params![new_content, new_swipes_json, id]
+        rusqlite::params![new_content, new_swipes_json, id],
     )?;
     Ok(())
 }
 
 pub fn update_message_swipes(conn: &Connection, id: i64, swipes: &Vec<String>) -> Result<()> {
     let json = serde_json::to_string(swipes).unwrap_or("[]".to_string());
-    conn.execute("UPDATE messages SET swipes = ?1 WHERE id = ?2", params![json, id])?;
+    conn.execute(
+        "UPDATE messages SET swipes = ?1 WHERE id = ?2",
+        params![json, id],
+    )?;
     Ok(())
 }
 
@@ -1235,37 +1649,60 @@ pub fn delete_message(conn: &Connection, id: i64) -> Result<usize> {
 pub fn delete_swipe(conn: &Connection, id: i64) -> Result<()> {
     let (mut swipes, swipe_id): (Vec<String>, usize) = {
         let mut stmt = conn.prepare("SELECT swipes, swipe_id FROM messages WHERE id = ?1")?;
-        let (swipes_str, swipe_id): (String, usize) = stmt.query_row(params![id], |row| Ok((row.get(0).unwrap_or_else(|_| "[]".to_string()), row.get(1).unwrap_or(0))))?;
-        (serde_json::from_str(&swipes_str).unwrap_or_default(), swipe_id)
+        let (swipes_str, swipe_id): (String, usize) = stmt.query_row(params![id], |row| {
+            Ok((
+                row.get(0).unwrap_or_else(|_| "[]".to_string()),
+                row.get(1).unwrap_or(0),
+            ))
+        })?;
+        (
+            serde_json::from_str(&swipes_str).unwrap_or_default(),
+            swipe_id,
+        )
     };
-    
+
     if swipe_id < swipes.len() {
         swipes.remove(swipe_id);
     }
-    
+
     if swipes.is_empty() {
         delete_message(conn, id)?;
     } else {
-        let new_index = if swipe_id >= swipes.len() { swipes.len().saturating_sub(1) } else { swipe_id };
+        let new_index = if swipe_id >= swipes.len() {
+            swipes.len().saturating_sub(1)
+        } else {
+            swipe_id
+        };
         let new_content = &swipes[new_index];
         let new_swipes_json = serde_json::to_string(&swipes).unwrap();
-        
+
         conn.execute(
             "UPDATE messages SET content = ?1, swipes = ?2, swipe_id = ?3 WHERE id = ?4",
-            rusqlite::params![new_content, new_swipes_json, new_index, id]
+            rusqlite::params![new_content, new_swipes_json, new_index, id],
         )?;
     }
     Ok(())
 }
 
 pub fn delete_message_branch(conn: &Connection, chat_id: i64, from_id: i64) -> Result<usize> {
-    conn.execute("DELETE FROM messages WHERE chat_id = ?1 AND id >= ?2", params![chat_id, from_id])
+    conn.execute(
+        "DELETE FROM messages WHERE chat_id = ?1 AND id >= ?2",
+        params![chat_id, from_id],
+    )
 }
 
-pub fn branch_chat(conn: &Connection, chat_id: i64, from_msg_id: i64, new_name: &str) -> Result<i64> {
+pub fn branch_chat(
+    conn: &Connection,
+    chat_id: i64,
+    from_msg_id: i64,
+    new_name: &str,
+) -> Result<i64> {
     let (char_id, user_p_id, group_id): (i64, Option<i64>, Option<i64>) = {
-        let mut stmt = conn.prepare("SELECT character_id, user_persona_id, group_id FROM chats WHERE id = ?1")?;
-        stmt.query_row(params![chat_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+        let mut stmt = conn
+            .prepare("SELECT character_id, user_persona_id, group_id FROM chats WHERE id = ?1")?;
+        stmt.query_row(params![chat_id], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        })?
     };
 
     conn.execute(
@@ -1311,7 +1748,10 @@ pub struct LoreEntry {
 }
 
 pub fn create_lorebook(conn: &Connection, name: &str) -> Result<i64> {
-    conn.execute("INSERT INTO lorebooks (name, description, is_global) VALUES (?1, '', 0)", params![name])?;
+    conn.execute(
+        "INSERT INTO lorebooks (name, description, is_global) VALUES (?1, '', 0)",
+        params![name],
+    )?;
     Ok(conn.last_insert_rowid())
 }
 
@@ -1326,7 +1766,9 @@ pub fn get_lorebooks(conn: &Connection) -> Result<Vec<Lorebook>> {
         })
     })?;
     let mut books = Vec::new();
-    for row in rows { books.push(row?); }
+    for row in rows {
+        books.push(row?);
+    }
     Ok(books)
 }
 
@@ -1335,12 +1777,34 @@ pub fn delete_lorebook(conn: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
-pub fn create_lore_entry(conn: &Connection, book_id: i64, keys: &str, content: &str, enabled: bool, constant: bool, priority: i64, probability: i64, position: &str, depth: i64) -> Result<i64> {
+pub fn create_lore_entry(
+    conn: &Connection,
+    book_id: i64,
+    keys: &str,
+    content: &str,
+    enabled: bool,
+    constant: bool,
+    priority: i64,
+    probability: i64,
+    position: &str,
+    depth: i64,
+) -> Result<i64> {
     conn.execute("INSERT INTO lore_entries (book_id, keys, content, enabled, constant, priority, probability, position, depth) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)", params![book_id, keys, content, enabled, constant, priority, probability, position, depth])?;
     Ok(conn.last_insert_rowid())
 }
 
-pub fn update_lore_entry(conn: &Connection, id: i64, keys: &str, content: &str, enabled: bool, constant: bool, priority: i64, probability: i64, position: &str, depth: i64) -> Result<()> {
+pub fn update_lore_entry(
+    conn: &Connection,
+    id: i64,
+    keys: &str,
+    content: &str,
+    enabled: bool,
+    constant: bool,
+    priority: i64,
+    probability: i64,
+    position: &str,
+    depth: i64,
+) -> Result<()> {
     conn.execute(
         "UPDATE lore_entries SET keys = ?1, content = ?2, enabled = ?3, constant = ?4, priority = ?5, probability = ?6, position = ?7, depth = ?8 WHERE id = ?9",
         params![keys, content, enabled, constant, priority, probability, position, depth, id]
@@ -1366,12 +1830,17 @@ pub fn get_lore_entries(conn: &Connection, book_id: i64) -> Result<Vec<LoreEntry
         })
     })?;
     let mut entries = Vec::new();
-    for row in rows { entries.push(row?); }
+    for row in rows {
+        entries.push(row?);
+    }
     Ok(entries)
 }
 
 pub fn set_lore_entry_enabled(conn: &Connection, id: i64, enabled: bool) -> Result<()> {
-    conn.execute("UPDATE lore_entries SET enabled = ?1 WHERE id = ?2", params![enabled, id])?;
+    conn.execute(
+        "UPDATE lore_entries SET enabled = ?1 WHERE id = ?2",
+        params![enabled, id],
+    )?;
     Ok(())
 }
 
@@ -1381,11 +1850,18 @@ pub fn delete_lore_entry(conn: &Connection, id: i64) -> Result<()> {
 }
 
 pub fn link_character_lorebook(conn: &Connection, char_id: i64, book_id: i64) -> Result<()> {
-    conn.execute("INSERT OR IGNORE INTO character_lorebooks (character_id, book_id) VALUES (?1, ?2)", params![char_id, book_id])?;
+    conn.execute(
+        "INSERT OR IGNORE INTO character_lorebooks (character_id, book_id) VALUES (?1, ?2)",
+        params![char_id, book_id],
+    )?;
     Ok(())
 }
 
-pub fn get_active_lore_entries(conn: &Connection, char_id: i64, chat_id: i64) -> Result<Vec<LoreEntry>> {
+pub fn get_active_lore_entries(
+    conn: &Connection,
+    char_id: i64,
+    chat_id: i64,
+) -> Result<Vec<LoreEntry>> {
     let mut stmt = conn.prepare(
         "SELECT e.id, e.book_id, e.keys, e.content, e.enabled, e.constant, e.priority, e.probability, e.position, e.depth, 'character' as source
          FROM lore_entries e
@@ -1402,7 +1878,7 @@ pub fn get_active_lore_entries(conn: &Connection, char_id: i64, chat_id: i64) ->
          JOIN lorebooks b ON e.book_id = b.id
          WHERE b.is_global = 1 AND e.enabled = 1"
     )?;
-    
+
     let rows = stmt.query_map(params![char_id, chat_id], |row| {
         Ok(LoreEntry {
             id: row.get(0)?,
@@ -1418,14 +1894,19 @@ pub fn get_active_lore_entries(conn: &Connection, char_id: i64, chat_id: i64) ->
             source: row.get(10).unwrap_or("global".to_string()),
         })
     })?;
-    
+
     let mut entries = Vec::new();
-    for row in rows { entries.push(row?); }
+    for row in rows {
+        entries.push(row?);
+    }
     Ok(entries)
 }
 
 pub fn toggle_global_lorebook(conn: &Connection, book_id: i64, is_global: bool) -> Result<()> {
-    conn.execute("UPDATE lorebooks SET is_global = ?1 WHERE id = ?2", params![is_global, book_id])?;
+    conn.execute(
+        "UPDATE lorebooks SET is_global = ?1 WHERE id = ?2",
+        params![is_global, book_id],
+    )?;
     Ok(())
 }
 
@@ -1433,70 +1914,125 @@ pub fn get_chat_lorebooks(conn: &Connection, chat_id: i64) -> Result<Vec<i64>> {
     let mut stmt = conn.prepare("SELECT book_id FROM chat_lorebooks WHERE chat_id = ?1")?;
     let rows = stmt.query_map(params![chat_id], |row| row.get(0))?;
     let mut ids = Vec::new();
-    for row in rows { ids.push(row?); }
+    for row in rows {
+        ids.push(row?);
+    }
     Ok(ids)
 }
 
-pub fn toggle_chat_lorebook(conn: &Connection, chat_id: i64, book_id: i64, active: bool) -> Result<()> {
+pub fn toggle_chat_lorebook(
+    conn: &Connection,
+    chat_id: i64,
+    book_id: i64,
+    active: bool,
+) -> Result<()> {
     if active {
-        conn.execute("INSERT OR IGNORE INTO chat_lorebooks (chat_id, book_id) VALUES (?1, ?2)", params![chat_id, book_id])?;
+        conn.execute(
+            "INSERT OR IGNORE INTO chat_lorebooks (chat_id, book_id) VALUES (?1, ?2)",
+            params![chat_id, book_id],
+        )?;
     } else {
-        conn.execute("DELETE FROM chat_lorebooks WHERE chat_id = ?1 AND book_id = ?2", params![chat_id, book_id])?;
+        conn.execute(
+            "DELETE FROM chat_lorebooks WHERE chat_id = ?1 AND book_id = ?2",
+            params![chat_id, book_id],
+        )?;
     }
     Ok(())
 }
 
 pub fn get_character_lorebooks(conn: &Connection, char_id: i64) -> Result<Vec<i64>> {
-    let mut stmt = conn.prepare("SELECT book_id FROM character_lorebooks WHERE character_id = ?1")?;
+    let mut stmt =
+        conn.prepare("SELECT book_id FROM character_lorebooks WHERE character_id = ?1")?;
     let rows = stmt.query_map(params![char_id], |row| row.get(0))?;
     let mut ids = Vec::new();
-    for row in rows { ids.push(row?); }
+    for row in rows {
+        ids.push(row?);
+    }
     Ok(ids)
 }
 
-pub fn toggle_character_lorebook(conn: &Connection, char_id: i64, book_id: i64, active: bool) -> Result<()> {
+pub fn toggle_character_lorebook(
+    conn: &Connection,
+    char_id: i64,
+    book_id: i64,
+    active: bool,
+) -> Result<()> {
     if active {
-        conn.execute("INSERT OR IGNORE INTO character_lorebooks (character_id, book_id) VALUES (?1, ?2)", params![char_id, book_id])?;
+        conn.execute(
+            "INSERT OR IGNORE INTO character_lorebooks (character_id, book_id) VALUES (?1, ?2)",
+            params![char_id, book_id],
+        )?;
     } else {
-        conn.execute("DELETE FROM character_lorebooks WHERE character_id = ?1 AND book_id = ?2", params![char_id, book_id])?;
+        conn.execute(
+            "DELETE FROM character_lorebooks WHERE character_id = ?1 AND book_id = ?2",
+            params![char_id, book_id],
+        )?;
     }
     Ok(())
 }
 
-pub fn unpack_character_lorebook(conn: &Connection, char_id: i64, card_data: &str) -> Result<(), String> {
+pub fn unpack_character_lorebook(
+    conn: &Connection,
+    char_id: i64,
+    card_data: &str,
+) -> Result<(), String> {
     let v: serde_json::Value = serde_json::from_str(card_data).map_err(|e| e.to_string())?;
-    
+
     // V2 Spec: data.character_book
     if let Some(book) = v.get("data").and_then(|d| d.get("character_book")) {
-        let book_name = book.get("name").and_then(|n| n.as_str()).unwrap_or("Embedded Book");
-        
+        let book_name = book
+            .get("name")
+            .and_then(|n| n.as_str())
+            .unwrap_or("Embedded Book");
+
         // 1. Create or Find Lorebook
         let book_id = create_lorebook(conn, book_name).map_err(|e| e.to_string())?;
-        
+
         // 2. Link to Character
         let _ = link_character_lorebook(conn, char_id, book_id);
 
         // 3. Import Entries
         if let Some(entries) = book.get("entries").and_then(|e| e.as_array()) {
             for entry in entries {
-                let keys = entry.get("keys").and_then(|k| k.as_array())
-                    .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(","))
+                let keys = entry
+                    .get("keys")
+                    .and_then(|k| k.as_array())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|v| v.as_str())
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    })
                     .unwrap_or_default();
-                
+
                 let content = entry.get("content").and_then(|c| c.as_str()).unwrap_or("");
-                let enabled = entry.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true);
-                let constant = entry.get("constant").and_then(|c| c.as_bool()).unwrap_or(false);
-                let priority = entry.get("priority").and_then(|p| p.as_i64()).unwrap_or(100);
-                let position = entry.get("position").and_then(|p| p.as_str()).unwrap_or("before_char");
+                let enabled = entry
+                    .get("enabled")
+                    .and_then(|e| e.as_bool())
+                    .unwrap_or(true);
+                let constant = entry
+                    .get("constant")
+                    .and_then(|c| c.as_bool())
+                    .unwrap_or(false);
+                let priority = entry
+                    .get("priority")
+                    .and_then(|p| p.as_i64())
+                    .unwrap_or(100);
+                let position = entry
+                    .get("position")
+                    .and_then(|p| p.as_str())
+                    .unwrap_or("before_char");
                 let depth = entry.get("depth").and_then(|d| d.as_i64()).unwrap_or(4);
 
-                let _ = create_lore_entry(conn, book_id, &keys, content, enabled, constant, priority, 100, position, depth);
+                let _ = create_lore_entry(
+                    conn, book_id, &keys, content, enabled, constant, priority, 100, position,
+                    depth,
+                );
             }
         }
     }
     Ok(())
 }
-
 
 // --- REGEX SCRIPTS ---
 
@@ -1510,16 +2046,25 @@ pub struct RegexScript {
     pub run_on_markdown: bool,
 }
 
-pub fn create_regex_script(conn: &Connection, name: &str, regex: &str, replacement: &str, placement: &str) -> Result<i64> {
+pub fn create_regex_script(
+    conn: &Connection,
+    name: &str,
+    regex: &str,
+    replacement: &str,
+    placement: &str,
+    run_on_markdown: bool,
+) -> Result<i64> {
     conn.execute(
-        "INSERT INTO regex_scripts (script_name, regex, replacement, placement) VALUES (?1, ?2, ?3, ?4)",
-        params![name, regex, replacement, placement]
+        "INSERT INTO regex_scripts (script_name, regex, replacement, placement, run_on_markdown) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![name, regex, replacement, placement, run_on_markdown]
     )?;
     Ok(conn.last_insert_rowid())
 }
 
 pub fn get_regex_scripts(conn: &Connection) -> Result<Vec<RegexScript>> {
-    let mut stmt = conn.prepare("SELECT id, script_name, regex, replacement, placement, run_on_markdown FROM regex_scripts")?;
+    let mut stmt = conn.prepare(
+        "SELECT id, script_name, regex, replacement, placement, run_on_markdown FROM regex_scripts",
+    )?;
     let rows = stmt.query_map([], |row| {
         Ok(RegexScript {
             id: row.get(0)?,
@@ -1531,7 +2076,9 @@ pub fn get_regex_scripts(conn: &Connection) -> Result<Vec<RegexScript>> {
         })
     })?;
     let mut scripts = Vec::new();
-    for row in rows { scripts.push(row?); }
+    for row in rows {
+        scripts.push(row?);
+    }
     Ok(scripts)
 }
 
@@ -1559,10 +2106,16 @@ pub struct QuickReply {
     pub is_global: bool,
 }
 
-pub fn create_quick_reply(conn: &Connection, label: &str, content: &str, icon: &str, is_global: bool) -> Result<i64> {
+pub fn create_quick_reply(
+    conn: &Connection,
+    label: &str,
+    content: &str,
+    icon: &str,
+    is_global: bool,
+) -> Result<i64> {
     conn.execute(
         "INSERT INTO quick_replies (label, content, icon, is_global) VALUES (?1, ?2, ?3, ?4)",
-        params![label, content, icon, is_global]
+        params![label, content, icon, is_global],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -1579,7 +2132,9 @@ pub fn get_quick_replies(conn: &Connection) -> Result<Vec<QuickReply>> {
         })
     })?;
     let mut qrs = Vec::new();
-    for row in rows { qrs.push(row?); }
+    for row in rows {
+        qrs.push(row?);
+    }
     Ok(qrs)
 }
 
@@ -1588,7 +2143,14 @@ pub fn delete_quick_reply(conn: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
-pub fn update_quick_reply(conn: &Connection, id: i64, label: &str, content: &str, icon: &str, is_global: bool) -> Result<()> {
+pub fn update_quick_reply(
+    conn: &Connection,
+    id: i64,
+    label: &str,
+    content: &str,
+    icon: &str,
+    is_global: bool,
+) -> Result<()> {
     conn.execute(
         "UPDATE quick_replies SET label = ?1, content = ?2, icon = ?3, is_global = ?4 WHERE id = ?5",
         params![label, content, icon, is_global, id]
@@ -1622,11 +2184,22 @@ pub fn delete_global_variable(conn: &Connection, key: &str) -> Result<()> {
 }
 
 pub fn find_lorebook_id_by_name(conn: &Connection, name: &str) -> Result<Option<i64>> {
-    conn.query_row("SELECT id FROM lorebooks WHERE name = ?1", params![name], |row| row.get(0)).optional()
+    conn.query_row(
+        "SELECT id FROM lorebooks WHERE name = ?1",
+        params![name],
+        |row| row.get(0),
+    )
+    .optional()
 }
 
 pub fn set_chat_active_lorebook(conn: &Connection, chat_id: i64, book_id: i64) -> Result<()> {
-    conn.execute("DELETE FROM chat_lorebooks WHERE chat_id = ?1", params![chat_id])?;
-    conn.execute("INSERT INTO chat_lorebooks (chat_id, book_id) VALUES (?1, ?2)", params![chat_id, book_id])?;
+    conn.execute(
+        "DELETE FROM chat_lorebooks WHERE chat_id = ?1",
+        params![chat_id],
+    )?;
+    conn.execute(
+        "INSERT INTO chat_lorebooks (chat_id, book_id) VALUES (?1, ?2)",
+        params![chat_id, book_id],
+    )?;
     Ok(())
 }

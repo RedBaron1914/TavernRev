@@ -257,7 +257,7 @@ fn roll_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, o
 static RE_THINK: OnceLock<Regex> = OnceLock::new();
 
 pub fn clean_thinking(text: &str) -> String {
-    let re = RE_THINK.get_or_init(|| Regex::new(r"(?si)<think>.*?</think>|<thinking>.*?</thinking>").unwrap());
+    let re = RE_THINK.get_or_init(|| Regex::new(r"(?si)<think>.*?</think>|<thinking>.*?</thinking>|<reasoning>.*?</reasoning>").unwrap());
     re.replace_all(text, "").to_string()
 }
 
