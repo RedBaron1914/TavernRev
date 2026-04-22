@@ -89,6 +89,43 @@ interface StreamPayload {
 
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 
+const reasoningTags = new Set(["think", "thinking", "reasoning"]);
+const pairedTagRegex = /<([a-z][\w:-]*)>([\s\S]*?)(?:<\/\1>|$)/gi;
+
+function renderMessageHtml(content: string) {
+    const mathMap = new Map<string, string>();
+    let html = converter.makeHtml(
+        content.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
+            try {
+                const rendered = katex.renderToString(formula, { displayMode: true, throwOnError: false });
+                const token = `KATEXBLOCK${Math.random().toString(36).slice(2, 11)}`;
+                mathMap.set(token, rendered);
+                return token;
+            } catch {
+                return match;
+            }
+        }).replace(/\$([^\$\n]+?)\$/g, (match, formula) => {
+            try {
+                const rendered = katex.renderToString(formula, { displayMode: false, throwOnError: false });
+                const token = `KATEXINLINE${Math.random().toString(36).slice(2, 11)}`;
+                mathMap.set(token, rendered);
+                return token;
+            } catch {
+                return match;
+            }
+        })
+    );
+
+    mathMap.forEach((val, key) => {
+        html = html.replace(key, val);
+    });
+
+    return DOMPurify.sanitize(html, {
+        ADD_TAGS: ['img', 'a', 'style', 'memo', 'small', 'q', 'center', 'big', 'font', 'blockquote', 'hr', 'math', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt', 'annotation', 'semantics', 'svg', 'path', 'line', 'rect', 'circle', 'polygon', 'polyline', 'ellipse', 'button', 'details', 'summary', 'input', 'label', 'select', 'option', 'meter', 'progress', 'dialog'],
+        ADD_ATTR: ['src', 'href', 'target', 'alt', 'title', 'style', 'class', 'id', 'color', 'size', 'face', 'width', 'height', 'xmlns', 'display', 'viewBox', 'd', 'fill', 'stroke', 'preserveAspectRatio', 'aria-hidden', 'data-command', 'type', 'checked', 'selected', 'value', 'name', 'for', 'min', 'max', 'step', 'open', 'role', 'aria-label', 'aria-expanded'],
+    });
+}
+
 // --- COMPONENTS ---
 
 const MessageContent = React.memo(({ content, isUser, scale, userName, charName, images }: { content: string, isUser: boolean, scale?: number, userName?: string, charName?: string, images?: string[] }) => {
@@ -101,47 +138,31 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
     // Replace markdown HR with HTML HR to avoid parser confusion with quotes
     finalContent = finalContent.replace(/^---$/gm, "\n<hr class='my-4 border-white/10' />\n");
 
-    // Supports multiple <think> and <thinking> blocks (crucial for "Continue")
-    const thoughtRegex = /<(think|thinking)>([\s\S]*?)(?:<\/\1>|$)/gi;
-    let thoughtParts: string[] = [];
+    const reasoningParts: string[] = [];
+    const hiddenTagParts: Array<{ tag: string; content: string }> = [];
     let cleanContent = finalContent;
-    
-    let m;
-    while ((m = thoughtRegex.exec(finalContent)) !== null) {
-        thoughtParts.push(m[2].trim());
+
+    if (!isUser) {
+        cleanContent = finalContent.replace(pairedTagRegex, (match, tagName, innerContent) => {
+            const trimmed = String(innerContent).trim();
+            if (!trimmed) return "";
+
+            const normalizedTag = String(tagName).toLowerCase();
+            if (reasoningTags.has(normalizedTag)) {
+                reasoningParts.push(trimmed);
+                return "";
+            }
+
+            hiddenTagParts.push({ tag: normalizedTag, content: trimmed });
+            return "";
+        }).trim();
     }
-    
-    const hasThought = thoughtParts.length > 0;
-    const thought = thoughtParts.join("\n\n---\n\n");
-    cleanContent = finalContent.replace(thoughtRegex, "").trim();
-    
+
+    const hasReasoning = reasoningParts.length > 0;
+    const reasoning = reasoningParts.join("\n\n---\n\n");
+
     const style = scale ? { fontSize: `${scale}em` } : {};
-
-    // 1. Protect Math
-    const mathMap = new Map<string, string>();
-    let processedContent = cleanContent.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
-        try {
-            const html = katex.renderToString(formula, { displayMode: true, throwOnError: false });
-            const token = `KATEXBLOCK${Math.random().toString(36).substr(2, 9)}`;
-            mathMap.set(token, html);
-            return token;
-        } catch { return match; }
-    }).replace(/\$([^\$\n]+?)\$/g, (match, formula) => {
-        try {
-            const html = katex.renderToString(formula, { displayMode: false, throwOnError: false });
-            const token = `KATEXINLINE${Math.random().toString(36).substr(2, 9)}`;
-            mathMap.set(token, html);
-            return token;
-        } catch { return match; }
-    });
-
-    // 2. Convert Markdown
-    let html = converter.makeHtml(processedContent);
-
-    // 3. Restore Math
-    mathMap.forEach((val, key) => {
-        html = html.replace(key, val);
-    });
+    const html = renderMessageHtml(cleanContent);
 
     return (
         <div className="flex flex-col gap-2 min-w-0" style={style}>
@@ -152,26 +173,33 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
                     ))}
                 </div>
             )}
-            {hasThought && (
+            {hasReasoning && (
                 <details className="bg-gray-950/30 rounded-lg border border-white/5 overflow-hidden group/think open:bg-gray-950/50 mb-1">
                     <summary className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-widest text-gray-500 cursor-pointer hover:bg-white/5 hover:text-gray-300 transition select-none flex items-center gap-2 outline-none list-none">
                         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/50 group-open/think:bg-indigo-400 group-open/think:shadow-[0_0_8px_rgba(129,140,248,0.6)] transition-all"/>
                         Reasoning Process
                     </summary>
                     <div className="p-3 text-xs text-gray-400 font-mono whitespace-pre-wrap border-t border-white/5 bg-black/20 selection:bg-indigo-500/20 leading-relaxed">
-                        {thought}
+                        {reasoning}
                     </div>
                 </details>
             )}
-                        <div 
-                            className={`prose prose-sm max-w-none break-words overflow-x-auto [&_p]:mb-4 last:[&_p]:mb-0 ${isUser ? 'prose-invert text-white' : 'prose-invert text-gray-100'}`}
-                            dangerouslySetInnerHTML={{ 
-                                __html: DOMPurify.sanitize(html, {
-                                    ADD_TAGS: ['img', 'a', 'style', 'memo', 'small', 'q', 'center', 'big', 'font', 'blockquote', 'hr', 'math', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt', 'annotation', 'semantics', 'svg', 'path', 'line', 'rect', 'circle', 'polygon', 'polyline', 'ellipse', 'button', 'details', 'summary', 'input', 'label', 'select', 'option', 'meter', 'progress', 'dialog'],
-                                    ADD_ATTR: ['src', 'href', 'target', 'alt', 'title', 'style', 'class', 'id', 'color', 'size', 'face', 'width', 'height', 'xmlns', 'display', 'viewBox', 'd', 'fill', 'stroke', 'preserveAspectRatio', 'aria-hidden', 'data-command', 'type', 'checked', 'selected', 'value', 'name', 'for', 'min', 'max', 'step', 'open', 'role', 'aria-label', 'aria-expanded'],
-                                }) 
-                            }}
-                        />        </div>
+            {hiddenTagParts.map((part, index) => (
+                <details key={`${part.tag}-${index}`} className="bg-gray-950/30 rounded-lg border border-white/5 overflow-hidden open:bg-gray-950/50 mb-1">
+                    <summary className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-widest text-gray-500 cursor-pointer hover:bg-white/5 hover:text-gray-300 transition select-none outline-none list-none">
+                        {part.tag}
+                    </summary>
+                    <div
+                        className="prose prose-sm prose-invert max-w-none break-words overflow-x-auto [&_p]:mb-4 last:[&_p]:mb-0 p-3 border-t border-white/5 bg-black/20"
+                        dangerouslySetInnerHTML={{ __html: renderMessageHtml(part.content) }}
+                    />
+                </details>
+            ))}
+            <div 
+                className={`prose prose-sm max-w-none break-words overflow-x-auto [&_p]:mb-4 last:[&_p]:mb-0 ${isUser ? 'prose-invert text-white' : 'prose-invert text-gray-100'}`}
+                dangerouslySetInnerHTML={{ __html: html }}
+            />
+        </div>
     );
 });
 
