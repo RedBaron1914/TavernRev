@@ -17,6 +17,8 @@ import {
   X,
   FilePlus,
   Plus,
+  EyeOff,
+  Eye,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -138,8 +140,14 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
     // Replace markdown HR with HTML HR to avoid parser confusion with quotes
     finalContent = finalContent.replace(/^---$/gm, "\n<hr class='my-4 border-white/10' />\n");
 
+<<<<<<< ours
     const reasoningParts: string[] = [];
     const hiddenTagParts: Array<{ tag: string; content: string }> = [];
+=======
+    // Supports multiple reasoning tag variants (crucial for "Continue")
+    const thoughtRegex = /<(think|thinking|reasoning)>([\s\S]*?)(?:<\/\1>|$)/gi;
+    let thoughtParts: string[] = [];
+>>>>>>> theirs
     let cleanContent = finalContent;
 
     if (!isUser) {
@@ -351,7 +359,9 @@ function App() {
   const [editingPersona, setEditingPersona] = useState<UserPersona | null>(
     null,
   );
-  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [sidebarVisible, setSidebarVisible] = useState(
+    () => localStorage.getItem("ui_sidebar_visible") !== "false",
+  );
   const [modelName, setModelName] = useState("Select Model");
   const [chatStats, setChatStats] = useState<ChatStats | null>(null);
   const [activeProfileName, setActiveProfileName] = useState<string | null>(localStorage.getItem("active_profile"));
@@ -364,6 +374,10 @@ function App() {
       localStorage.setItem("ui_bg_mode", bgMode);
       if (customBg) localStorage.setItem("ui_custom_bg", customBg);
   }, [bgMode, customBg]);
+
+  useEffect(() => {
+    localStorage.setItem("ui_sidebar_visible", sidebarVisible.toString());
+  }, [sidebarVisible]);
 
   // Generation State
   const [isGenerating, setIsGenerating] = useState(false);
@@ -855,7 +869,7 @@ const refreshCharacters = async () => {
                             content: "",
                             timestamp: new Date().toISOString(),
                             is_system: false,
-                            extra: "{}",
+                            extra: {},
                         },
                     ]);
                     performGeneration(charId);
@@ -1358,6 +1372,19 @@ const refreshCharacters = async () => {
     }
   };
 
+  const handleToggleExclude = async (msgId: number, excluded: boolean) => {
+    try {
+      await invoke("set_message_prompt_excluded", {
+        id: msgId,
+        excluded: !excluded,
+      });
+      await fetchMessages(activeChatId!);
+      triggerAutoSync(activeChatId!);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleDelete = async (mode: "swipe" | "message" | "branch") => {
     if (deletingMessageId && activeChatId) {
       if (deletingMessageId < 0) {
@@ -1750,7 +1777,7 @@ const refreshCharacters = async () => {
         />
       )}
 
-      <Sidebar isMobile={isMobile} sidebarVisible={sidebarVisible} setSidebarVisible={setSidebarVisible} setCurrentView={setCurrentView} handleNewChat={handleNewChat} handleImportChat={handleImportChat} chats={chats} activeChatId={activeChatId} setActiveChatId={setActiveChatId} handleRenameChat={handleRenameChat} handleDeleteChat={handleDeleteChat} />
+      <Sidebar isMobile={isMobile} sidebarVisible={sidebarVisible} setSidebarVisible={setSidebarVisible} setCurrentView={setCurrentView} handleNewChat={handleNewChat} handleImportChat={handleImportChat} chats={chats} activeChatId={activeChatId} characterId={activeCharacterId} setActiveChatId={setActiveChatId} handleRenameChat={handleRenameChat} handleDeleteChat={handleDeleteChat} addToast={addToast} />
 
       {/* MAIN VIEW */}
       <main className="flex-1 flex flex-col min-w-0 relative">
@@ -1876,7 +1903,7 @@ const refreshCharacters = async () => {
                 return (
                     <div 
                         key={msg.id} 
-                        className="group w-full py-4 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors px-4 md:px-0"
+                        className={`group w-full py-4 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors px-4 md:px-0 ${msg.extra?.exclude_from_prompt ? "opacity-40" : ""}`}
                         onClick={() => isMobile && setActiveMessageId(activeMessageId === msg.id ? null : msg.id)}
                     >
                         <div className="max-w-4xl mx-auto">
@@ -1906,7 +1933,8 @@ const refreshCharacters = async () => {
                                           )}
                                           <button onClick={(e) => { e.stopPropagation(); handleBranch(msg.id); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Branch"><GitBranch size={12}/></button>
                                           <button onClick={(e) => { e.stopPropagation(); handleStartEdit(msg); }} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5" title="Edit"><Pencil size={12}/></button>
-                                          {!(!hasMore && index === 0) && (
+                                           <button onClick={(e) => { e.stopPropagation(); handleToggleExclude(msg.id, !!msg.extra?.exclude_from_prompt); }} className={`p-1.5 rounded hover:bg-white/5 ${msg.extra?.exclude_from_prompt ? "text-amber-400" : "text-gray-500 hover:text-white"}`} title={msg.extra?.exclude_from_prompt ? "Include in prompt" : "Exclude from prompt"}>{msg.extra?.exclude_from_prompt ? <Eye size={12}/> : <EyeOff size={12}/>}</button>
+                                           {!(!hasMore && index === 0) && (
                                               <button onClick={(e) => { e.stopPropagation(); setDeletingMessageId(msg.id); }} className="p-1.5 text-gray-500 hover:text-red-400 rounded hover:bg-white/5" title="Delete"><Trash2 size={12}/></button>
                                           )}
                                      </div>
@@ -1948,7 +1976,7 @@ const refreshCharacters = async () => {
             return (
               <div
                 key={msg.id}
-                className={`flex gap-3 max-w-[90%] group ${isUser ? "ml-auto flex-row-reverse" : ""}`}
+                className={`flex gap-3 max-w-[90%] group ${isUser ? "ml-auto flex-row-reverse" : ""} ${msg.extra?.exclude_from_prompt ? "opacity-40" : ""}`}
               >
                 <Avatar
                   src={avatarSrc}
@@ -2021,6 +2049,13 @@ const refreshCharacters = async () => {
                             className="p-1 text-gray-400 hover:text-white"
                           >
                             <Pencil size={12} />
+                          </button>
+                          <button
+                            onClick={() => handleToggleExclude(msg.id, !!msg.extra?.exclude_from_prompt)}
+                            className={`p-1 ${msg.extra?.exclude_from_prompt ? "text-amber-400" : "text-gray-400 hover:text-white"}`}
+                            title={msg.extra?.exclude_from_prompt ? "Include in prompt" : "Exclude from prompt"}
+                          >
+                            {msg.extra?.exclude_from_prompt ? <Eye size={12}/> : <EyeOff size={12}/>}
                           </button>
                           {!(!hasMore && index === 0) && (
                               <button

@@ -1,15 +1,15 @@
 import { Link, Save, ChevronRight, Server, Database, RefreshCw, Zap } from "lucide-react";
-import { 
-    ConnectionProfile, 
-    API_TYPES, 
-    CHAT_SOURCES, 
-    POST_PROCESSING_OPTIONS, 
-    DEFAULT_CONNECTION_PROFILE,
-    InputField,
-    SelectField,
-    Slider,
-    Toggle 
-} from "../../Settings";
+import {
+  API_TYPES,
+  CHAT_SOURCES,
+  ConnectionProfile,
+  DEFAULT_CONNECTION_PROFILE,
+  InputField,
+  POST_PROCESSING_OPTIONS,
+  SelectField,
+  Slider,
+  Toggle,
+} from "./shared";
 
 interface ConnectionTabProps {
   connectionData: ConnectionProfile;

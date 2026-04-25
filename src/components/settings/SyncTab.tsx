@@ -1,5 +1,5 @@
 import { Cloud, Upload, CheckCircle, Lock, RefreshCw } from "lucide-react";
-import { Toggle } from "../../Settings";
+import { Toggle } from "./shared";
 
 interface SyncTabProps {
   syncProvider: "dropbox" | "gdrive" | null;

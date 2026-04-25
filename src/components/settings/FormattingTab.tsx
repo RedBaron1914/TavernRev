@@ -1,27 +1,29 @@
 import { LayoutTemplate, MessageSquare } from "lucide-react";
-import { Preset, ConnectionProfile, Toggle, TextAreaField, InputField } from "../../Settings";
+import { ConnectionProfile, InputField, Preset, TextAreaField, Toggle } from "./shared";
 
 interface FormattingTabProps {
   connectionData: ConnectionProfile;
   formData: Preset;
   handleFieldChange: (field: keyof Preset, value: any) => void;
+  compact?: boolean;
 }
 
 export function FormattingTab({
   connectionData,
   formData,
   handleFieldChange,
+  compact = false,
 }: FormattingTabProps) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div
-        className={`bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-6 ${
+        className={`bg-gray-900/30 rounded-2xl border border-white/5 space-y-6 ${compact ? "p-4" : "p-6"} ${
           connectionData.api_type === "chat_completion"
             ? "opacity-50 pointer-events-none grayscale"
             : ""
         }`}
       >
-        <div className="flex justify-between items-start">
+        <div className={compact ? "space-y-2" : "flex justify-between items-start"}>
           <h3 className="text-lg font-bold text-indigo-400 flex items-center gap-2">
             <LayoutTemplate size={20} /> Instruct Mode
           </h3>
@@ -71,7 +73,7 @@ export function FormattingTab({
             </div>
           )}
       </div>
-      <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-5">
+      <div className={`bg-gray-900/30 rounded-2xl border border-white/5 space-y-5 ${compact ? "p-4" : "p-6"}`}>
         <h3 className="text-lg font-bold text-amber-400 flex items-center gap-2">
           <MessageSquare size={20} /> Utility Prompts
         </h3>

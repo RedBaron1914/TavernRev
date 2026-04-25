@@ -1,5 +1,5 @@
 import { SlidersHorizontal, Plus, Trash2, Download, Save, Ban, Settings as SettingsIcon, Eye } from "lucide-react";
-import { Preset, InputField, SelectField, Slider, Toggle, REASONING_OPTIONS } from "../../Settings";
+import { InputField, Preset, REASONING_OPTIONS, SelectField, Slider, Toggle } from "./shared";
 
 interface TextGenTabProps {
   activePresetFile: string | null;
@@ -12,6 +12,7 @@ interface TextGenTabProps {
   formData: Preset;
   handleFieldChange: (field: keyof Preset, value: any) => void;
   renderPromptManager: () => React.ReactNode;
+  compact?: boolean;
 }
 
 export function TextGenTab({
@@ -25,11 +26,12 @@ export function TextGenTab({
   formData,
   handleFieldChange,
   renderPromptManager,
+  compact = false,
 }: TextGenTabProps) {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Mobile Preset Selector */}
-      <div className="md:hidden flex justify-between items-center bg-gray-900/30 p-4 rounded-2xl border border-white/5">
+      <div className={`${compact ? "space-y-4" : "md:hidden flex justify-between items-center"} bg-gray-900/30 p-4 rounded-2xl border border-white/5`}>
         <div className="flex flex-col">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
             <SlidersHorizontal size={20} /> Preset
@@ -38,11 +40,11 @@ export function TextGenTab({
             Configuration
           </span>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className={`${compact ? "grid grid-cols-4 gap-2" : "flex gap-2 items-center"}`}>
           <select
             value={activePresetFile || ""}
             onChange={(e) => loadPresetData(e.target.value)}
-            className="bg-gray-950 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500 max-w-[150px]"
+            className={`bg-gray-950 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500 ${compact ? "col-span-4 w-full" : "max-w-[150px]"}`}
           >
             {presetsList.map((f) => (
               <option key={f} value={f}>
@@ -50,22 +52,22 @@ export function TextGenTab({
               </option>
             ))}
           </select>
-          <button
-            onClick={handleCreatePreset}
-            className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-emerald-400 hover:text-emerald-300 transition"
-            title="New Preset"
-          >
-            <Plus size={20} />
+            <button
+              onClick={handleCreatePreset}
+              className={`bg-gray-800 hover:bg-gray-700 rounded-lg text-emerald-400 hover:text-emerald-300 transition ${compact ? "h-11 w-full flex items-center justify-center" : "p-2"}`}
+              title="New Preset"
+            >
+              <Plus size={20} />
           </button>
-          <button
-            onClick={handleDeletePreset}
-            className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-red-400 hover:text-red-300 transition"
-            title="Delete Preset"
-          >
-            <Trash2 size={20} />
+            <button
+              onClick={handleDeletePreset}
+              className={`bg-gray-800 hover:bg-gray-700 rounded-lg text-red-400 hover:text-red-300 transition ${compact ? "h-11 w-full flex items-center justify-center" : "p-2"}`}
+              title="Delete Preset"
+            >
+              <Trash2 size={20} />
           </button>
           <label
-            className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition cursor-pointer"
+            className={`bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition cursor-pointer ${compact ? "h-11 w-full flex items-center justify-center" : "p-2"}`}
             title="Import Preset"
           >
             <Download size={20} />
@@ -76,21 +78,21 @@ export function TextGenTab({
               className="hidden"
             />
           </label>
-          <button
-            onClick={handleExportPreset}
-            className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition"
-            title="Save/Export Preset"
-          >
-            <Save size={20} />
+            <button
+              onClick={handleExportPreset}
+              className={`bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition ${compact ? "h-11 w-full flex items-center justify-center" : "p-2"}`}
+              title="Save/Export Preset"
+            >
+              <Save size={20} />
           </button>
         </div>
       </div>
 
-      <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5">
+      <div className={`bg-gray-900/30 rounded-2xl border border-white/5 ${compact ? "p-4" : "p-6"}`}>
         <h3 className="text-lg font-bold text-indigo-400 flex items-center gap-2 mb-6">
           <SlidersHorizontal size={20} /> Sampling
         </h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-6">
           <Slider
             label="Temperature"
             field="temperature"
@@ -128,7 +130,7 @@ export function TextGenTab({
             step={0.01}
             onChange={handleFieldChange}
           />
-          <div className="lg:col-span-2 pt-2">
+          <div className="pt-2">
             <SelectField
               label="Reasoning Effort"
               value={formData.reasoning_effort}
@@ -150,11 +152,11 @@ export function TextGenTab({
         </div>
       </div>
 
-      <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5">
+      <div className={`bg-gray-900/30 rounded-2xl border border-white/5 ${compact ? "p-4" : "p-6"}`}>
         <h3 className="text-lg font-bold text-rose-400 flex items-center gap-2 mb-6">
           <Ban size={20} /> Penalties
         </h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-6">
           <Slider
             label="Repetition Penalty"
             field="repetition_penalty"
@@ -185,11 +187,11 @@ export function TextGenTab({
         </div>
       </div>
 
-      <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5">
+      <div className={`bg-gray-900/30 rounded-2xl border border-white/5 ${compact ? "p-4" : "p-6"}`}>
         <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2 mb-6">
           <SettingsIcon size={20} /> Output
         </h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-6">
           <InputField
             label="Max Tokens"
             type="number"
@@ -207,7 +209,7 @@ export function TextGenTab({
             }
             placeholder="-1"
           />
-          <div className="lg:col-span-2 pt-2">
+          <div className="pt-2">
             <Toggle
               label="Stream Response"
               field="stream_openai"
@@ -229,7 +231,7 @@ export function TextGenTab({
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                 <Eye size={12} /> Visual Identity
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Toggle label="Send Char Avatar" field="send_char_avatar" value={formData.send_char_avatar} onChange={handleFieldChange} helpText="Show character's appearance to the model." />
                   {formData.send_char_avatar && (
