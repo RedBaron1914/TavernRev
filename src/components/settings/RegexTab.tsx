@@ -1,4 +1,4 @@
-import { Upload, Save, Plus, Trash2 } from "lucide-react";
+import { Download, Save, Plus, Trash2 } from "lucide-react";
 import { RegexScript } from "../../types";
 
 interface RegexTabProps {
@@ -29,7 +29,8 @@ export function RegexTab({
         </div>
         <div className="flex gap-2">
           <label className="bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition cursor-pointer">
-            <Upload size={16} />
+            <Download size={16} />
+            Import Regex
             <input
               type="file"
               accept=".json"

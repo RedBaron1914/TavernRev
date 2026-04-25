@@ -958,7 +958,7 @@ const refreshCharacters = async () => {
             await navigator.share({
               files: [file],
 
-              title: "Export Chat",
+              title: "Download chat",
 
               text: `TavernRev Chat Export: ${filename}`,
             });
@@ -1794,7 +1794,7 @@ const refreshCharacters = async () => {
             )}
             <button
               onClick={handleExportChat}
-              title="Export Chat"
+              title="Download chat"
               className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition hidden sm:flex"
             >
               <Download size={20} />

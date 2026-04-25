@@ -163,7 +163,7 @@ export function MessageInput({
                       }}
                       className="w-full text-left px-4 py-3 text-sm hover:bg-indigo-600/20 flex gap-3 items-center text-gray-200 transition sm:hidden"
                     >
-                      <Download size={16} className="text-blue-400" /> Export Chat
+                      <Download size={16} className="text-blue-400" /> Download chat
                     </button>
                     <button
                       onClick={() => {
