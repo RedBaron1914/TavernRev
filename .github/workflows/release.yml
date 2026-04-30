@@ -135,7 +135,15 @@ jobs:
           TAVERNREV_DROPBOX_KEY: ${{ secrets.TAVERNREV_DROPBOX_KEY }}
           TAVERNREV_GDRIVE_ID: ${{ secrets.TAVERNREV_GDRIVE_ID }}
           TAVERNREV_GDRIVE_SECRET: ${{ secrets.TAVERNREV_GDRIVE_SECRET }}
-        run: pnpm tauri android build --apk
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_FILE: ${{ github.workspace }}/release.jks
+        run: |
+          if [ -n "${{ secrets.SIGNING_STORE_FILE_BASE64 }}" ]; then
+            echo "${{ secrets.SIGNING_STORE_FILE_BASE64 }}" | base64 --decode > ${{ github.workspace }}/release.jks
+          fi
+          pnpm tauri android build --apk
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
