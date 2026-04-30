@@ -47,10 +47,13 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = "key0"
-            keyPassword = "tavernrev123"
-            storeFile = file("../keystore.jks")
-            storePassword = "tavernrev123"
+            val keystorePath = System.getenv("SIGNING_STORE_FILE")
+            if (keystorePath != null && file(keystorePath).exists()) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            }
         }
     }
     buildTypes {

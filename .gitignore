@@ -83,3 +83,5 @@ desktop.ini
 # Secrets
 .env
 .env.local
+*.jks
+*.keystore
