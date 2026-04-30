@@ -406,48 +406,55 @@ pub async fn generate_embeddings(
 ) -> Result<Vec<Vec<f32>>, String> {
     let client = get_client();
     let url = if api_url.ends_with("/v1/embeddings") {
-        api_url
+        api_url.clone()
     } else {
         let mut base = api_url.trim_end_matches('/').to_string();
         if base.ends_with("/v1/chat/completions") {
-            base = base.replace("/chat/completions", "/embeddings");
+            base = base.strip_suffix("/chat/completions").unwrap_or(&base).to_string() + "/embeddings";
         } else if base.ends_with("/chat/completions") {
-             base = base.replace("/chat/completions", "/v1/embeddings");
+             base = base.strip_suffix("/chat/completions").unwrap_or(&base).to_string() + "/v1/embeddings";
         } else if !base.ends_with("/embeddings") {
              base = format!("{}/v1/embeddings", base);
         }
         base
     };
 
-    let req_body = EmbeddingRequest {
-        model,
-        input: texts,
-    };
+    let mut all_embeddings = Vec::new();
 
-    let mut req = client.post(&url)
-        .header("Content-Type", "application/json")
-        .json(&req_body);
+    // Chunking to handle API batch limits (e.g., OpenAI allows max 2048)
+    for chunk in texts.chunks(1000) {
+        let req_body = EmbeddingRequest {
+            model: model.clone(),
+            input: chunk.to_vec(),
+        };
 
-    if !api_key.is_empty() {
-        req = req.header("Authorization", format!("Bearer {}", api_key));
+        let mut req = client.post(&url)
+            .header("Content-Type", "application/json")
+            .json(&req_body);
+
+        if !api_key.is_empty() {
+            req = req.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let resp = req.send().await.map_err(|e| format!("Network error: {}", e))?;
+        let status = resp.status();
+
+        if !status.is_success() {
+            let err_text = resp.text().await.unwrap_or_default();
+            return Err(format!("API error {}: {}", status, err_text));
+        }
+
+        let parsed: EmbeddingResponse = resp.json().await.map_err(|e| format!("Parse error: {}", e))?;
+        
+        if let Some(data) = parsed.data {
+            let embeddings: Vec<Vec<f32>> = data.into_iter().map(|d| d.embedding).collect();
+            all_embeddings.extend(embeddings);
+        } else {
+            return Err("No embedding data returned in chunk".to_string());
+        }
     }
-
-    let resp = req.send().await.map_err(|e| format!("Network error: {}", e))?;
-    let status = resp.status();
-
-    if !status.is_success() {
-        let err_text = resp.text().await.unwrap_or_default();
-        return Err(format!("API error {}: {}", status, err_text));
-    }
-
-    let parsed: EmbeddingResponse = resp.json().await.map_err(|e| format!("Parse error: {}", e))?;
     
-    if let Some(data) = parsed.data {
-        let embeddings = data.into_iter().map(|d| d.embedding).collect();
-        Ok(embeddings)
-    } else {
-        Err("No embedding data returned".to_string())
-    }
+    Ok(all_embeddings)
 }
 
 // --- GENERATION FUNCTIONS ---

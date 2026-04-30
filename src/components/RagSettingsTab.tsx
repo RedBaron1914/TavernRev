@@ -43,7 +43,7 @@ export const RagSettingsTab = ({
     localStorage.setItem("rag_top_k", ragTopK.toString());
     localStorage.setItem("rag_threshold", ragThreshold.toString());
     localStorage.setItem("rag_template", ragTemplate);
-  }, [ragEnabled, ragModel, ragCustomModelPath, ragChunkSize, ragOverlap, ragTopK, ragThreshold, ragTemplate]);
+  }, [ragEnabled, ragApiType, ragApiUrl, ragApiKey, ragApiModel, ragModel, ragCustomModelPath, ragChunkSize, ragOverlap, ragTopK, ragThreshold, ragTemplate]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

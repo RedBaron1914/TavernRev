@@ -190,7 +190,7 @@ pub struct RagConfig {
 }
 
 pub async fn build_chat_index(
-    db_state: &tauri::State<'_, crate::database::DbState>,
+    db_state: &crate::database::DbState,
     chat_id: i64,
     chunk_size: usize,
     overlap: usize,
@@ -246,7 +246,7 @@ pub async fn build_chat_index(
 }
 
 pub async fn query_chat_memory(
-    db_state: &tauri::State<'_, crate::database::DbState>,
+    db_state: &crate::database::DbState,
     chat_id: i64,
     query_text: &str,
     config: &RagConfig,
@@ -318,9 +318,9 @@ mod tests {
         assert_eq!(sim, 0.0);
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_fastembed_integration() {
+    async fn test_fastembed_integration() {
         // Since cargo test runs binaries in target/debug/deps/, we point to the parent dir where our downloaded DLL lives
         std::env::set_var("ORT_DYLIB_PATH", "../onnxruntime.dll");
 
@@ -328,8 +328,13 @@ mod tests {
         let init = init_model(None, "AllMiniLML6V2");
         assert!(init.is_ok(), "Failed to initialize fastembed: {:?}", init.err());
 
+        let config = RagConfig {
+            enabled: true, top_k: 3, threshold: 0.5, injection_depth: 0, template: String::new(),
+            api_type: "local".to_string(), api_url: "".to_string(), api_key: "".to_string(), api_model: "".to_string(),
+        };
+
         // Test embedding generation
-        let embeddings = embed_texts(vec!["Hello", "World"]);
+        let embeddings = embed_texts(vec!["Hello", "World"], &config).await;
         assert!(embeddings.is_ok());
 
         let vectors = embeddings.unwrap();
@@ -337,9 +342,9 @@ mod tests {
         assert_eq!(vectors[0].len(), 384); // AllMiniLML6V2 dimensionality
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_rag_end_to_end_retrieval() {
+    async fn test_rag_end_to_end_retrieval() {
         std::env::set_var("ORT_DYLIB_PATH", "../onnxruntime.dll");
         init_model(None, "AllMiniLML6V2").unwrap();
 
@@ -354,31 +359,42 @@ mod tests {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )", [],
         ).unwrap();
+        
+        conn.execute(
+            "CREATE TABLE messages (
+                id INTEGER PRIMARY KEY,
+                chat_id INTEGER NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                swipe_id INTEGER DEFAULT 0,
+                is_system BOOLEAN DEFAULT 0,
+                extra TEXT DEFAULT '{}',
+                images TEXT,
+                sender_id INTEGER,
+                sender_name TEXT
+            )", [],
+        ).unwrap();
+        
+        let db_state = crate::database::DbState(Mutex::new(conn));
+        
+        let conn_ref = db_state.0.lock().unwrap();
+        crate::database::save_message(&conn_ref, 1, "user", "I love eating green apples.", None).unwrap();
+        crate::database::save_message(&conn_ref, 1, "char", "The secret password to the vault is 'TavernRulez42'.", None).unwrap();
+        crate::database::save_message(&conn_ref, 1, "user", "It is raining outside today.", None).unwrap();
+        drop(conn_ref);
 
-        let messages = vec![
-            crate::database::Message {
-                id: 1, chat_id: 1, role: "user".to_string(), content: "I love eating green apples.".to_string(),
-                timestamp: "".to_string(), swipes: vec![], swipe_id: 0, is_system: false, extra: "".to_string(),
-                images: None, sender_id: None, sender_name: None
-            },
-            crate::database::Message {
-                id: 2, chat_id: 1, role: "char".to_string(), content: "The secret password to the vault is 'TavernRulez42'.".to_string(),
-                timestamp: "".to_string(), swipes: vec![], swipe_id: 0, is_system: false, extra: "".to_string(),
-                images: None, sender_id: None, sender_name: None
-            },
-            crate::database::Message {
-                id: 3, chat_id: 1, role: "user".to_string(), content: "It is raining outside today.".to_string(),
-                timestamp: "".to_string(), swipes: vec![], swipe_id: 0, is_system: false, extra: "".to_string(),
-                images: None, sender_id: None, sender_name: None
-            },
-        ];
+        let config = RagConfig {
+            enabled: true, top_k: 1, threshold: 0.0, injection_depth: 0, template: String::new(),
+            api_type: "local".to_string(), api_url: "".to_string(), api_key: "".to_string(), api_model: "".to_string(),
+        };
 
         // Index the chat (chunk size 1 to keep them separate)
-        let indexed = build_chat_index(&conn, 1, &messages, 1, 0).unwrap();
+        let indexed = build_chat_index(&db_state, 1, 1, 0, &config).await.unwrap();
         assert_eq!(indexed, 3);
 
         // Query memory asking for the password
-        let results = query_chat_memory(&conn, 1, "What is the secret password?", 1, 0.0).unwrap();
+        let results = query_chat_memory(&db_state, 1, "What is the secret password?", &config).await.unwrap();
         
         assert_eq!(results.len(), 1);
         // It should semantically match message #2
