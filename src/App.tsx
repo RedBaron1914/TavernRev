@@ -140,14 +140,8 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
     // Replace markdown HR with HTML HR to avoid parser confusion with quotes
     finalContent = finalContent.replace(/^---$/gm, "\n<hr class='my-4 border-white/10' />\n");
 
-<<<<<<< ours
     const reasoningParts: string[] = [];
     const hiddenTagParts: Array<{ tag: string; content: string }> = [];
-=======
-    // Supports multiple reasoning tag variants (crucial for "Continue")
-    const thoughtRegex = /<(think|thinking|reasoning)>([\s\S]*?)(?:<\/\1>|$)/gi;
-    let thoughtParts: string[] = [];
->>>>>>> theirs
     let cleanContent = finalContent;
 
     if (!isUser) {
