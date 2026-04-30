@@ -1,7 +1,7 @@
 {
   "name": "tavernrev",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.1.0-check1",
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
@@ -13,7 +13,7 @@
     "tauri": "node scripts/tauri-dev.mjs"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/api": "2.11.0",
     "@tauri-apps/plugin-opener": "^2.5.3",
     "@types/dompurify": "^3.0.5",
     "@types/showdown": "^2.0.6",
