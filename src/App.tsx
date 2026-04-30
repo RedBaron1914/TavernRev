@@ -43,7 +43,11 @@ const getRagConfig = () => ({
   top_k: parseInt(localStorage.getItem("rag_top_k") || "3"),
   threshold: parseFloat(localStorage.getItem("rag_threshold") || "0.5"),
   injection_depth: parseInt(localStorage.getItem("rag_injection_depth") || "0"),
-  template: localStorage.getItem("rag_template") || "[System Note: Relevant context from past memory:\n{{text}}\n]"
+  template: localStorage.getItem("rag_template") || "[System Note: Relevant context from past memory:\n{{text}}\n]",
+  api_type: localStorage.getItem("rag_api_type") || "local",
+  api_url: localStorage.getItem("rag_api_url") || "",
+  api_key: localStorage.getItem("rag_api_key") || "",
+  api_model: localStorage.getItem("rag_api_model") || ""
 });
 
 const converter = new showdown.Converter({
@@ -1573,7 +1577,7 @@ const refreshCharacters = async () => {
           if (localStorage.getItem("rag_enabled") === "true" && activeChatIdRef.current) {
               const ragChunkSize = parseInt(localStorage.getItem("rag_chunk_size") || "4");
               const ragOverlap = parseInt(localStorage.getItem("rag_overlap") || "1");
-              invoke("build_chat_index", { chatId: activeChatIdRef.current, chunkSize: ragChunkSize, overlap: ragOverlap })
+              invoke("build_chat_index", { chatId: activeChatIdRef.current, chunkSize: ragChunkSize, overlap: ragOverlap, config: getRagConfig() })
                  .then(count => console.log(`RAG Indexed ${count} chunks in background.`))
                  .catch(e => console.error("RAG background indexing failed", e));
           }

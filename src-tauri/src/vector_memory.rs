@@ -132,14 +132,23 @@ pub fn init_custom_model(folder_path: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn embed_texts(texts: Vec<&str>) -> Result<Vec<Vec<f32>>, String> {
-    let mut lock = get_model().lock().unwrap();
-    let model = lock.as_mut().ok_or("Embedding model is not initialized")?;
-    
-    let embeddings = model.embed(texts, None).map_err(|e| format!("Embedding failed: {}", e))?;
-    Ok(embeddings)
-}
+pub async fn embed_texts(texts: Vec<&str>, config: &RagConfig) -> Result<Vec<Vec<f32>>, String> {
+    if config.api_type == "api" {
+        let texts_owned: Vec<String> = texts.into_iter().map(|s| s.to_string()).collect();
+        crate::api_client::generate_embeddings(
+            config.api_url.clone(),
+            config.api_key.clone(),
+            config.api_model.clone(),
+            texts_owned
+        ).await
+    } else {
+        let mut lock = get_model().lock().unwrap();
+        let model = lock.as_mut().ok_or("Local embedding model is not initialized. Check RagSettingsTab.")?;
 
+        let embeddings = model.embed(texts, None).map_err(|e| format!("Local embedding failed: {}", e))?;
+        Ok(embeddings)
+    }
+}
 pub fn cosine_similarity(v1: &[f32], v2: &[f32]) -> f32 {
     if v1.len() != v2.len() { return 0.0; }
     let mut dot_product = 0.0;
@@ -168,20 +177,31 @@ pub struct RagConfig {
     pub threshold: f32,
     pub injection_depth: usize,
     pub template: String,
+    
+    // Embedding API Settings
+    #[serde(default)]
+    pub api_type: String, // "local", "api"
+    #[serde(default)]
+    pub api_url: String,
+    #[serde(default)]
+    pub api_key: String,
+    #[serde(default)]
+    pub api_model: String,
 }
 
-pub fn build_chat_index(
-    conn: &rusqlite::Connection,
+pub async fn build_chat_index(
+    db_state: &tauri::State<'_, crate::database::DbState>,
     chat_id: i64,
-    messages: &[crate::database::Message],
     chunk_size: usize,
     overlap: usize,
+    config: &RagConfig,
 ) -> Result<usize, String> {
-    // Basic chunking: group messages into text blocks
+    let messages = {
+        let conn = db_state.0.lock().unwrap();
+        crate::database::get_messages(&conn, chat_id).map_err(|e| e.to_string())?
+    };
+
     if chunk_size == 0 || messages.is_empty() { return Ok(0); }
-    
-    // Clear old memory for this chat (Full re-index for simplicity right now)
-    crate::database::delete_memory_vectors(conn, chat_id).map_err(|e| e.to_string())?;
     
     let mut chunks = Vec::new();
     let mut chunk_indices = Vec::new();
@@ -208,31 +228,37 @@ pub fn build_chat_index(
     
     if chunks.is_empty() { return Ok(0); }
     
-    // Embed all chunks
+    // Embed all chunks (NO LOCK HELD HERE)
     let texts: Vec<&str> = chunks.iter().map(|s| s.as_str()).collect();
-    let embeddings = embed_texts(texts)?;
+    let embeddings = embed_texts(texts, config).await?;
     
-    // Save to DB
+    // Save to DB (re-acquire lock)
+    let conn = db_state.0.lock().unwrap();
+    // Clear old memory for this chat
+    crate::database::delete_memory_vectors(&conn, chat_id).map_err(|e| e.to_string())?;
+
     for (idx, (text, emb)) in chunks.into_iter().zip(embeddings.into_iter()).enumerate() {
         let c_idx = chunk_indices[idx];
-        crate::database::insert_memory_vector(conn, chat_id, c_idx, &text, &emb).map_err(|e| e.to_string())?;
+        crate::database::insert_memory_vector(&conn, chat_id, c_idx, &text, &emb).map_err(|e| e.to_string())?;
     }
     
     Ok(chunk_counter as usize)
 }
 
-pub fn query_chat_memory(
-    conn: &rusqlite::Connection,
+pub async fn query_chat_memory(
+    db_state: &tauri::State<'_, crate::database::DbState>,
     chat_id: i64,
     query_text: &str,
-    top_k: usize,
-    threshold: f32,
+    config: &RagConfig,
 ) -> Result<Vec<RetrievalResult>, String> {
-    // 1. Embed query
-    let query_embed = embed_texts(vec![query_text])?.into_iter().next().ok_or("Failed to embed query")?;
+    // 1. Embed query (NO LOCK HELD)
+    let query_embed = embed_texts(vec![query_text], config).await?.into_iter().next().ok_or("Failed to embed query")?;
     
-    // 2. Fetch all vectors for chat
-    let vectors = crate::database::get_chat_vectors(conn, chat_id).map_err(|e| e.to_string())?;
+    // 2. Fetch all vectors for chat (Lock DB briefly)
+    let vectors = {
+        let conn = db_state.0.lock().unwrap();
+        crate::database::get_chat_vectors(&conn, chat_id).map_err(|e| e.to_string())?
+    };
     
     // 3. Compute similarities
     let mut scored: Vec<RetrievalResult> = vectors.into_iter().map(|v| {
@@ -246,9 +272,9 @@ pub fn query_chat_memory(
     
     // 4. Sort and filter
     scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
-    scored.retain(|r| r.score >= threshold);
+    scored.retain(|r| r.score >= config.threshold);
     
-    scored.truncate(top_k);
+    scored.truncate(config.top_k);
     
     // Sort chronologically for prompt injection
     scored.sort_by(|a, b| a.chunk_index.cmp(&b.chunk_index));

@@ -2459,16 +2459,13 @@ pub async fn init_custom_vector_model(app_handle: AppHandle, folder_path: String
 }
 
 #[tauri::command]
-pub async fn build_chat_index(chat_id: i64, chunk_size: usize, overlap: usize, db_state: tauri::State<'_, DbState>) -> Result<usize, String> {
-    let conn = db_state.0.lock().unwrap();
-    let messages = database::get_messages(&conn, chat_id).map_err(|e| e.to_string())?;
-    vector_memory::build_chat_index(&conn, chat_id, &messages, chunk_size, overlap)
+pub async fn build_chat_index(chat_id: i64, chunk_size: usize, overlap: usize, config: vector_memory::RagConfig, db_state: tauri::State<'_, DbState>) -> Result<usize, String> {
+    vector_memory::build_chat_index(&db_state, chat_id, chunk_size, overlap, &config).await
 }
 
 #[tauri::command]
-pub async fn query_chat_memory(chat_id: i64, query_text: String, top_k: usize, threshold: f32, db_state: tauri::State<'_, DbState>) -> Result<Vec<vector_memory::RetrievalResult>, String> {
-    let conn = db_state.0.lock().unwrap();
-    vector_memory::query_chat_memory(&conn, chat_id, &query_text, top_k, threshold)
+pub async fn query_chat_memory(chat_id: i64, query_text: String, config: vector_memory::RagConfig, db_state: tauri::State<'_, DbState>) -> Result<Vec<vector_memory::RetrievalResult>, String> {
+    vector_memory::query_chat_memory(&db_state, chat_id, &query_text, &config).await
 }
 
 

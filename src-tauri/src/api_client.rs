@@ -380,6 +380,76 @@ struct GoogleContentResponse {
     parts: Option<Vec<GooglePart>>,
 }
 
+// --- EMBEDDINGS ---
+
+#[derive(Serialize)]
+struct EmbeddingRequest {
+    model: String,
+    input: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct EmbeddingResponse {
+    data: Option<Vec<EmbeddingData>>,
+}
+
+#[derive(Deserialize)]
+struct EmbeddingData {
+    embedding: Vec<f32>,
+}
+
+pub async fn generate_embeddings(
+    api_url: String,
+    api_key: String,
+    model: String,
+    texts: Vec<String>,
+) -> Result<Vec<Vec<f32>>, String> {
+    let client = get_client();
+    let url = if api_url.ends_with("/v1/embeddings") {
+        api_url
+    } else {
+        let mut base = api_url.trim_end_matches('/').to_string();
+        if base.ends_with("/v1/chat/completions") {
+            base = base.replace("/chat/completions", "/embeddings");
+        } else if base.ends_with("/chat/completions") {
+             base = base.replace("/chat/completions", "/v1/embeddings");
+        } else if !base.ends_with("/embeddings") {
+             base = format!("{}/v1/embeddings", base);
+        }
+        base
+    };
+
+    let req_body = EmbeddingRequest {
+        model,
+        input: texts,
+    };
+
+    let mut req = client.post(&url)
+        .header("Content-Type", "application/json")
+        .json(&req_body);
+
+    if !api_key.is_empty() {
+        req = req.header("Authorization", format!("Bearer {}", api_key));
+    }
+
+    let resp = req.send().await.map_err(|e| format!("Network error: {}", e))?;
+    let status = resp.status();
+
+    if !status.is_success() {
+        let err_text = resp.text().await.unwrap_or_default();
+        return Err(format!("API error {}: {}", status, err_text));
+    }
+
+    let parsed: EmbeddingResponse = resp.json().await.map_err(|e| format!("Parse error: {}", e))?;
+    
+    if let Some(data) = parsed.data {
+        let embeddings = data.into_iter().map(|d| d.embedding).collect();
+        Ok(embeddings)
+    } else {
+        Err("No embedding data returned".to_string())
+    }
+}
+
 // --- GENERATION FUNCTIONS ---
 
 pub async fn generate_google(

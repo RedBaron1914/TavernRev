@@ -241,8 +241,8 @@ pub async fn prepare_prompt(
             }
             
             if !query.trim().is_empty() {
-                let conn = db_state.0.lock().unwrap();
-                if let Ok(results) = crate::vector_memory::query_chat_memory(&conn, ctx.chat_id, &query, rag.top_k, rag.threshold) {
+                let results = crate::vector_memory::query_chat_memory(db_state, ctx.chat_id, &query, rag).await;
+                if let Ok(results) = results {
                     if !results.is_empty() {
                         let mut combined_memory = String::new();
                         let results_len = results.len();

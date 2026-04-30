@@ -13,6 +13,13 @@ export const RagSettingsTab = ({
   compact?: boolean;
 }) => {
   const [ragEnabled, setRagEnabled] = useState(localStorage.getItem("rag_enabled") === "true");
+  const [ragApiType, setRagApiType] = useState<"local" | "api">(
+    (localStorage.getItem("rag_api_type") as "local" | "api") || "local"
+  );
+  const [ragApiUrl, setRagApiUrl] = useState(localStorage.getItem("rag_api_url") || "");
+  const [ragApiKey, setRagApiKey] = useState(localStorage.getItem("rag_api_key") || "");
+  const [ragApiModel, setRagApiModel] = useState(localStorage.getItem("rag_api_model") || "text-embedding-3-small");
+  
   const [ragModel, setRagModel] = useState(localStorage.getItem("rag_model") || "MultilingualE5Small");
   const [ragCustomModelPath, setRagCustomModelPath] = useState(localStorage.getItem("rag_custom_model_path") || "");
   const [ragChunkSize, setRagChunkSize] = useState(parseInt(localStorage.getItem("rag_chunk_size") || "4"));
@@ -25,6 +32,10 @@ export const RagSettingsTab = ({
 
   useEffect(() => {
     localStorage.setItem("rag_enabled", ragEnabled.toString());
+    localStorage.setItem("rag_api_type", ragApiType);
+    localStorage.setItem("rag_api_url", ragApiUrl);
+    localStorage.setItem("rag_api_key", ragApiKey);
+    localStorage.setItem("rag_api_model", ragApiModel);
     localStorage.setItem("rag_model", ragModel);
     localStorage.setItem("rag_custom_model_path", ragCustomModelPath);
     localStorage.setItem("rag_chunk_size", ragChunkSize.toString());
@@ -48,32 +59,80 @@ export const RagSettingsTab = ({
         </div>
 
         <div className={`space-y-6 transition-opacity duration-300 ${ragEnabled ? "opacity-100" : "opacity-50 pointer-events-none"}`}>
-          <div>
-            <label className="block text-sm font-bold text-gray-300 mb-2">Embedding Model</label>
-            <select
-              value={ragModel}
-              onChange={(e) => setRagModel(e.target.value)}
-              className="w-full bg-gray-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none appearance-none"
-            >
-              <option value="MultilingualE5Small">Multilingual E5 Small (Recommended, 100 languages, ~120MB)</option>
-              <option value="AllMiniLML6V2">All MiniLM L6 v2 (English Only, Fastest, ~90MB)</option>
-              <option value="NomicEmbedText">Nomic Embed Text (English, High Quality, ~130MB)</option>
-              <option value="Custom">Custom Local Model (ONNX Folder)</option>
-            </select>
-          </div>
-
-          {ragModel === "Custom" && (
+          <div className="space-y-4">
+            <h4 className="text-sm font-bold text-gray-300">Embedding Engine</h4>
+            
             <div className="flex gap-2">
-              <div className="flex-1">
+              <button
+                onClick={() => setRagApiType("local")}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg border transition ${
+                  ragApiType === "local" ? "bg-purple-600/20 border-purple-500/50 text-purple-300" : "bg-gray-900 border-white/10 text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                Local (FastEmbed)
+              </button>
+              <button
+                onClick={() => setRagApiType("api")}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg border transition ${
+                  ragApiType === "api" ? "bg-indigo-600/20 border-indigo-500/50 text-indigo-300" : "bg-gray-900 border-white/10 text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                External API
+              </button>
+            </div>
+
+            {ragApiType === "local" ? (
+              <div className="space-y-3 p-4 bg-gray-950/50 rounded-xl border border-white/5">
+                <div>
+                  <label className="block text-sm font-bold text-gray-300 mb-2">Embedding Model</label>
+                  <select
+                    value={ragModel}
+                    onChange={(e) => setRagModel(e.target.value)}
+                    className="w-full bg-gray-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none appearance-none"
+                  >
+                    <option value="MultilingualE5Small">Multilingual E5 Small (Recommended, 100 languages, ~120MB)</option>
+                    <option value="AllMiniLML6V2">All MiniLM L6 v2 (English Only, Fastest, ~90MB)</option>
+                    <option value="NomicEmbedText">Nomic Embed Text (English, High Quality, ~130MB)</option>
+                    <option value="Custom">Custom Local Model (ONNX Folder)</option>
+                  </select>
+                </div>
+                {ragModel === "Custom" && (
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <InputField
+                        label="Path to Custom ONNX Folder"
+                        value={ragCustomModelPath}
+                        onChange={setRagCustomModelPath}
+                        placeholder="C:/models/my-embedding-model/"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3 p-4 bg-gray-950/50 rounded-xl border border-white/5">
                 <InputField
-                  label="Path to Custom ONNX Folder"
-                  value={ragCustomModelPath}
-                  onChange={setRagCustomModelPath}
-                  placeholder="C:/models/my-embedding-model/"
+                  label="API URL"
+                  value={ragApiUrl}
+                  onChange={setRagApiUrl}
+                  placeholder="https://api.openai.com/v1/embeddings"
+                />
+                <InputField
+                  label="API Key"
+                  value={ragApiKey}
+                  onChange={setRagApiKey}
+                  placeholder="sk-..."
+                  type="password"
+                />
+                <InputField
+                  label="Model ID"
+                  value={ragApiModel}
+                  onChange={setRagApiModel}
+                  placeholder="text-embedding-3-small"
                 />
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="pt-4 border-t border-white/5">
             <h4 className="text-sm font-bold text-gray-300 mb-4">Indexing Strategy</h4>
@@ -147,7 +206,9 @@ export const RagSettingsTab = ({
             <button
               onClick={async () => {
                 try {
-                  if (ragModel === "Custom") {
+                  if (ragApiType === "api") {
+                    addToast("API Configuration selected (Tested on generation)", "info");
+                  } else if (ragModel === "Custom") {
                     if (!ragCustomModelPath) return addToast("Please specify a path", "error");
                     const msg = await invoke<string>("init_custom_vector_model", { folderPath: ragCustomModelPath });
                     addToast(msg, "success");
@@ -172,6 +233,17 @@ export const RagSettingsTab = ({
                     chatId,
                     chunkSize: ragChunkSize,
                     overlap: ragOverlap,
+                    config: {
+                      enabled: ragEnabled,
+                      top_k: ragTopK,
+                      threshold: ragThreshold,
+                      injection_depth: 0,
+                      template: ragTemplate,
+                      api_type: ragApiType,
+                      api_url: ragApiUrl,
+                      api_key: ragApiKey,
+                      api_model: ragApiModel
+                    }
                   });
                   addToast(`Indexing complete: ${count} chunks embedded.`, "success");
                 } catch (e) {
