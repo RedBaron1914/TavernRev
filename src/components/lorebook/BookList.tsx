@@ -66,43 +66,43 @@ export function BookList({
                 className={`p-1 rounded transition ${
                   bookEnabled ? "text-emerald-400 hover:text-red-400" : "text-gray-600 hover:text-emerald-400"
                 }`} title={bookEnabled ? "Disable at this level" : "Enable at this level"}>
-                <Power size={12} />
+                <Power size={14} />
               </button>
               {linkType === "chat" && (
                 <button onClick={() => onUnpin(book.id, "chat")}
-                  className="p-1 text-indigo-400 hover:text-red-400 rounded transition" title="Unlink from chat">
-                  <PinOff size={12} />
+                  className="p-1.5 text-indigo-400 hover:text-red-400 rounded transition" title="Unlink from chat">
+                  <PinOff size={14} />
                 </button>
               )}
               {linkType === "card" && (
                 <button onClick={() => onUnpin(book.id, "card")}
-                  className="p-1 text-pink-400 hover:text-red-400 rounded transition" title="Unlink from character">
-                  <PinOff size={12} />
+                  className="p-1.5 text-pink-400 hover:text-red-400 rounded transition" title="Unlink from character">
+                  <PinOff size={14} />
                 </button>
               )}
               {!linkType && (
                 <>
                   <button onClick={() => onPin(book.id, book.name)}
-                    className="p-1 text-gray-600 hover:text-indigo-400 rounded transition" title="Link to character">
-                    <Pin size={12} />
+                    className="p-1.5 text-gray-600 hover:text-indigo-400 rounded transition" title="Link to character">
+                    <Pin size={14} />
                   </button>
                   {book.excluded_from_global && (
                     <button onClick={() => onReturnToGlobal(book.id)}
-                      className="p-1 text-amber-400 hover:text-emerald-400 rounded transition" title="Return to global pool">
-                      <RotateCcw size={12} />
+                      className="p-1.5 text-amber-400 hover:text-emerald-400 rounded transition" title="Return to global pool">
+                      <RotateCcw size={14} />
                     </button>
                   )}
                 </>
               )}
               {(linkType === "card" || linkType === "chat") && book.excluded_from_global && (
                 <button onClick={() => onReturnToGlobal(book.id)}
-                  className="p-1 text-amber-400 hover:text-emerald-400 rounded transition" title="Return to global pool">
-                  <RotateCcw size={12} />
+                  className="p-1.5 text-amber-400 hover:text-emerald-400 rounded transition" title="Return to global pool">
+                  <RotateCcw size={14} />
                 </button>
               )}
               <button onClick={() => onDelete(book.id)}
-                className="p-1 text-gray-600 hover:text-red-400 rounded transition opacity-0 group-hover:opacity-100" title="Delete">
-                <Trash2 size={12} />
+                className="p-1.5 text-gray-600 hover:text-red-400 rounded transition opacity-0 group-hover:opacity-100" title="Delete">
+                <Trash2 size={14} />
               </button>
             </div>
           </div>

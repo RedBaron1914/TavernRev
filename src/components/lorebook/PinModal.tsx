@@ -17,7 +17,7 @@ export function PinModal({ modal, exclude, characterId, chatId, onPin, onClose, 
       <div className="bg-gray-900 border border-white/10 rounded-2xl p-5 w-72 space-y-3 shadow-2xl">
         <div className="flex justify-between items-center">
           <h3 className="text-xs font-bold text-white">Link Lorebook</h3>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-white rounded-lg transition">
+          <button onClick={onClose} className="p-2 text-gray-500 hover:text-white rounded-lg transition">
             <X size={14} />
           </button>
         </div>
@@ -26,12 +26,12 @@ export function PinModal({ modal, exclude, characterId, chatId, onPin, onClose, 
         </p>
         <div className="flex gap-2">
           <button onClick={() => onPin("card")}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition border border-pink-500/30 bg-pink-600/10 text-pink-300 hover:bg-pink-600/20 disabled:opacity-40"
+            className="flex-1 flex items-center justify-center gap-2.5 py-2 rounded-xl text-[11px] font-bold transition border border-pink-500/30 bg-pink-600/10 text-pink-300 hover:bg-pink-600/20 disabled:opacity-40"
             disabled={!characterId}>
             <User size={13} /> Character
           </button>
           <button onClick={() => onPin("chat")}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition border border-indigo-500/30 bg-indigo-600/10 text-indigo-300 hover:bg-indigo-600/20 disabled:opacity-40"
+            className="flex-1 flex items-center justify-center gap-2.5 py-2 rounded-xl text-[11px] font-bold transition border border-indigo-500/30 bg-indigo-600/10 text-indigo-300 hover:bg-indigo-600/20 disabled:opacity-40"
             disabled={!chatId}>
             <MessageSquare size={13} /> Chat
           </button>

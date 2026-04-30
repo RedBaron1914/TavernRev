@@ -332,7 +332,7 @@ export function Sidebar({
       {sidebarVisible && (
         <aside
           className={`${
-            isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl w-96" : "relative"
+            isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl w-[85vw] sm:w-96" : "relative"
           } bg-gray-900 border-r border-white/10 flex flex-col shrink-0 animate-in slide-in-from-left duration-300 pt-[env(safe-area-inset-top)]`}
           style={!isMobile ? { width: sidebarWidth } : undefined}
         >

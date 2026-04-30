@@ -65,7 +65,7 @@ export function MessageActions({
             title="Continue"
           >
             <Play size={12} />
-            <span>Continue</span>
+            <span className="hidden sm:inline">Continue</span>
           </button>
         )}
         {!isUser && showGenerationActions && (
@@ -78,7 +78,7 @@ export function MessageActions({
             title="Regenerate"
           >
             <RefreshCw size={12} className={isGenerating ? "animate-spin" : ""} />
-            <span>Regen</span>
+            <span className="hidden sm:inline">Regen</span>
           </button>
         )}
         <button
@@ -90,7 +90,7 @@ export function MessageActions({
           title="Branch"
         >
           <GitBranch size={12} />
-          <span>Branch</span>
+          <span className="hidden sm:inline">Branch</span>
         </button>
         <button
           onClick={(e) => {
@@ -101,7 +101,7 @@ export function MessageActions({
           title="Edit"
         >
           <Pencil size={12} />
-          <span>Edit</span>
+          <span className="hidden sm:inline">Edit</span>
         </button>
         <button
           onClick={(e) => {
@@ -116,7 +116,7 @@ export function MessageActions({
           title={excluded ? "Include in prompt" : "Exclude from prompt"}
         >
           {excluded ? <Eye size={12} /> : <EyeOff size={12} />}
-          <span>{excluded ? "Show" : "Hide"}</span>
+          <span className="hidden sm:inline">{excluded ? "Show" : "Hide"}</span>
         </button>
         {!isFirst && (
           <button
@@ -128,7 +128,7 @@ export function MessageActions({
             title="Delete"
           >
             <Trash2 size={12} />
-            <span>Delete</span>
+            <span className="hidden sm:inline">Delete</span>
           </button>
         )}
       </div>
@@ -143,7 +143,7 @@ export function MessageActions({
         title="Branch Chat"
       >
         <GitBranch size={12} />
-        <span>Branch</span>
+        <span className="hidden sm:inline">Branch</span>
       </button>
       <button
         onClick={() => onEdit(message)}
@@ -151,7 +151,7 @@ export function MessageActions({
         title="Edit"
       >
         <Pencil size={12} />
-        <span>Edit</span>
+        <span className="hidden sm:inline">Edit</span>
       </button>
       <button
         onClick={() => onToggleExclude(message.id, excluded)}
@@ -163,7 +163,7 @@ export function MessageActions({
         title={excluded ? "Include in prompt" : "Exclude from prompt"}
       >
         {excluded ? <Eye size={12} /> : <EyeOff size={12} />}
-        <span>{excluded ? "Show" : "Hide"}</span>
+        <span className="hidden sm:inline">{excluded ? "Show" : "Hide"}</span>
       </button>
       {!isFirst && (
         <button
@@ -172,7 +172,7 @@ export function MessageActions({
           title="Delete"
         >
           <Trash2 size={12} />
-          <span>Delete</span>
+          <span className="hidden sm:inline">Delete</span>
         </button>
       )}
     </div>

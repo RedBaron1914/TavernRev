@@ -75,7 +75,7 @@ export function ChatHeader({
       <div className="flex items-center gap-1 shrink-0 ml-2">
         {autoSyncStatus !== "idle" && (
           <div
-            className={`p-2 hidden sm:flex items-center justify-center transition-all duration-500 ${
+            className={`p-2 flex items-center justify-center transition-all duration-500 ${
               autoSyncStatus === "success"
                 ? "text-emerald-400"
                 : autoSyncStatus === "error"
@@ -96,7 +96,7 @@ export function ChatHeader({
         <button
           onClick={onExportChat}
           title="Download chat"
-          className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition hidden sm:flex"
+          className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition flex"
         >
           <Download size={20} />
         </button>
@@ -104,7 +104,7 @@ export function ChatHeader({
         <button
           onClick={onOpenContextModal}
           title="Context Manager"
-          className={`p-2 hover:bg-white/10 rounded-full transition hidden sm:flex ${
+          className={`p-2 hover:bg-white/10 rounded-full transition flex ${
             contextPercent > 95
               ? "text-red-400"
               : contextPercent > 80
