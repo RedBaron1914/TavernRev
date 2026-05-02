@@ -330,7 +330,7 @@ pub async fn prepare_prompt(
     if let Some(rag) = &ctx.rag_config {
         if rag.enabled {
             let mut query = String::new();
-            for m in msgs.iter().rev().take(2) {
+            for m in msgs.iter().rev().take(2).rev() {
                 query.push_str(&m.content);
                 query.push('\n');
             }

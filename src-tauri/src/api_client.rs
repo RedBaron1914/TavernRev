@@ -405,7 +405,7 @@ pub async fn generate_embeddings(
     texts: Vec<String>,
 ) -> Result<Vec<Vec<f32>>, String> {
     let client = get_client();
-    let url = if api_url.ends_with("/v1/embeddings") {
+    let url = if api_url.ends_with("/v1/embeddings") || api_url.ends_with("/embeddings") {
         api_url.clone()
     } else {
         let mut base = api_url.trim_end_matches('/').to_string();
@@ -413,7 +413,9 @@ pub async fn generate_embeddings(
             base = base.strip_suffix("/chat/completions").unwrap_or(&base).to_string() + "/embeddings";
         } else if base.ends_with("/chat/completions") {
              base = base.strip_suffix("/chat/completions").unwrap_or(&base).to_string() + "/v1/embeddings";
-        } else if !base.ends_with("/embeddings") {
+        } else if base.ends_with("/v1") {
+             base = format!("{}/embeddings", base);
+        } else {
              base = format!("{}/v1/embeddings", base);
         }
         base
