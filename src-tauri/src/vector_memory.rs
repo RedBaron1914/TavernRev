@@ -282,6 +282,113 @@ pub async fn query_chat_memory(
     Ok(scored)
 }
 
+pub async fn build_lorebook_index(
+    db_state: &crate::database::DbState,
+    char_id: i64,
+    chat_id: i64,
+    chunk_size: usize,
+    overlap: usize,
+    config: &RagConfig,
+) -> Result<usize, String> {
+    let entries = {
+        let conn = db_state.0.lock().unwrap();
+        crate::database::get_active_lore_entries(&conn, char_id, chat_id).map_err(|e| e.to_string())?
+    };
+
+    if chunk_size == 0 || entries.is_empty() { return Ok(0); }
+
+    let mut chunks = Vec::new();
+    let mut chunk_indices = Vec::new();
+    let mut entry_ids = Vec::new();
+    let mut chunk_counter = 0;
+
+    for entry in entries {
+        // Clear old memory for this entry
+        {
+            let conn = db_state.0.lock().unwrap();
+            crate::database::delete_lore_vectors(&conn, entry.id).map_err(|e| e.to_string())?;
+        }
+
+        // We chunk by characters. The chunk_size should be e.g. 400.
+        let chars: Vec<char> = entry.content.chars().collect();
+        if chars.is_empty() { continue; }
+        
+        let mut i = 0;
+        while i < chars.len() {
+            let end = std::cmp::min(i + chunk_size, chars.len());
+            let slice = &chars[i..end];
+            let text: String = slice.iter().collect();
+            
+            let block = format!("Keys: {}\n{}", entry.keys, text);
+            chunks.push(block);
+            chunk_indices.push(chunk_counter);
+            entry_ids.push(entry.id);
+            chunk_counter += 1;
+            
+            if end == chars.len() { break; }
+            i += chunk_size.saturating_sub(overlap).max(1);
+        }
+    }
+
+    if chunks.is_empty() { return Ok(0); }
+
+    let texts: Vec<&str> = chunks.iter().map(|s| s.as_str()).collect();
+    let embeddings = embed_texts(texts, config).await?;
+
+    let conn = db_state.0.lock().unwrap();
+    for (idx, (text, emb)) in chunks.into_iter().zip(embeddings.into_iter()).enumerate() {
+        let e_id = entry_ids[idx];
+        let c_idx = chunk_indices[idx];
+        crate::database::insert_lore_vector(&conn, e_id, c_idx, &text, &emb).map_err(|e| e.to_string())?;
+    }
+
+    Ok(chunk_counter as usize)
+}
+
+pub async fn query_lorebook_memory(
+    db_state: &crate::database::DbState,
+    char_id: i64,
+    chat_id: i64,
+    query_text: &str,
+    config: &RagConfig,
+) -> Result<Vec<i64>, String> {
+    // 1. Embed query
+    let query_embed = embed_texts(vec![query_text], config).await?.into_iter().next().ok_or("Failed to embed query")?;
+
+    // 2. Fetch all vectors for active lore entries
+    let vectors = {
+        let conn = db_state.0.lock().unwrap();
+        let entries = crate::database::get_active_lore_entries(&conn, char_id, chat_id).map_err(|e| e.to_string())?;
+        let entry_ids: Vec<i64> = entries.into_iter().map(|e| e.id).collect();
+        crate::database::get_lore_vectors(&conn, &entry_ids).map_err(|e| e.to_string())?
+    };
+
+    // 3. Compute similarities and score
+    let mut scored: Vec<(i64, f32)> = vectors.into_iter().map(|v| {
+        let score = cosine_similarity(&query_embed, &v.embedding);
+        (v.entry_id, score)
+    }).collect();
+
+    // 4. Sort and filter
+    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    
+    let mut matched_entry_ids = Vec::new();
+    for (e_id, score) in scored {
+        if score >= config.threshold {
+            if !matched_entry_ids.contains(&e_id) {
+                matched_entry_ids.push(e_id);
+                // For lorebooks, maybe top_k represents max entries? 
+                // Let's rely on standard top_k limit
+                if matched_entry_ids.len() >= config.top_k {
+                    break;
+                }
+            }
+        }
+    }
+
+    Ok(matched_entry_ids)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

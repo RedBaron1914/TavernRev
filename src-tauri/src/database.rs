@@ -178,6 +178,77 @@ pub struct MemoryVector {
     pub embedding: Vec<f32>,
 }
 
+pub struct LoreVector {
+    pub entry_id: i64,
+    pub embedding: Vec<f32>,
+}
+
+pub fn insert_lore_vector(
+    conn: &Connection,
+    entry_id: i64,
+    chunk_index: i64,
+    text_content: &str,
+    embedding: &[f32],
+) -> Result<i64> {
+    let bytes: Vec<u8> = embedding
+        .iter()
+        .flat_map(|&f| f.to_le_bytes().to_vec())
+        .collect();
+
+    conn.execute(
+        "INSERT INTO lore_vectors (entry_id, chunk_index, text_content, embedding) VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![entry_id, chunk_index, text_content, bytes],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn get_lore_vectors(conn: &Connection, entry_ids: &[i64]) -> Result<Vec<LoreVector>> {
+    if entry_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    
+    // SQLite doesn't have a built-in IN with array, so we build the placeholders string
+    let placeholders: String = entry_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql = format!("SELECT entry_id, embedding FROM lore_vectors WHERE entry_id IN ({})", placeholders);
+    
+    let mut stmt = conn.prepare(&sql)?;
+    
+    // Convert &[i64] to dynamic parameters
+    let params: Vec<&dyn rusqlite::ToSql> = entry_ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+    
+    let rows = stmt.query_map(params.as_slice(), |row| {
+        let entry_id: i64 = row.get(0)?;
+        let blob: Vec<u8> = row.get(1)?;
+
+        let mut embedding = Vec::new();
+        for chunk in blob.chunks_exact(4) {
+            if chunk.len() == 4 {
+                let f = f32::from_le_bytes(chunk.try_into().unwrap());
+                embedding.push(f);
+            }
+        }
+
+        Ok(LoreVector {
+            entry_id,
+            embedding,
+        })
+    })?;
+
+    let mut results = Vec::new();
+    for v in rows.flatten() {
+        results.push(v);
+    }
+    Ok(results)
+}
+
+pub fn delete_lore_vectors(conn: &Connection, entry_id: i64) -> Result<()> {
+    conn.execute(
+        "DELETE FROM lore_vectors WHERE entry_id = ?1",
+        params![entry_id],
+    )?;
+    Ok(())
+}
+
 pub fn insert_memory_vector(
     conn: &Connection,
     chat_id: i64,
@@ -409,6 +480,19 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
             probability INTEGER DEFAULT 100, position TEXT DEFAULT 'before_char', depth INTEGER DEFAULT 4,
             FOREIGN KEY(book_id) REFERENCES lorebooks(id) ON DELETE CASCADE
         )", [],
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS lore_vectors (
+            id INTEGER PRIMARY KEY,
+            entry_id INTEGER NOT NULL,
+            chunk_index INTEGER NOT NULL,
+            text_content TEXT NOT NULL,
+            embedding BLOB NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(entry_id) REFERENCES lore_entries(id) ON DELETE CASCADE
+        )",
+        [],
     )?;
 
     conn.execute(

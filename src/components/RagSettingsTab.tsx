@@ -254,6 +254,36 @@ export const RagSettingsTab = ({
             >
               Index Current Chat Now
             </button>
+            <button
+              onClick={async () => {
+                if (!chatId) return addToast("Open a chat first", "error");
+                try {
+                  addToast("Indexing lorebooks...", "info");
+                  const count = await invoke<number>("build_lorebook_index", {
+                    chatId,
+                    chunkSize: ragChunkSize,
+                    overlap: ragOverlap,
+                    config: {
+                      enabled: ragEnabled,
+                      top_k: ragTopK,
+                      threshold: ragThreshold,
+                      injection_depth: 0,
+                      template: ragTemplate,
+                      api_type: ragApiType,
+                      api_url: ragApiUrl,
+                      api_key: ragApiKey,
+                      api_model: ragApiModel
+                    }
+                  });
+                  addToast(`Lorebook indexing complete: ${count} chunks embedded.`, "success");
+                } catch (e) {
+                  addToast(String(e), "error");
+                }
+              }}
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl text-sm transition"
+            >
+              Index Active Lorebooks
+            </button>
           </div>
         </div>
       </div>

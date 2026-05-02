@@ -90,6 +90,7 @@ pub fn run() {
             commands::init_vector_model,
             commands::init_custom_vector_model,
             commands::build_chat_index,
+            commands::build_lorebook_index,
             commands::query_chat_memory,
             // GROUPS
             commands::create_group,

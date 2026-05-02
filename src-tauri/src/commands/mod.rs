@@ -2464,6 +2464,15 @@ pub async fn build_chat_index(chat_id: i64, chunk_size: usize, overlap: usize, c
 }
 
 #[tauri::command]
+pub async fn build_lorebook_index(chat_id: i64, chunk_size: usize, overlap: usize, config: vector_memory::RagConfig, db_state: tauri::State<'_, DbState>) -> Result<usize, String> {
+    let char_id = {
+        let conn = db_state.0.lock().unwrap();
+        conn.query_row("SELECT character_id FROM chats WHERE id = ?1", [chat_id], |r| r.get::<_, i64>(0)).unwrap_or(0)
+    };
+    vector_memory::build_lorebook_index(&*db_state, char_id, chat_id, chunk_size, overlap, &config).await
+}
+
+#[tauri::command]
 pub async fn query_chat_memory(chat_id: i64, query_text: String, config: vector_memory::RagConfig, db_state: tauri::State<'_, DbState>) -> Result<Vec<vector_memory::RetrievalResult>, String> {
     vector_memory::query_chat_memory(&*db_state, chat_id, &query_text, &config).await
 }

@@ -321,10 +321,31 @@ pub async fn prepare_prompt(
         });
     }
 
-    let lore_entries_db = {
+    let mut lore_entries_db = {
         let conn = db_state.0.lock().unwrap();
         database::get_active_lore_entries(&conn, ctx.real_char_id, ctx.chat_id).unwrap_or_default()
     };
+
+    // Semantic Lorebook Search
+    if let Some(rag) = &ctx.rag_config {
+        if rag.enabled {
+            let mut query = String::new();
+            for m in msgs.iter().rev().take(2) {
+                query.push_str(&m.content);
+                query.push('\n');
+            }
+            if !query.trim().is_empty() {
+                if let Ok(matched_ids) = crate::vector_memory::query_lorebook_memory(&*db_state, ctx.real_char_id, ctx.chat_id, &query, rag).await {
+                    for entry in &mut lore_entries_db {
+                        if matched_ids.contains(&entry.id) {
+                            // Forcefully activate the entry via RAG semantic match
+                            entry.constant = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
     
     let lore_entries: Vec<prompt_engine::ScanEntry> = lore_entries_db.into_iter().map(|e| {
         prompt_engine::ScanEntry {
