@@ -139,13 +139,12 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
     finalContent = finalContent.replace(/^---$/gm, "\n<hr class='my-4 border-white/10' />\n");
 
     const reasoningParts: string[] = [];
-    const hiddenTagParts: Array<{ tag: string; content: string }> = [];
     let cleanContent = finalContent;
 
     if (!isUser) {
-        cleanContent = finalContent.replace(pairedTagRegex, (_match, tagName, innerContent) => {
+        cleanContent = finalContent.replace(pairedTagRegex, (match, tagName, innerContent) => {
             const trimmed = String(innerContent).trim();
-            if (!trimmed) return "";
+            if (!trimmed) return match;
 
             const normalizedTag = String(tagName).toLowerCase();
             if (reasoningTags.has(normalizedTag)) {
@@ -153,8 +152,7 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
                 return "";
             }
 
-            hiddenTagParts.push({ tag: normalizedTag, content: trimmed });
-            return "";
+            return match;
         }).trim();
     }
 
@@ -184,17 +182,6 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
                     </div>
                 </details>
             )}
-            {hiddenTagParts.map((part, index) => (
-                <details key={`${part.tag}-${index}`} className="bg-gray-950/30 rounded-lg border border-white/5 overflow-hidden open:bg-gray-950/50 mb-1">
-                    <summary className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-widest text-gray-500 cursor-pointer hover:bg-white/5 hover:text-gray-300 transition select-none outline-none list-none">
-                        {part.tag}
-                    </summary>
-                    <div
-                        className="prose prose-sm prose-invert max-w-none break-words overflow-x-auto [&_p]:mb-4 last:[&_p]:mb-0 p-3 border-t border-white/5 bg-black/20"
-                        dangerouslySetInnerHTML={{ __html: renderMessageHtml(part.content) }}
-                    />
-                </details>
-            ))}
             <div 
                 className={`prose prose-sm max-w-none break-words overflow-x-auto [&_p]:mb-4 last:[&_p]:mb-0 ${isUser ? 'prose-invert text-white' : 'prose-invert text-gray-100'}`}
                 dangerouslySetInnerHTML={{ __html: html }}
