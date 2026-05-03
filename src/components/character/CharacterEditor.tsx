@@ -3,7 +3,7 @@ import {
   X, Image, Cpu, Plus, Trash2, Download, Save, 
   Book, MessageSquare, Sparkles, ChevronRight,
   UserCircle, Settings as SettingsIcon, History,
-  Layout, Type, MessageCircle
+  Layout, Type, MessageCircle, Menu, Bot
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import Avatar from "../Avatar";
@@ -26,6 +26,8 @@ export const CharacterEditor = ({
 }) => {
   const [formData, setFormData] = useState(character);
   const [activeSection, setActiveSection] = useState<EditorSection>("general");
+  const [showMobileNav, setShowMobileNav] = useState(false);
+  const [showAssistant, setShowAssistant] = useState(!isMobile);
   const [assistantMessages, setAssistantMessages] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([
     { role: 'assistant', content: "Hello! I am your AI Studio Assistant. I can help you improve your character card. Try asking me to 'make the description more detailed' or 'suggest some snarky personality traits'." }
   ]);
@@ -290,7 +292,15 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
           <button onClick={onCancel} className="p-2 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition">
             <X size={20} />
           </button>
-          <div className="h-6 w-px bg-white/10 mx-2" />
+          {isMobile && (
+            <button 
+                onClick={() => setShowMobileNav(!showMobileNav)}
+                className={`p-2 rounded-xl transition ${showMobileNav ? 'bg-indigo-600 text-white' : 'bg-white/5 text-indigo-400'}`}
+            >
+                <Menu size={20} />
+            </button>
+          )}
+          <div className="h-6 w-px bg-white/10 mx-2 hidden sm:block" />
           <div className="flex items-center gap-3">
              <Avatar src={formData.avatar} name={formData.name} size="xs" />
              <div className="hidden sm:block">
@@ -303,6 +313,13 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
         </div>
 
         <div className="flex items-center gap-2">
+            <button
+                onClick={() => setShowAssistant(!showAssistant)}
+                className={`p-2 rounded-xl transition ${showAssistant ? 'bg-indigo-600 text-white' : 'bg-white/5 text-amber-400'}`}
+                title="Toggle AI Assistant"
+            >
+                <Bot size={20} />
+            </button>
             <button
                 onClick={handleExportChar}
                 className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-gray-400 hover:bg-white/5 hover:text-indigo-400 transition border border-transparent hover:border-indigo-500/20"
@@ -322,7 +339,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
       <div className="flex-1 flex overflow-hidden relative">
         
         {/* LEFT NAVIGATOR (SIDEBAR) */}
-        <aside className={`${isMobile ? 'fixed inset-y-16 left-0 z-30 w-64 bg-gray-900 border-r border-white/10 shadow-2xl transform transition-transform duration-300' : 'w-64 border-r border-white/5 bg-gray-950/50 flex flex-col'} ${isMobile && activeSection !== 'general' && 'translate-x-[-100%]'}`}>
+        <aside className={`${isMobile ? `fixed inset-y-16 left-0 z-30 w-64 bg-gray-900 border-r border-white/10 shadow-2xl transform transition-transform duration-300 ${showMobileNav ? 'translate-x-0' : 'translate-x-[-100%]'}` : 'w-64 border-r border-white/5 bg-gray-950/50 flex flex-col'}`}>
             <nav className="p-4 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
                 <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-4">Studio Navigator</div>
                 {sections.map(s => (
@@ -557,11 +574,11 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
         </main>
 
         {/* RIGHT ASSISTANT PANEL */}
-        <aside className="hidden lg:flex w-96 border-l border-white/5 bg-gray-900/30 flex-col z-10 shadow-2xl">
+        <aside className={`${isMobile ? `fixed inset-y-16 right-0 z-40 w-full bg-gray-950 transform transition-transform duration-300 ${showAssistant ? 'translate-x-0' : 'translate-x-[100%]'}` : `${showAssistant ? 'w-96' : 'hidden'} border-l border-white/5 bg-gray-900/30`} flex flex-col z-10 shadow-2xl transition-all duration-300`}>
             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-gray-800/20">
                 <div className="flex items-center gap-3">
                     <Sparkles size={18} className="text-amber-400 animate-pulse" />
-                    <span className="text-sm font-bold tracking-tight">Studio Assistant</span>
+                    <span className="text-sm font-bold tracking-tight">Studio Assistant <span className="text-[10px] text-amber-500/50 ml-1">(BETA)</span></span>
                 </div>
                 <div className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-bold text-indigo-400 uppercase">Live Context</div>
             </div>

@@ -14,7 +14,7 @@ const SPLASHES = [
     "Don't forget to hydrate!",
     "Is this simulation?",
     "Error 418: I'm a teapot",
-    "TavernRev v1.1.0!",
+    "TavernRev v1.2.0!",
     "Tokio Drift!",
     "Regex magic!",
     "Prompt Engineering is Art",
@@ -342,7 +342,7 @@ export const CharacterSelect = ({
         {/* Footer Status */}
         <div className="p-3 bg-gray-950 border-t border-white/5 text-[10px] text-gray-600 flex justify-between px-6">
             <span>{filtered.length} Characters</span>
-            <span>TavernRev v1.1.0</span>
+            <span>TavernRev v1.2.0</span>
         </div>
       </div>
     </div>
