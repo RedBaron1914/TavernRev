@@ -29,7 +29,7 @@ use tauri::{AppHandle, Manager};
 
 
 pub fn get_avatars_dir(app_handle: &AppHandle) -> PathBuf {
-    let app_dir = app_handle.path().app_data_dir().unwrap();
+    let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
     app_dir.join("avatars")
 }
 

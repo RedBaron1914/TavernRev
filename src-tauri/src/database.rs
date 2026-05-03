@@ -354,8 +354,8 @@ fn column_exists(conn: &Connection, table: &str, column: &str) -> Result<bool> {
 pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
     let app_dir = app_handle
         .path()
-        .app_data_dir()
-        .expect("The app data directory should exist.");
+        .app_local_data_dir()
+        .unwrap_or_default();
     std::fs::create_dir_all(&app_dir).ok();
     let db_path = app_dir.join("tavern.db");
 

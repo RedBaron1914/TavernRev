@@ -8,13 +8,13 @@ use crate::prompt_engine::{PromptModule, CharacterData, WISettings};
 use crate::{StartupError, LastPrompt};
 
 pub fn get_avatars_dir(app_handle: &AppHandle) -> PathBuf {
-    let app_dir = app_handle.path().app_data_dir().unwrap();
+    let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
     app_dir.join("avatars")
 }
 
 #[tauri::command]
 pub async fn save_extension_script(app_handle: AppHandle, file_name: String, content: String) -> Result<(), String> {
-    let app_dir = app_handle.path().app_data_dir().unwrap();
+    let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
     let ext_dir = app_dir.join("extensions");
     if !ext_dir.exists() {
         std::fs::create_dir_all(&ext_dir).map_err(|e| e.to_string())?;
@@ -30,7 +30,7 @@ pub async fn save_extension_script(app_handle: AppHandle, file_name: String, con
 
 #[tauri::command]
 pub async fn delete_extension_script(app_handle: AppHandle, file_name: String) -> Result<(), String> {
-    let app_dir = app_handle.path().app_data_dir().unwrap();
+    let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
     let ext_dir = app_dir.join("extensions");
     let file_path = ext_dir.join(file_name);
     
@@ -42,7 +42,7 @@ pub async fn delete_extension_script(app_handle: AppHandle, file_name: String) -
 
 #[tauri::command]
 pub async fn get_extension_scripts(app_handle: AppHandle) -> Result<Vec<String>, String> {
-    let app_dir = app_handle.path().app_data_dir().unwrap();
+    let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
     let ext_dir = app_dir.join("extensions");
     
     let mut scripts = Vec::new();
@@ -627,7 +627,7 @@ pub fn tokenize_text(text: String) -> Vec<String> {
 // --- Preset File Commands ---
 
 pub fn get_presets_dir(app_handle: &AppHandle) -> PathBuf {
-    let app_dir = app_handle.path().app_data_dir().unwrap();
+    let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
     app_dir.join("presets")
 }
 
@@ -678,7 +678,7 @@ pub fn delete_preset(app_handle: AppHandle, file_name: String) -> Result<(), Str
 // --- Connection Profile Commands ---
 
 pub fn get_connections_dir(app_handle: &AppHandle) -> PathBuf {
-    let app_dir = app_handle.path().app_data_dir().unwrap();
+    let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
     app_dir.join("connections")
 }
 

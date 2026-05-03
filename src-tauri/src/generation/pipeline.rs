@@ -425,7 +425,7 @@ pub async fn prepare_prompt(
     ctx.trimmed_db_ids = trimmed_db_ids;
 
     if ctx.preset.request_images {
-        let app_data = app_handle.path().app_data_dir().unwrap_or_default();
+        let app_data = app_handle.path().app_local_data_dir().unwrap_or_default();
         let avatars_dir = app_data.join("avatars");
         let mut visual_msgs = Vec::new();
         

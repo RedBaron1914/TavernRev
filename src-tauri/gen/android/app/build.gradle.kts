@@ -40,8 +40,22 @@ android {
             .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
             .forEach { output ->
                 val abi = output.getFilter(com.android.build.OutputFile.ABI) ?: "universal"
-                val ver = tauriProperties.getProperty("tauri.android.versionName", "1.0")
-                output.outputFileName = "TavernRev-v${ver}-${abi}.apk"
+                if (variant.buildType.name == "release") {
+                    val ver = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+                    output.outputFileName = "TavernRev-v${ver}-${abi}.apk"
+                } else if (variant.buildType.name == "debug") {
+                    if (abi == "arm64-v8a") {
+                        output.outputFileName = "app-arm64-debug.apk"
+                    } else if (abi == "armeabi-v7a") {
+                        output.outputFileName = "app-arm-debug.apk"
+                    } else if (abi == "x86") {
+                        output.outputFileName = "app-x86-debug.apk"
+                    } else if (abi == "x86_64") {
+                        output.outputFileName = "app-x86_64-debug.apk"
+                    } else {
+                        output.outputFileName = "app-universal-debug.apk"
+                    }
+                }
             }
     }
 
@@ -70,7 +84,10 @@ android {
         }
         getByName("release") {
             isMinifyEnabled = true
-            signingConfig = signingConfigs.getByName("release")
+            val keystorePath = System.getenv("SIGNING_STORE_FILE")
+            if (keystorePath != null && file(keystorePath).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }
                     .plus(getDefaultProguardFile("proguard-android-optimize.txt"))

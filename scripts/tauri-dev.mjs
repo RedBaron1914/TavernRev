@@ -36,14 +36,20 @@ if (fs.existsSync(envLocalPath)) {
   }
 }
 
+let args = process.argv.slice(2);
+
+if (env.TAURI_DEV_HOST && args.includes('dev') && !args.includes('--host')) {
+  args.push('--host', env.TAURI_DEV_HOST);
+}
+
 const child = process.platform === 'win32'
-  ? spawn('cmd.exe', ['/d', '/s', '/c', 'pnpm exec tauri ' + process.argv.slice(2).join(' ')], {
+  ? spawn('cmd.exe', ['/d', '/s', '/c', 'pnpm exec tauri ' + args.join(' ')], {
       cwd: root,
       env,
       stdio: 'inherit',
       shell: false,
     })
-  : spawn('pnpm', ['exec', 'tauri', ...process.argv.slice(2)], {
+  : spawn('pnpm', ['exec', 'tauri', ...args], {
       cwd: root,
       env,
       stdio: 'inherit',
