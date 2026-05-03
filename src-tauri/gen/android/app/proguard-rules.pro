@@ -19,3 +19,17 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- TAVERNREV KEEP RULES ---
+
+# Protect Tauri Core
+-keep class app.tauri.** { *; }
+-keep class com.stoya.tavernrev.** { *; }
+
+# Protect Plugins (Opener, etc)
+-keep class com.tauri.plugin.** { *; }
+
+# Protect General JNI Exports
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
