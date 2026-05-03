@@ -117,12 +117,33 @@ export const normalizePreset = (data: any): Preset => {
     }
   }
 
+  // Pre-process all raw prompts to ensure they have base properties
+  rawPrompts = rawPrompts.map((p: any, idx: number) => {
+      const originalOrder = p.injection_order !== undefined ? Number(p.injection_order) : (p.depth !== undefined ? Number(p.depth) : 0);
+      return {
+          ...p,
+          identifier: p.identifier || `imported_${idx}_${Date.now()}`,
+          name: p.name || "Untitled",
+          content: p.content || "",
+          role: p.role || "system",
+          enabled: p.enabled ?? ["main", "chatHistory", "charDescription"].includes(p.identifier),
+          injection_order: originalOrder,
+          injection_depth: Number(p.injection_depth ?? p.depth ?? 4),
+          injection_position: Number(p.injection_position ?? p.position ?? 0),
+          system_prompt: !!p.system_prompt,
+          marker: !!p.marker,
+          forbid_overrides: !!p.forbid_overrides,
+          injection_trigger: Array.isArray(p.injection_trigger) ? p.injection_trigger : [],
+          _originalIdx: idx,
+      };
+  });
+
   if (promptOrderList.length > 0) {
     const orderMap = new Map();
     const enabledMap = new Map();
 
     promptOrderList.forEach((item: any, index: number) => {
-      const id = typeof item === "string" ? item : item?.identifier;
+      const id = typeof item === "string" ? item : (item?.identifier || item?.name);
       if (id) {
         orderMap.set(id, index);
         if (typeof item !== "string" && item.enabled !== undefined) {
@@ -131,9 +152,12 @@ export const normalizePreset = (data: any): Preset => {
       }
     });
 
-    rawPrompts = rawPrompts.map((p: any, idx: number) => {
-      let sortIndex = 999999;
-      let isEnabled = p.enabled ?? false;
+    // STRICT SILLYTAVERN BEHAVIOR: Discard orphaned prompts not in prompt_order
+    const filteredPrompts = rawPrompts.filter(p => orderMap.has(p.identifier) || (p.name && orderMap.has(p.name)));
+
+    const sortedPrompts = filteredPrompts.map((p: any) => {
+      let sortIndex = 0;
+      let isEnabled = p.enabled;
 
       if (orderMap.has(p.identifier)) {
         sortIndex = orderMap.get(p.identifier);
@@ -141,14 +165,17 @@ export const normalizePreset = (data: any): Preset => {
       } else if (p.name && orderMap.has(p.name)) {
         sortIndex = orderMap.get(p.name);
         if (enabledMap.has(p.name)) isEnabled = enabledMap.get(p.name);
-      } else {
-        sortIndex = 999999 + idx;
       }
 
       return { ...p, _sortIndex: sortIndex, enabled: isEnabled };
     });
 
-    rawPrompts.sort((a: any, b: any) => a._sortIndex - b._sortIndex);
+    sortedPrompts.sort((a: any, b: any) => {
+        if (a._sortIndex !== b._sortIndex) return a._sortIndex - b._sortIndex;
+        return a._originalIdx - b._originalIdx;
+    });
+
+    rawPrompts = sortedPrompts;
   } else {
     const defaultOrderMap = new Map(ST_DEFAULT_ORDER.map((id, index) => [id, index]));
     const systemPrompts = [];
@@ -156,68 +183,49 @@ export const normalizePreset = (data: any): Preset => {
 
     for (let i = 0; i < rawPrompts.length; i++) {
       const p = rawPrompts[i];
-      p._originalIdx = i;
       if (defaultOrderMap.has(p.identifier)) systemPrompts.push(p);
       else customPrompts.push(p);
     }
 
     customPrompts.sort((a: any, b: any) => {
-      const orderA = Number(a.injection_order ?? a.depth ?? 0);
-      const orderB = Number(b.injection_order ?? b.depth ?? 0);
-      if (orderA !== orderB) return orderB - orderA;
+      const orderA = a.injection_order;
+      const orderB = b.injection_order;
+      if (orderA !== orderB) return orderB - orderA; // Descending for custom logic fallback
       return a._originalIdx - b._originalIdx;
     });
 
-    const mappedCustom = customPrompts.map((p: any, idx: number) => ({
+    const mappedCustom = customPrompts.map((p: any) => ({
       ...p,
-      _sortIndex: -10000 + idx,
-      enabled: p.enabled ?? true,
+      _sortIndex: p.injection_order,
     }));
 
     const mappedSystem = systemPrompts.map((p: any) => ({
       ...p,
-      _sortIndex: defaultOrderMap.get(p.identifier)!,
-      enabled:
-        p.enabled ?? ["main", "chatHistory", "charDescription"].includes(p.identifier),
+      _sortIndex: defaultOrderMap.get(p.identifier)! - 10000,
     }));
 
     rawPrompts = [...mappedCustom, ...mappedSystem];
-    rawPrompts.sort((a: any, b: any) => a._sortIndex - b._sortIndex);
+    rawPrompts.sort((a: any, b: any) => {
+        if (a._sortIndex !== b._sortIndex) return a._sortIndex - b._sortIndex;
+        return a._originalIdx - b._originalIdx;
+    });
   }
 
-  rawPrompts = rawPrompts.map((p: any, idx: number) => ({
-    ...p,
-    injection_order: idx,
+  // Remove the temporary _sortIndex and _originalIdx, and force injection_order to match the sorted array index
+  const finalPrompts = rawPrompts.map(({ _sortIndex, _originalIdx, ...rest }: any, idx: number) => ({
+      ...rest,
+      injection_order: idx,
   }));
 
   return {
     ...DEFAULT_PRESET_VALUES,
     ...data,
     temperature: data.temperature ?? data.temp ?? DEFAULT_PRESET_VALUES.temperature,
-    repetition_penalty:
-      data.repetition_penalty ?? data.rep_pen ?? DEFAULT_PRESET_VALUES.repetition_penalty,
-    presence_penalty:
-      data.presence_penalty ?? data.pres_pen ?? DEFAULT_PRESET_VALUES.presence_penalty,
-    frequency_penalty:
-      data.frequency_penalty ?? data.freq_pen ?? DEFAULT_PRESET_VALUES.frequency_penalty,
-    openai_max_tokens:
-      data.openai_max_tokens ?? data.max_length ?? DEFAULT_PRESET_VALUES.openai_max_tokens,
-    prompts: rawPrompts.map((p: any, idx: number) => ({
-      ...p,
-      identifier: p.identifier || `imported_${idx}_${Date.now()}`,
-      name: p.name || "Untitled",
-      content: p.content || "",
-      role: p.role || "system",
-      enabled:
-        p.enabled ?? ["main", "chatHistory", "charDescription"].includes(p.identifier),
-      injection_order: Number(p.injection_order ?? p.depth ?? 0),
-      injection_depth: Number(p.injection_depth ?? p.depth ?? 4),
-      injection_position: Number(p.injection_position ?? p.position ?? 0),
-      system_prompt: !!p.system_prompt,
-      marker: !!p.marker,
-      forbid_overrides: !!p.forbid_overrides,
-      injection_trigger: Array.isArray(p.injection_trigger) ? p.injection_trigger : [],
-    })),
+    repetition_penalty: data.repetition_penalty ?? data.rep_pen ?? DEFAULT_PRESET_VALUES.repetition_penalty,
+    presence_penalty: data.presence_penalty ?? data.pres_pen ?? DEFAULT_PRESET_VALUES.presence_penalty,
+    frequency_penalty: data.frequency_penalty ?? data.freq_pen ?? DEFAULT_PRESET_VALUES.frequency_penalty,
+    openai_max_tokens: data.openai_max_tokens ?? data.max_length ?? DEFAULT_PRESET_VALUES.openai_max_tokens,
+    prompts: finalPrompts,
   };
 };
 
