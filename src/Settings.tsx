@@ -474,6 +474,12 @@ const ModuleEditor = ({ module, onSave, onCancel }: any) => {
     { value: "assistant", label: "Assistant" },
   ];
 
+  const positionOptions = [
+    { value: 0, label: "Relative (Native)" },
+    { value: 1, label: "In-Chat (Depth)" },
+    { value: 2, label: "RAG / Custom Location" },
+  ];
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
       <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90dvh] border border-white/10 overflow-hidden ring-1 ring-white/10">
@@ -488,30 +494,53 @@ const ModuleEditor = ({ module, onSave, onCancel }: any) => {
             value={formData.name}
             onChange={(v: string) => handleChange("name", v)}
           />
-          <div className="grid grid-cols-2 gap-5">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <SelectField
               label="Role"
               value={formData.role}
               onChange={(v: string) => handleChange("role", v)}
               options={roleOptions}
             />
+            <SelectField
+               label="Injection Position"
+               value={formData.injection_position ?? 0}
+               onChange={(v: any) => handleChange("injection_position", Number(v))}
+               options={positionOptions}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-5">
             <InputField
-              label="Order"
+              label="Injection Order"
               value={formData.injection_order}
               onChange={(v: string) =>
                 handleChange("injection_order", Number(v))
               }
               type="number"
+              helpText="Relative priority. Lower = Higher in prompt."
             />
+            {(formData.injection_position === 1 || formData.injection_position === 2) && (
+               <InputField
+                 label="Injection Depth"
+                 value={formData.injection_depth ?? 0}
+                 onChange={(v: string) =>
+                   handleChange("injection_depth", Number(v))
+                 }
+                 type="number"
+                 helpText="Messages from bottom (In-Chat only)."
+               />
+            )}
           </div>
+
           <TextAreaField
             label="Content"
             value={formData.content}
             onChange={(v: string) => handleChange("content", v)}
             rows={10}
+            helpText="Supports macros like {{char}}, {{user}}, {{memory}}."
           />
-        </main>
-        <footer className="p-5 flex justify-end gap-3 border-t border-white/10 bg-gray-900">
+        </main>        <footer className="p-5 flex justify-end gap-3 border-t border-white/10 bg-gray-900">
           <button
             onClick={onCancel}
             className="px-5 py-2.5 rounded-xl hover:bg-white/10 text-sm font-medium text-gray-300"

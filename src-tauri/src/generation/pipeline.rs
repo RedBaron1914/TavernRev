@@ -212,6 +212,7 @@ pub async fn prepare_prompt(
     app_handle: &AppHandle,
     db_state: &tauri::State<'_, DbState>,
 ) -> Result<(Vec<api_client::OpenAIMessage>, script_engine::Evaluator), String> {
+    // --- 2. Module & RAG Injection ---
     let mut msgs = ctx.original_msgs.clone();
     
     if msgs.is_empty() {
@@ -294,33 +295,46 @@ pub async fn prepare_prompt(
         });
     }
 
+    // --- 3. Chat Memory (Summarization) as Module ---
     let chat_memory = if ctx.chat_id > 0 {
         let conn = db_state.0.lock().unwrap();
         conn.query_row("SELECT memory FROM chats WHERE id = ?1", rusqlite::params![ctx.chat_id], |row| row.get::<_, Option<String>>(0)).unwrap_or_default().unwrap_or_default()
     } else { String::new() };
 
     if !chat_memory.is_empty() {
-        let mut dynamic_order = 5;
-        if let Some(ch) = ctx.preset.prompts.iter().find(|p| p.identifier == "chatHistory") {
-            dynamic_order = ch.injection_order - 1;
-        }
+        // Find existing chatMemory module or create a default one
+        if let Some(m) = ctx.preset.prompts.iter_mut().find(|p| p.identifier == "chatMemory") {
+            // Update its content with the actual summary from DB
+            m.content = m.content.replace("{{memory}}", &chat_memory);
+            // If the module was just the macro, ensure it has context
+            if !m.content.contains(&chat_memory) {
+                m.content = format!("{}\n{}", m.content, chat_memory);
+            }
+        } else {
+            // Default injection if not in preset
+            let mut dynamic_order = 5;
+            if let Some(ch) = ctx.preset.prompts.iter().find(|p| p.identifier == "chatHistory") {
+                dynamic_order = ch.injection_order - 1;
+            }
 
-        ctx.preset.prompts.push(prompt_engine::PromptModule {
-            identifier: "chatMemory".to_string(),
-            name: "Chat Memory".to_string(),
-            content: format!("[System Note: Chat Context]\n{}", chat_memory),
-            role: "system".to_string(),
-            enabled: true,
-            injection_order: dynamic_order,
-            injection_depth: 0,
-            injection_position: 0, // Main System Prompt
-            system_prompt: true,
-            marker: None,
-            forbid_overrides: false,
-            injection_trigger: vec![],
-        });
+            ctx.preset.prompts.push(prompt_engine::PromptModule {
+                identifier: "chatMemory".to_string(),
+                name: "Chat Memory".to_string(),
+                content: format!("[System Note: Chat Context]\n{}", chat_memory),
+                role: "system".to_string(),
+                enabled: true,
+                injection_order: dynamic_order,
+                injection_depth: 0,
+                injection_position: 0, // Main System Prompt
+                system_prompt: true,
+                marker: None,
+                forbid_overrides: false,
+                injection_trigger: vec![],
+            });
+        }
     }
 
+    // --- 4. Lorebook & Prompt Assembly ---
     let mut lore_entries_db = {
         let conn = db_state.0.lock().unwrap();
         database::get_active_lore_entries(&conn, ctx.real_char_id, ctx.chat_id).unwrap_or_default()
