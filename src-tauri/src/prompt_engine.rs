@@ -469,23 +469,50 @@ pub async fn assemble_prompt(
         });
     }
 
-    in_chat_modules.sort_by(|a, b| a.injection_depth.cmp(&b.injection_depth));
+    in_chat_modules.sort_by(|a, b| {
+        let depth_cmp = b.injection_depth.cmp(&a.injection_depth);
+        if depth_cmp == std::cmp::Ordering::Equal {
+            a.injection_order.cmp(&b.injection_order)
+        } else {
+            depth_cmp
+        }
+    });
     for module in in_chat_modules {
         let depth = module.injection_depth as usize;
         let processed = process_text(evaluator, &module.content, &ctx_map).await;
         if processed.trim().is_empty() { continue; }
         let msg = Message { role: module.role.clone(), content: processed, name: None, images: None, db_id: None };
-        if depth <= history_with_injections.len() { history_with_injections.insert(history_with_injections.len() - depth, msg); } else { history_with_injections.insert(0, msg); }
+        if depth <= history_with_injections.len() { 
+            history_with_injections.insert(history_with_injections.len() - depth, msg); 
+        } else { 
+            history_with_injections.insert(0, msg); 
+        }
     }
 
-    let depth_entries: Vec<&ScanEntry> = active_lore.iter().filter(|e| e.position.starts_with("at_depth")).collect();
+    let mut depth_entries: Vec<&ScanEntry> = active_lore.iter().filter(|e| e.position.starts_with("at_depth")).collect();
+    depth_entries.sort_by(|a, b| {
+        let depth_cmp = b.depth.cmp(&a.depth);
+        if depth_cmp == std::cmp::Ordering::Equal {
+            a.priority.cmp(&b.priority)
+        } else {
+            depth_cmp
+        }
+    });
     for entry in depth_entries {
         let depth = entry.depth as usize;
         let processed = process_text(evaluator, &entry.content, &ctx_map).await;
         if processed.trim().is_empty() { continue; }
-        let role = match entry.position.as_str() { "at_depth_user" => "user", "at_depth_assistant" => "assistant", _ => "system" };
+        let role = match entry.position.as_str() { 
+            "at_depth_user" => "user", 
+            "at_depth_assistant" => "assistant", 
+            _ => "system" 
+        };
         let msg = Message { role: role.to_string(), content: processed, name: None, images: None, db_id: None };
-        if depth <= history_with_injections.len() { history_with_injections.insert(history_with_injections.len() - depth, msg); } else { history_with_injections.insert(0, msg); }
+        if depth <= history_with_injections.len() { 
+            history_with_injections.insert(history_with_injections.len() - depth, msg); 
+        } else { 
+            history_with_injections.insert(0, msg); 
+        }
     }
 
     // --- 5. ASSEMBLE PARTS ---
