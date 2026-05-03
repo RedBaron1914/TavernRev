@@ -64,6 +64,9 @@ pub fn run() {
             let connections_dir = commands::get_connections_dir(&handle);
             let _ = fs::create_dir_all(&connections_dir);
             let _ = commands::seed_default_connection(&connections_dir);
+            
+            let avatars_dir = get_avatars_dir(&handle);
+            let _ = fs::create_dir_all(&avatars_dir);
 
             // Setup database
             match init_db(handle) {

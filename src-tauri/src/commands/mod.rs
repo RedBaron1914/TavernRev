@@ -1798,7 +1798,10 @@ async fn pull_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
                         if !local_path.exists() {
                             if let Some(avatar_id) = cloud_avatars.get(&persona.avatar.to_lowercase()) {
                                 if let Ok(avatar_bytes) = crate::google_drive_manager::download_file(&token, avatar_id).await {
-                                    let _ = std::fs::write(local_path, avatar_bytes);
+                                    let _ = std::fs::create_dir_all(&avatars_dir);
+                                if let Err(e) = std::fs::write(&local_path, avatar_bytes) {
+                                    println!("SYNC: Failed to write avatar file {:?}: {}", local_path, e);
+                                }
                                 }
                             }
                         }
@@ -1908,7 +1911,10 @@ async fn pull_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
                             let avatar_path = avatars_dir.join(&group_data.avatar);
                             if !avatar_path.exists() {
                                 if let Ok(avatar_bytes) = crate::google_drive_manager::download_file(&token, avatar_id).await {
-                                    let _ = std::fs::write(&avatar_path, avatar_bytes);
+                                    let _ = std::fs::create_dir_all(&avatars_dir);
+                                    if let Err(e) = std::fs::write(&avatar_path, avatar_bytes) {
+                                        println!("SYNC: Failed to write group avatar file {:?}: {}", avatar_path, e);
+                                    }
                                 }
                             }
                         }
@@ -2246,7 +2252,10 @@ pub async fn sync_pull_all(provider: String, app_handle: tauri::AppHandle, db_st
                         if !local_path.exists() {
                             let cloud_path = format!("/avatars/{}", persona.avatar);
                             if let Ok(avatar_bytes) = crate::sync_manager::download_file(&token, &cloud_path).await {
-                                let _ = std::fs::write(local_path, avatar_bytes);
+                                let _ = std::fs::create_dir_all(&avatars_dir);
+                                if let Err(e) = std::fs::write(&local_path, avatar_bytes) {
+                                    println!("SYNC: Failed to write avatar file {:?}: {}", local_path, e);
+                                }
                             }
                         }
                     }
@@ -2353,7 +2362,10 @@ pub async fn sync_pull_all(provider: String, app_handle: tauri::AppHandle, db_st
                         if !local_path.exists() {
                             let cloud_path = format!("/avatars/{}", group_data.avatar);
                             if let Ok(avatar_bytes) = crate::sync_manager::download_file(&token, &cloud_path).await {
-                                let _ = std::fs::write(local_path, avatar_bytes);
+                                let _ = std::fs::create_dir_all(&avatars_dir);
+                                if let Err(e) = std::fs::write(&local_path, avatar_bytes) {
+                                    println!("SYNC: Failed to write avatar file {:?}: {}", local_path, e);
+                                }
                             }
                         }
                     }
