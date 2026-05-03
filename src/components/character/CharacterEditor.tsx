@@ -548,7 +548,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                         placeholder="Instructions for the AI that are hidden from the user..."
                                     />
                                 )}
-                                <p className="text-[10px] text-gray-500 px-2 italic">Creator notes are usually injected deep into the system prompt to influence bot behavior without user awareness.</p>
+                                <p className="text-[10px] text-gray-500 px-2 italic">Metadata field for background info, version history, or authorship details. Not injected into the prompt automatically.</p>
                             </div>
                         </div>
                     )}
