@@ -408,6 +408,68 @@ pub async fn summarize_chat(chat_id: i64, profile_name: String, preset_name: Str
     Ok(())
 }
 
+#[derive(serde::Deserialize)]
+pub struct StudioMessage {
+    pub role: String,
+    pub content: String,
+}
+
+#[tauri::command]
+pub async fn studio_assist(
+    app_handle: AppHandle,
+    profile_name: String,
+    messages: Vec<StudioMessage>,
+    _db_state: tauri::State<'_, DbState>,
+) -> Result<String, String> {
+    let connections_dir = get_connections_dir(&app_handle);
+    let profile_path = connections_dir.join(&profile_name);
+    let profile_content = fs::read_to_string(profile_path).map_err(|e| e.to_string())?;
+    let profile: api_client::ConnectionProfile = serde_json::from_str(&profile_content).map_err(|e| e.to_string())?;
+
+    let abort_token = Arc::new(AtomicBool::new(false));
+
+    match profile.api_type.as_str() {
+        "google" => {
+            let oai_msgs: Vec<api_client::OpenAIMessage> = messages.into_iter().map(|m| {
+                api_client::OpenAIMessage {
+                    role: m.role,
+                    content: Some(api_client::OpenAIContent::Text(m.content)),
+                    tool_calls: None,
+                    tool_call_id: None,
+                }
+            }).collect();
+            // Use a default preset for basic settings
+            let preset = api_client::Preset::default();
+            let (text, _) = api_client::generate_google(app_handle, profile.api_key, profile.model_id, oai_msgs, &preset, abort_token, 0, None, None).await?;
+            Ok(text)
+        },
+        "chat_completion" | "openai" => {
+            let oai_msgs: Vec<api_client::OpenAIMessage> = messages.into_iter().map(|m| {
+                api_client::OpenAIMessage {
+                    role: m.role,
+                    content: Some(api_client::OpenAIContent::Text(m.content)),
+                    tool_calls: None,
+                    tool_call_id: None,
+                }
+            }).collect();
+
+            let req = api_client::OpenAIRequest {
+                model: profile.model_id,
+                messages: oai_msgs,
+                stream: false,
+                max_tokens: Some(2048),
+                temperature: 0.7,
+                top_p: 1.0,
+                ..Default::default()
+            };
+
+            let (text, _) = api_client::generate_stream(app_handle, profile.base_url, profile.api_key, req, abort_token, 0, None).await?;
+            Ok(text)
+        },
+        _ => Err(format!("Studio Assist not supported for API type: {}", profile.api_type))
+    }
+}
+
 #[tauri::command]
 pub fn update_chat_memory(chat_id: i64, memory: String, db_state: tauri::State<'_, DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap();

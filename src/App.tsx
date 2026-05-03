@@ -192,7 +192,7 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
 
 function App() {
   const [currentView, setCurrentView] = useState<
-    "character_select" | "chat" | "settings"
+    "character_select" | "chat" | "settings" | "character_editor"
   >("character_select");
   const [selectMode, setSelectMode] = useState<"characters" | "groups">("characters");
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -333,7 +333,6 @@ function App() {
   const [contextPercent, setContextPercent] = useState(0);
   const [regenGreetingModal, setRegenGreetingModal] = useState<number | null>(null);
   const [customRegenNudge, setCustomRegenNudge] = useState("");
-  const [isEditingCharacter, setIsEditingCharacter] = useState(false);
   const [isEditingGroup, setIsEditingGroup] = useState(false);
   const [pendingManualGeneration, setPendingManualGeneration] = useState<((charId: number) => void) | null>(null);
   const [manualGenerationMembers, setManualGenerationMembers] = useState<Character[]>([]);
@@ -1083,10 +1082,10 @@ const refreshCharacters = async () => {
       
       // Verification check to ensure character exists in state
       if (updatedChars.some(c => c.id === id)) {
-          setIsEditingCharacter(true);
+          setCurrentView("character_editor");
       } else {
           // Fallback: If not in state yet, just set ID and hope for re-render
-          setIsEditingCharacter(true);
+          setCurrentView("character_editor");
       }
     } catch (e) {
       console.error(e);
@@ -1121,7 +1120,7 @@ const refreshCharacters = async () => {
 
       await refreshCharacters();
 
-      setIsEditingCharacter(false);
+      setCurrentView("chat");
     } catch (e) {
       console.error(e);
       addToast("Failed to update character: " + e, "error");
@@ -1709,6 +1708,25 @@ const refreshCharacters = async () => {
         <ToastContainer toasts={toasts} onClose={removeToast} />
       </>
     );
+
+  if (currentView === "character_editor")
+    return (
+      <>
+        {bgLayer}
+        <div className="relative z-10 h-full overflow-hidden">
+            {activeCharacter && (
+                <CharacterEditor
+                    character={activeCharacter}
+                    onSave={handleUpdateCharacter}
+                    onCancel={() => setCurrentView("chat")}
+                    addToast={addToast}
+                />
+            )}
+        </div>
+        <ToastContainer toasts={toasts} onClose={removeToast} />
+      </>
+    );
+
   if (currentView === "character_select")
     return (
       <>
@@ -1802,7 +1820,7 @@ const refreshCharacters = async () => {
           autoSyncStatus={autoSyncStatus}
           contextPercent={contextPercent}
           onToggleSidebar={() => setSidebarVisible(!sidebarVisible)}
-          onEditCharacter={() => setIsEditingCharacter(true)}
+          onEditCharacter={() => setCurrentView("character_editor")}
           onEditGroup={() => setIsEditingGroup(true)}
           onExportChat={handleExportChat}
           onOpenContextModal={() => setShowContextModal(true)}
@@ -2085,15 +2103,6 @@ const refreshCharacters = async () => {
         <MessageInput quickReplies={quickReplies} showQR={showQR} setShowQR={setShowQR} attachedImages={attachedImages} setAttachedImages={setAttachedImages} showInputMenu={showInputMenu} setShowInputMenu={setShowInputMenu} setShowMemoryModal={setShowMemoryModal} chatMemory={chatMemory} handleImpersonate={handleImpersonate} handleExportChat={handleExportChat} fileInputRef={fileInputRef} handleImageSelect={handleImageSelect} inputValue={inputValue} setInputValue={setInputValue} handlePaste={handlePaste} handleSendMessage={handleSendMessage} handleStop={handleStop} isGenerating={isGenerating} isRetrying={isRetrying} activeChatId={activeChatId} activePersonaName={activePersona?.name || "You"} isMobile={isMobile} />
 
         {/* MODALS */}
-        {isEditingCharacter && activeCharacter && (
-          <CharacterEditor
-            character={activeCharacter}
-            onSave={handleUpdateCharacter}
-            onCancel={() => setIsEditingCharacter(false)}
-            addToast={addToast}
-          />
-        )}
-        
         {isEditingGroup && activeGroup && (
           <GroupEditor
             group={activeGroup}

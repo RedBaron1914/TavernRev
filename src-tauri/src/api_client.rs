@@ -94,6 +94,47 @@ pub struct Preset {
     pub prompts: Vec<PromptModule>,
 }
 
+impl Default for Preset {
+    fn default() -> Self {
+        Self {
+            temperature: 0.7,
+            repetition_penalty: 1.0,
+            top_p: 1.0,
+            presence_penalty: 0.0,
+            frequency_penalty: 0.0,
+            top_k: 0,
+            min_p: 0.0,
+            top_a: 0.0,
+            openai_max_tokens: 1024,
+            stream_openai: true,
+            impersonation_prompt: String::new(),
+            continue_nudge_prompt: String::new(),
+            assistant_prefill: String::new(),
+            request_images: false,
+            send_char_avatar: false,
+            send_user_avatar: false,
+            char_avatar_prompt: String::new(),
+            user_avatar_prompt: String::new(),
+            new_chat_prompt: String::new(),
+            new_example_chat_prompt: String::new(),
+            stop_strings: String::new(),
+            reasoning_effort: String::new(),
+            show_thoughts: true,
+            wi_scan_depth: 5,
+            wi_recursive: true,
+            wi_case_sensitive: false,
+            wi_match_whole_words: true,
+            wi_max_recursion: 5,
+            wi_token_budget: 0,
+            wi_context_percent: 0,
+            wi_include_names: true,
+            wi_insertion_strategy: String::new(),
+            squash_system_messages: false,
+            prompts: Vec::new(),
+        }
+    }
+}
+
 fn default_true() -> bool { true }
 fn default_wi_depth() -> i32 { 5 }
 fn default_recursion() -> i32 { 5 }
@@ -177,7 +218,7 @@ pub struct OpenAIImageUrl {
     pub url: String,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, Default)]
 pub struct OpenAIRequest {
     pub model: String,
     pub messages: Vec<OpenAIMessage>,
@@ -301,43 +342,43 @@ struct GoogleRequest {
 }
 
 #[derive(Serialize, Debug)]
-struct GoogleContent {
-    role: String,
-    parts: Vec<GooglePart>,
+pub struct GoogleContent {
+    pub role: String,
+    pub parts: Vec<GooglePart>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct GooglePart {
+pub struct GooglePart {
     #[serde(skip_serializing_if = "Option::is_none")]
-    text: Option<String>,
+    pub text: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "inlineData")]
-    inline_data: Option<GoogleInlineData>,
+    pub inline_data: Option<GoogleInlineData>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "functionCall")]
-    function_call: Option<GoogleFunctionCall>,
+    pub function_call: Option<GoogleFunctionCall>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "functionResponse")]
-    function_response: Option<GoogleFunctionResponse>,
+    pub function_response: Option<GoogleFunctionResponse>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct GoogleFunctionCall {
-    name: String,
-    args: serde_json::Value,
+pub struct GoogleFunctionCall {
+    pub name: String,
+    pub args: serde_json::Value,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct GoogleFunctionResponse {
-    name: String,
-    response: serde_json::Value,
+pub struct GoogleFunctionResponse {
+    pub name: String,
+    pub response: serde_json::Value,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct GoogleInlineData {
+pub struct GoogleInlineData {
     #[serde(rename = "mimeType")]
-    mime_type: String,
-    data: String,
+    pub mime_type: String,
+    pub data: String,
 }
 
 #[derive(Serialize, Debug)]

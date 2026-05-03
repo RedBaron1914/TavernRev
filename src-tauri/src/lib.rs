@@ -207,6 +207,7 @@ pub fn run() {
             commands::delete_extension_script,
             commands::get_extension_scripts,
             generation::summarize_chat,
+            generation::studio_assist,
             generation::update_chat_memory,
         ])
         .run(tauri::generate_context!())

@@ -1,10 +1,17 @@
 import { useState, useEffect } from "react";
-import { X, Image, Cpu, Plus, Trash2, Download } from "lucide-react";
+import { 
+  X, Image, Cpu, Plus, Trash2, Download, Save, 
+  Book, MessageSquare, Sparkles, ChevronRight,
+  UserCircle, Settings as SettingsIcon, History,
+  Layout, Type, MessageCircle
+} from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import Avatar from "../Avatar";
 import { Character } from "../../types";
 
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+
+type EditorSection = "general" | "description" | "personality" | "scenario" | "examples" | "greetings" | "advanced";
 
 export const CharacterEditor = ({ 
   character,
@@ -18,6 +25,114 @@ export const CharacterEditor = ({
   addToast: (msg: string, type?: "success" | "error" | "info") => void;
 }) => {
   const [formData, setFormData] = useState(character);
+  const [activeSection, setActiveSection] = useState<EditorSection>("general");
+  const [assistantMessages, setAssistantMessages] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([
+    { role: 'assistant', content: "Hello! I am your AI Studio Assistant. I can help you improve your character card. Try asking me to 'make the description more detailed' or 'suggest some snarky personality traits'." }
+  ]);
+  const [assistantInput, setAssistantInput] = useState("");
+  const [isAssistantThinking, setIsAssistantThinking] = useState(false);
+  const [proposedChanges, setProposedChanges] = useState<Record<string, string | null>>({});
+
+  const scrollToBottom = () => {
+    const chatContainer = document.getElementById("assistant-chat-history");
+    if (chatContainer) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+  };
+
+  useEffect(scrollToBottom, [assistantMessages]);
+
+  const sendAssistantMessage = async (manualInput?: string) => {
+    const input = manualInput || assistantInput;
+    if (!input.trim() || isAssistantThinking) return;
+
+    const newMsgs = [...assistantMessages, { role: 'user' as const, content: input }];
+    setAssistantMessages(newMsgs);
+    setAssistantInput("");
+    setIsAssistantThinking(true);
+
+    try {
+      const activeProfile = localStorage.getItem("active_profile") || "Default";
+      
+      const studioSystemPrompt = `You are the TavernRev AI Character Studio Assistant. Your goal is to help users craft high-quality AI characters.
+When suggesting changes to specific character card fields, you MUST use the following XML tags:
+<change field="description">New improved content</change>
+
+Supported fields: name, description, personality, scenario, first_mes, creator_notes.
+
+Current Character State:
+- Name: ${formData.name}
+- Description: ${formData.description}
+- Personality: ${formData.personality}
+- Scenario: ${formData.scenario}
+- First Message: ${formData.first_mes}
+- Creator Notes: ${formData.creator_notes}
+
+Always explain WHAT you are changing and WHY before or after the tags. Be creative, consistent, and adhere to the character's core concept.`;
+
+      const response = await invoke<string>("studio_assist", {
+        profileName: activeProfile,
+        messages: [
+            { role: 'system', content: studioSystemPrompt },
+            ...newMsgs.slice(-5)
+        ]
+      });
+
+      const changeRegex = /<change\s+field="([^"]+)">([\s\S]*?)<\/change>/gi;
+      let match;
+      const newProposed = { ...proposedChanges };
+      while ((match = changeRegex.exec(response)) !== null) {
+        newProposed[match[1]] = match[2].trim();
+      }
+      
+      setProposedChanges(newProposed);
+      setAssistantMessages([...newMsgs, { role: 'assistant', content: response }]);
+    } catch (e) {
+      addToast(String(e), "error");
+    } finally {
+      setIsAssistantThinking(false);
+    }
+  };
+
+  const applyChange = (field: string) => {
+    const content = proposedChanges[field];
+    if (content) {
+      handleChange(field as keyof Character, content);
+      setProposedChanges(prev => ({ ...prev, [field]: null }));
+      addToast(`Applied changes to ${field}`, "success");
+    }
+  };
+
+  const rejectChange = (field: string) => {
+    setProposedChanges(prev => ({ ...prev, [field]: null }));
+  };
+
+  const DiffViewer = ({ field, original, proposed }: { field: string, original: string, proposed: string }) => {
+    return (
+        <div className="space-y-4 animate-in zoom-in-95 duration-300">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-widest">
+                    <Sparkles size={14} /> Proposed Changes for {field}
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={() => rejectChange(field)} className="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg text-[10px] font-bold uppercase transition">Reject</button>
+                    <button onClick={() => applyChange(field)} className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold uppercase transition shadow-lg shadow-indigo-900/20">Apply Change</button>
+                </div>
+            </div>
+            <div className="relative group overflow-hidden rounded-3xl border border-amber-500/30 bg-amber-500/5 p-1">
+                <div className="grid grid-cols-1 divide-y divide-white/5 bg-gray-900 rounded-[22px] overflow-hidden text-sm leading-relaxed">
+                    <div className="p-4 opacity-50 bg-red-500/5 line-through decoration-red-500/50 text-gray-400 whitespace-pre-wrap">
+                        {original || "(Empty)" }
+                    </div>
+                    <div className="p-4 bg-emerald-500/10 text-emerald-100 whitespace-pre-wrap">
+                        {proposed}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+  };
+
   const [alts, setAlts] = useState<string[]>(() => {
     try {
       return JSON.parse(character.alternate_greetings || "[]");
@@ -157,205 +272,379 @@ export const CharacterEditor = ({
     }
   };
 
+  const sections = [
+    { id: "general", label: "General Info", icon: <UserCircle size={18}/> },
+    { id: "description", label: "Description", icon: <Type size={18}/> },
+    { id: "personality", label: "Personality", icon: <Layout size={18}/> },
+    { id: "scenario", label: "Scenario", icon: <History size={18}/> },
+    { id: "examples", label: "Example Messages", icon: <MessageSquare size={18}/> },
+    { id: "greetings", label: "Greetings", icon: <MessageCircle size={18}/> },
+    { id: "advanced", label: "Advanced", icon: <SettingsIcon size={18}/> },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
-      <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh] border border-white/10 overflow-hidden ring-1 ring-white/10">
-        <div className="p-5 border-b border-white/10 flex justify-between items-center bg-gray-800/50">
-          <div className="flex items-center gap-4">
-            <div className="relative group cursor-pointer">
-              <Avatar src={formData.avatar} name={formData.name} size="lg" type="user" />
-              <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center md:opacity-0 group-hover:opacity-100 transition">
-                <Image size={20} className="text-white" />
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                Edit Character
-              </h2>
-              <div className="flex items-center gap-1.5 mt-1 px-2 py-0.5 bg-gray-900 rounded text-[10px] font-mono text-cyan-400 w-fit">
-                <Cpu size={10} /> {tokens} tokens
-              </div>
-            </div>
-          </div>
-          <button onClick={onCancel} className="text-gray-500 hover:text-white">
+    <div className="flex flex-col h-full bg-gray-950 text-gray-100 animate-in fade-in duration-500 overflow-hidden">
+      {/* HEADER */}
+      <header className="h-16 shrink-0 border-b border-white/10 bg-gray-900/50 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 z-20">
+        <div className="flex items-center gap-4">
+          <button onClick={onCancel} className="p-2 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition">
             <X size={20} />
           </button>
-        </div>
-        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar bg-gray-950/50">
-          <div className="space-y-1.5">
-            <label className="text-sm text-gray-300 font-medium ml-1">
-              Name
-            </label>
-            <input
-              value={formData.name}
-              onChange={(e) => handleChange("name", e.target.value)}
-              className="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm text-gray-300 font-medium ml-1">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => handleChange("description", e.target.value)}
-              rows={4}
-              className="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 custom-scrollbar resize-y"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm text-gray-300 font-medium ml-1">
-              Personality
-            </label>
-            <textarea
-              value={formData.personality}
-              onChange={(e) => handleChange("personality", e.target.value)}
-              rows={3}
-              className="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 custom-scrollbar resize-y"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm text-gray-300 font-medium ml-1">
-              Scenario
-            </label>
-            <textarea
-              value={formData.scenario}
-              onChange={(e) => handleChange("scenario", e.target.value)}
-              rows={3}
-              className="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 custom-scrollbar resize-y"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm text-gray-300 font-medium ml-1">
-              First Message
-            </label>
-            <textarea
-              value={formData.first_mes}
-              onChange={(e) => handleChange("first_mes", e.target.value)}
-              rows={5}
-              className="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 custom-scrollbar resize-y"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center ml-1">
-              <label className="text-sm text-gray-300 font-medium">
-                Message Examples
-              </label>
-              <span className="text-[10px] text-gray-500">Use &lt;START&gt; to separate blocks</span>
-            </div>
-            <textarea
-              value={formData.mes_example}
-              onChange={(e) => handleChange("mes_example", e.target.value)}
-              rows={6}
-              placeholder="<START>\n{{user}}: Hello!\n{{char}}: Hi there!"
-              className="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 custom-scrollbar resize-y font-mono"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm text-gray-300 font-medium ml-1 flex justify-between">
-              <span>Talkativeness (Group Chats)</span>
-              <span className="text-indigo-400 font-mono">{Math.round(talkativeness * 100)}%</span>
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={talkativeness}
-              onChange={(e) => setTalkativeness(parseFloat(e.target.value))}
-              className="w-full accent-indigo-500 bg-gray-800 rounded-lg appearance-none h-2 cursor-pointer"
-            />
-            <p className="text-[10px] text-gray-500 ml-1 leading-tight">
-              0% = Only talks if mentioned by name. 100% = High chance to reply randomly.
-            </p>
-          </div>
-
-          <div className="space-y-3 pt-4 border-t border-white/5">
-            <div className="flex justify-between items-center">
-                <label className="text-sm text-gray-300 font-medium ml-1">Alternate Greetings</label>
-                <button onClick={() => setAlts([...alts, ""])} className="text-xs text-indigo-400 hover:text-white flex items-center gap-1"><Plus size={14}/> Add</button>
-            </div>
-            {alts.map((alt, i) => (
-                <div key={i} className="flex gap-2">
-                    <textarea 
-                        value={alt} 
-                        onChange={e => {
-                            const n = [...alts];
-                            n[i] = e.target.value;
-                            setAlts(n);
-                        }}
-                        rows={3}
-                        className="flex-1 bg-gray-900/60 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 custom-scrollbar resize-y"
-                        placeholder={`Greeting #${i+2}`}
-                    />
-                    <button onClick={() => setAlts(alts.filter((_, idx) => idx !== i))} className="p-2 h-fit bg-gray-800 hover:bg-red-900/30 text-gray-500 hover:text-red-400 rounded-lg transition"><Trash2 size={16}/></button>
+          <div className="h-6 w-px bg-white/10 mx-2" />
+          <div className="flex items-center gap-3">
+             <Avatar src={formData.avatar} name={formData.name} size="xs" />
+             <div className="hidden sm:block">
+                <h1 className="text-sm font-bold truncate max-w-[200px]">{formData.name || "Unnamed Character"}</h1>
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-cyan-400">
+                    <Cpu size={10} /> {tokens} tokens
                 </div>
-            ))}
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm text-gray-300 font-medium ml-1">
-              Creator Notes
-            </label>
-            <textarea
-              value={formData.creator_notes}
-              onChange={(e) => handleChange("creator_notes", e.target.value)}
-              rows={2}
-              className="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 custom-scrollbar resize-y"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm text-gray-300 font-medium ml-1">
-              Tags (comma separated)
-            </label>
-            <input
-              value={(() => {
-                try {
-                  return JSON.parse(formData.tags || "[]").join(", ");
-                } catch {
-                  return formData.tags;
-                }
-              })()}
-              onChange={(e) => {
-                const tagsArray = e.target.value
-                  .split(",")
-                  .map((t) => t.trim())
-                  .filter((t) => t);
-                handleChange("tags", JSON.stringify(tagsArray));
-              }}
-              className="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-            />
+             </div>
           </div>
         </div>
-        <div className="p-5 flex justify-end gap-3 border-t border-white/10 bg-gray-900">
-          <button
-            onClick={handleExportChar}
-            className="px-5 py-2.5 rounded-xl hover:bg-white/10 text-sm font-medium text-indigo-400 flex items-center gap-2 transition"
-            title="Export to V2 JSON"
-          >
-            <Download size={18} /> Export JSON
-          </button>
-          <div className="flex-1" />
-          <button
-            onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl hover:bg-white/10 text-sm font-medium text-gray-300"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-lg"
-          >
-            Save Character
-          </button>
+
+        <div className="flex items-center gap-2">
+            <button
+                onClick={handleExportChar}
+                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-gray-400 hover:bg-white/5 hover:text-indigo-400 transition border border-transparent hover:border-indigo-500/20"
+            >
+                <Download size={16} /> Export JSON
+            </button>
+            <button
+                onClick={handleSave}
+                className="flex items-center gap-2 px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-900/20 transition active:scale-95"
+            >
+                <Save size={16} /> Save Changes
+            </button>
         </div>
+      </header>
+
+      {/* MAIN LAYOUT */}
+      <div className="flex-1 flex overflow-hidden relative">
+        
+        {/* LEFT NAVIGATOR (SIDEBAR) */}
+        <aside className={`${isMobile ? 'fixed inset-y-16 left-0 z-30 w-64 bg-gray-900 border-r border-white/10 shadow-2xl transform transition-transform duration-300' : 'w-64 border-r border-white/5 bg-gray-950/50 flex flex-col'} ${isMobile && activeSection !== 'general' && 'translate-x-[-100%]'}`}>
+            <nav className="p-4 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-4">Studio Navigator</div>
+                {sections.map(s => (
+                    <button
+                        key={s.id}
+                        onClick={() => setActiveSection(s.id as EditorSection)}
+                        className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${activeSection === s.id ? 'bg-indigo-600/10 text-indigo-400 ring-1 ring-indigo-500/30' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <span className={activeSection === s.id ? 'text-indigo-400' : 'text-gray-500 group-hover:text-gray-300'}>{s.icon}</span>
+                            <span className="text-sm font-medium">{s.label}</span>
+                        </div>
+                        {activeSection === s.id && <ChevronRight size={14} className="animate-in slide-in-from-left-1" />}
+                    </button>
+                ))}
+            </nav>
+            <div className="p-4 border-t border-white/5">
+                <div className="p-3 bg-gray-900/50 rounded-xl border border-white/5">
+                    <div className="text-[10px] text-gray-500 font-bold mb-1">DATA BANK</div>
+                    <div className="text-[11px] text-gray-300 flex items-center gap-2 italic">
+                         <Book size={12} className="text-emerald-400" /> Linked Lorebooks (Coming Soon)
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        {/* CENTER WORKSPACE */}
+        <main className="flex-1 flex flex-col min-w-0 bg-gray-950">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <div className="max-w-4xl mx-auto p-4 md:p-10 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    
+                    {activeSection === "general" && (
+                        <div className="space-y-8">
+                             <div className="flex flex-col md:flex-row gap-8 items-start">
+                                <div className="relative group cursor-pointer shrink-0 mx-auto md:mx-0">
+                                    <Avatar src={formData.avatar} name={formData.name} size="xl" />
+                                    <div className="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 border-2 border-dashed border-indigo-500/50">
+                                        <Image size={32} className="text-white animate-bounce" />
+                                    </div>
+                                    <input type="file" accept="image/*" onChange={handleAvatarUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-indigo-600 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg">CHANGE PHOTO</div>
+                                </div>
+                                <div className="flex-1 space-y-6 w-full">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">Character Name</label>
+                                        <input
+                                            value={formData.name}
+                                            onChange={(e) => handleChange("name", e.target.value)}
+                                            className="w-full bg-gray-900 border border-white/10 rounded-2xl px-5 py-4 text-lg font-bold text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                            placeholder="Enter name..."
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">Tags</label>
+                                        <input
+                                            value={(() => {
+                                                try { return JSON.parse(formData.tags || "[]").join(", "); } catch { return formData.tags; }
+                                            })()}
+                                            onChange={(e) => {
+                                                const tagsArray = e.target.value.split(",").map((t) => t.trim()).filter((t) => t);
+                                                handleChange("tags", JSON.stringify(tagsArray));
+                                            }}
+                                            className="w-full bg-gray-900 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all"
+                                            placeholder="e.g. fantasy, hero, snarky"
+                                        />
+                                    </div>
+                                </div>
+                             </div>
+
+                             <div className="p-6 bg-gray-900/50 rounded-3xl border border-white/5 space-y-4">
+                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex justify-between items-center">
+                                    <span>Talkativeness (Group Chats)</span>
+                                    <span className="text-indigo-300 font-mono text-base">{Math.round(talkativeness * 100)}%</span>
+                                </label>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.05"
+                                    value={talkativeness}
+                                    onChange={(e) => setTalkativeness(parseFloat(e.target.value))}
+                                    className="w-full accent-indigo-500 bg-gray-800 rounded-lg appearance-none h-3 cursor-pointer"
+                                />
+                                <p className="text-xs text-gray-500 leading-relaxed italic">
+                                    Controls how often this character will interject in group conversations without being directly addressed.
+                                </p>
+                             </div>
+                        </div>
+                    )}
+
+                    {activeSection === "description" && (
+                        <div className="space-y-4 h-full flex flex-col">
+                            <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Core Description</label>
+                            {proposedChanges.description ? (
+                                <DiffViewer field="description" original={formData.description} proposed={proposedChanges.description} />
+                            ) : (
+                                <textarea
+                                    value={formData.description}
+                                    onChange={(e) => handleChange("description", e.target.value)}
+                                    className="w-full flex-1 bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all custom-scrollbar min-h-[400px] resize-none leading-relaxed"
+                                    placeholder="Describe physical appearance, history, and defining traits..."
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {activeSection === "personality" && (
+                        <div className="space-y-4 h-full flex flex-col">
+                            <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Personality Traits</label>
+                            {proposedChanges.personality ? (
+                                <DiffViewer field="personality" original={formData.personality} proposed={proposedChanges.personality} />
+                            ) : (
+                                <textarea
+                                    value={formData.personality}
+                                    onChange={(e) => handleChange("personality", e.target.value)}
+                                    className="w-full flex-1 bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all custom-scrollbar min-h-[400px] resize-none leading-relaxed font-mono"
+                                    placeholder="e.g. snarky, loyal, secretive... or use W++ format"
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {activeSection === "scenario" && (
+                        <div className="space-y-4 h-full flex flex-col">
+                            <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Current Scenario</label>
+                            {proposedChanges.scenario ? (
+                                <DiffViewer field="scenario" original={formData.scenario} proposed={proposedChanges.scenario} />
+                            ) : (
+                                <textarea
+                                    value={formData.scenario}
+                                    onChange={(e) => handleChange("scenario", e.target.value)}
+                                    className="w-full flex-1 bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all custom-scrollbar min-h-[400px] resize-none leading-relaxed"
+                                    placeholder="Define the current situation or world state..."
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {activeSection === "examples" && (
+                        <div className="space-y-4 h-full flex flex-col">
+                            <div className="flex justify-between items-center ml-1">
+                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider text-shadow-sm">Example Dialogue</label>
+                                <span className="text-[10px] text-gray-500 font-bold bg-white/5 px-2 py-0.5 rounded">Use &lt;START&gt; between blocks</span>
+                            </div>
+                            {proposedChanges.mes_example ? (
+                                <DiffViewer field="mes_example" original={formData.mes_example} proposed={proposedChanges.mes_example} />
+                            ) : (
+                                <textarea
+                                    value={formData.mes_example}
+                                    onChange={(e) => handleChange("mes_example", e.target.value)}
+                                    className="w-full flex-1 bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all custom-scrollbar min-h-[400px] resize-none leading-relaxed font-mono"
+                                    placeholder={"<START>\n{{user}}: Hello!\n{{char}}: *smiles* Welcome to the tavern!"}
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {activeSection === "greetings" && (
+                        <div className="space-y-6">
+                            <div className="space-y-4">
+                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Main Greeting</label>
+                                {proposedChanges.first_mes ? (
+                                    <DiffViewer field="first_mes" original={formData.first_mes} proposed={proposedChanges.first_mes} />
+                                ) : (
+                                    <textarea
+                                        value={formData.first_mes}
+                                        onChange={(e) => handleChange("first_mes", e.target.value)}
+                                        rows={6}
+                                        className="w-full bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all custom-scrollbar resize-none leading-relaxed"
+                                        placeholder="The very first message the character says..."
+                                    />
+                                )}
+                            </div>
+                            
+                            <div className="pt-6 border-t border-white/5 space-y-4">
+                                <div className="flex justify-between items-center ml-1">
+                                    <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider text-shadow-sm">Alternate Greetings</label>
+                                    <button onClick={() => setAlts([...alts, ""])} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600/20 rounded-xl text-[10px] font-bold transition uppercase tracking-wider">
+                                        <Plus size={14}/> Add Variant
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    {alts.map((alt, i) => (
+                                        <div key={i} className="group relative">
+                                            <textarea 
+                                                value={alt} 
+                                                onChange={e => {
+                                                    const n = [...alts];
+                                                    n[i] = e.target.value;
+                                                    setAlts(n);
+                                                }}
+                                                rows={3}
+                                                className="w-full bg-gray-900/60 border border-white/10 rounded-2xl px-5 py-4 pr-12 text-sm text-gray-300 focus:outline-none focus:border-indigo-500 transition-all custom-scrollbar resize-none"
+                                                placeholder={`Alternate Greeting #${i+2}`}
+                                            />
+                                            <button onClick={() => setAlts(alts.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 p-2 bg-gray-800/80 hover:bg-red-900/40 text-gray-500 hover:text-red-400 rounded-lg transition md:opacity-0 group-hover:opacity-100 shadow-lg">
+                                                <Trash2 size={14}/>
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {alts.length === 0 && (
+                                        <div className="text-center py-10 bg-gray-900/20 border-2 border-dashed border-white/5 rounded-3xl text-gray-600 text-xs font-medium">
+                                            No alternate greetings defined.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSection === "advanced" && (
+                        <div className="space-y-6">
+                            <div className="space-y-4">
+                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Creator's Notes / OOC Instructions</label>
+                                {proposedChanges.creator_notes ? (
+                                    <DiffViewer field="creator_notes" original={formData.creator_notes} proposed={proposedChanges.creator_notes} />
+                                ) : (
+                                    <textarea
+                                        value={formData.creator_notes}
+                                        onChange={(e) => handleChange("creator_notes", e.target.value)}
+                                        rows={5}
+                                        className="w-full bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all custom-scrollbar resize-none leading-relaxed font-mono"
+                                        placeholder="Instructions for the AI that are hidden from the user..."
+                                    />
+                                )}
+                                <p className="text-[10px] text-gray-500 px-2 italic">Creator notes are usually injected deep into the system prompt to influence bot behavior without user awareness.</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </main>
+
+        {/* RIGHT ASSISTANT PANEL */}
+        <aside className="hidden lg:flex w-96 border-l border-white/5 bg-gray-900/30 flex-col z-10 shadow-2xl">
+            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-gray-800/20">
+                <div className="flex items-center gap-3">
+                    <Sparkles size={18} className="text-amber-400 animate-pulse" />
+                    <span className="text-sm font-bold tracking-tight">Studio Assistant</span>
+                </div>
+                <div className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-bold text-indigo-400 uppercase">Live Context</div>
+            </div>
+            
+            {/* Assistant Chat History */}
+            <div 
+                id="assistant-chat-history"
+                className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-950/20"
+            >
+                {assistantMessages.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                        <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-xs leading-relaxed shadow-sm ${
+                            msg.role === 'user' 
+                            ? 'bg-indigo-600 text-white rounded-tr-none' 
+                            : 'bg-gray-800 text-gray-200 border border-white/5 rounded-tl-none'
+                        }`}>
+                            {msg.content}
+                        </div>
+                    </div>
+                ))}
+                {isAssistantThinking && (
+                    <div className="flex justify-start animate-pulse">
+                        <div className="bg-gray-800 border border-white/5 px-4 py-3 rounded-2xl rounded-tl-none flex gap-1">
+                            <div className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" />
+                            <div className="w-1 h-1 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                            <div className="w-1 h-1 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Quick Action Bar */}
+            <div className="px-4 py-3 bg-black/20 border-t border-white/5">
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    <button 
+                        onClick={() => sendAssistantMessage("Improve the character description to be more vivid and immersive.")}
+                        className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
+                    >
+                        ? Improve Desc
+                    </button>
+                    <button 
+                        onClick={() => sendAssistantMessage("Analyze my personality block and suggest 3 more distinct traits.")}
+                        className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
+                    >
+                        ? Suggest Traits
+                    </button>
+                    <button 
+                        onClick={() => sendAssistantMessage("Write a catchy first message for this character based on the current scenario.")}
+                        className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
+                    >
+                        ? Gen Greeting
+                    </button>
+                </div>
+            </div>
+
+            {/* Assistant Input */}
+            <div className="p-4 bg-gray-900/50 border-t border-white/10">
+                <div className="relative">
+                    <textarea 
+                        value={assistantInput}
+                        onChange={(e) => setAssistantInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                sendAssistantMessage();
+                            }
+                        }}
+                        placeholder="Ask the Assistant..."
+                        className="w-full bg-gray-950 border border-white/10 rounded-2xl pl-4 pr-12 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 transition-all resize-none h-20 custom-scrollbar"
+                    />
+                    <button 
+                        onClick={() => sendAssistantMessage()}
+                        disabled={isAssistantThinking || !assistantInput.trim()}
+                        className="absolute bottom-3 right-3 p-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition shadow-lg"
+                    >
+                        <Sparkles size={16} />
+                    </button>
+                </div>
+            </div>
+        </aside>
+
       </div>
     </div>
   );
 };
+
