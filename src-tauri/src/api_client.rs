@@ -446,20 +446,21 @@ pub async fn generate_embeddings(
     texts: Vec<String>,
 ) -> Result<Vec<Vec<f32>>, String> {
     let client = get_client();
-    let url = if api_url.ends_with("/v1/embeddings") || api_url.ends_with("/embeddings") {
-        api_url.clone()
-    } else {
-        let mut base = api_url.trim_end_matches('/').to_string();
+    let url = {
+        let base = api_url.trim_end_matches('/').to_string();
         if base.ends_with("/v1/chat/completions") {
-            base = base.strip_suffix("/chat/completions").unwrap_or(&base).to_string() + "/embeddings";
+            base.replace("/chat/completions", "/embeddings")
         } else if base.ends_with("/chat/completions") {
-             base = base.strip_suffix("/chat/completions").unwrap_or(&base).to_string() + "/v1/embeddings";
+            base.replace("/chat/completions", "/v1/embeddings")
         } else if base.ends_with("/v1") {
-             base = format!("{}/embeddings", base);
+            format!("{}/embeddings", base)
+        } else if !base.contains('/') || (base.starts_with("http") && base.split('/').count() <= 3) {
+            // It's just a base URL like http://127.0.0.1:5000, add default path
+            format!("{}/v1/embeddings", base)
         } else {
-             base = format!("{}/v1/embeddings", base);
+            // User provided a specific path (e.g. /api/v1/model/embed), use it as is
+            base
         }
-        base
     };
 
     let mut all_embeddings = Vec::new();
