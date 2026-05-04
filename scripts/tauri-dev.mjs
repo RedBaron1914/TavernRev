@@ -38,8 +38,15 @@ if (fs.existsSync(envLocalPath)) {
 
 let args = process.argv.slice(2);
 
-if (env.TAURI_DEV_HOST && args.includes('dev') && (args.includes('android') || args.includes('ios')) && !args.includes('--host')) {
-  args.push('--host', env.TAURI_DEV_HOST);
+if (env.TAURI_DEV_HOST && args.includes('dev')) {
+  if (args.includes('android') || args.includes('ios')) {
+    if (!args.includes('--host')) {
+      args.push('--host', env.TAURI_DEV_HOST);
+    }
+  } else {
+    // Desktop dev doesn't use the network host, so remove it to prevent Vite from binding to the wrong IP
+    delete env.TAURI_DEV_HOST;
+  }
 }
 
 const child = process.platform === 'win32'
