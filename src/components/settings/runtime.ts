@@ -153,7 +153,7 @@ export const normalizePreset = (data: any): Preset => {
     });
 
     // STRICT SILLYTAVERN BEHAVIOR: Discard orphaned prompts not in prompt_order
-    const filteredPrompts = rawPrompts.filter(p => orderMap.has(p.identifier) || (p.name && orderMap.has(p.name)));
+    const filteredPrompts = rawPrompts.filter((p: any) => orderMap.has(p.identifier) || (p.name && orderMap.has(p.name)));
 
     const sortedPrompts = filteredPrompts.map((p: any) => {
       let sortIndex = 0;

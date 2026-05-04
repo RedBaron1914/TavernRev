@@ -1,4 +1,4 @@
-import { Menu, Pencil, Activity, UserCircle, Download, CloudUpload, Check, X, ArrowDownToLine, Settings } from "lucide-react";
+import { Menu, Pencil, Activity, UserCircle, Download, CloudUpload, Check, X, Settings } from "lucide-react";
 import Avatar from "../Avatar";
 import { Character, Group } from "../../types";
 
@@ -9,12 +9,10 @@ export interface ChatHeaderProps {
   activeGroupId: number | null;
   activeGroup: Group | null;
   autoSyncStatus: "idle" | "syncing" | "success" | "error";
-  contextPercent: number;
   onToggleSidebar: () => void;
   onEditCharacter: () => void;
   onEditGroup: () => void;
   onExportChat: () => void;
-  onOpenContextModal: () => void;
   onStats: () => void;
   onPersona: () => void;
   onSettings: () => void;
@@ -26,12 +24,10 @@ export function ChatHeader({
   activeGroupId,
   activeGroup,
   autoSyncStatus,
-  contextPercent,
   onToggleSidebar,
   onEditCharacter,
   onEditGroup,
   onExportChat,
-  onOpenContextModal,
   onStats,
   onPersona,
   onSettings,
@@ -96,23 +92,9 @@ export function ChatHeader({
         <button
           onClick={onExportChat}
           title="Download chat"
-          className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition flex"
+          className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition hidden sm:flex"
         >
           <Download size={20} />
-        </button>
-
-        <button
-          onClick={onOpenContextModal}
-          title="Context Manager"
-          className={`p-2 hover:bg-white/10 rounded-full transition flex ${
-            contextPercent > 95
-              ? "text-red-400"
-              : contextPercent > 80
-                ? "text-amber-400"
-                : "text-gray-400"
-          }`}
-        >
-          <ArrowDownToLine size={20} />
         </button>
 
         <button
