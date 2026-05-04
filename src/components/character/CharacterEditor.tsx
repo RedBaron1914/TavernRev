@@ -110,6 +110,50 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
   };
 
   const DiffViewer = ({ field, original, proposed }: { field: string, original: string, proposed: string }) => {
+    // Simple line-level diff for better UX
+    const oldLines = (original || "").split('\n');
+    const newLines = (proposed || "").split('\n');
+    const diffElements = [];
+
+    let i = 0; let j = 0;
+    while (i < oldLines.length || j < newLines.length) {
+        if (i < oldLines.length && j < newLines.length && oldLines[i] === newLines[j]) {
+            if (oldLines[i].trim()) {
+                diffElements.push(<div key={`eq-${i}-${j}`} className="px-4 py-1 opacity-50 text-gray-400 whitespace-pre-wrap">{oldLines[i]}</div>);
+            }
+            i++; j++;
+        } else {
+            // Find next match to resync (lookahead window)
+            let nextI = i; let nextJ = j; let found = false;
+            for (let lookI = i; lookI < Math.min(oldLines.length, i + 8) && !found; lookI++) {
+                for (let lookJ = j; lookJ < Math.min(newLines.length, j + 8) && !found; lookJ++) {
+                    if (oldLines[lookI] === newLines[lookJ] && oldLines[lookI].trim()) {
+                        nextI = lookI; nextJ = lookJ; found = true;
+                    }
+                }
+            }
+            if (!found) {
+                if (i < oldLines.length) {
+                    if (oldLines[i].trim()) diffElements.push(<div key={`del-${i}`} className="px-4 py-1.5 bg-red-500/10 line-through decoration-red-500/50 text-red-300 whitespace-pre-wrap border-y border-red-500/10 my-0.5">{oldLines[i]}</div>);
+                    i++;
+                }
+                if (j < newLines.length) {
+                    if (newLines[j].trim()) diffElements.push(<div key={`add-${j}`} className="px-4 py-1.5 bg-emerald-500/10 text-emerald-200 whitespace-pre-wrap shadow-[inset_2px_0_0_rgba(16,185,129,0.5)] my-0.5">{newLines[j]}</div>);
+                    j++;
+                }
+            } else {
+                while (i < nextI) {
+                    if (oldLines[i].trim()) diffElements.push(<div key={`del-${i}`} className="px-4 py-1.5 bg-red-500/10 line-through decoration-red-500/50 text-red-300 whitespace-pre-wrap border-y border-red-500/10 my-0.5">{oldLines[i]}</div>);
+                    i++;
+                }
+                while (j < nextJ) {
+                    if (newLines[j].trim()) diffElements.push(<div key={`add-${j}`} className="px-4 py-1.5 bg-emerald-500/10 text-emerald-200 whitespace-pre-wrap shadow-[inset_2px_0_0_rgba(16,185,129,0.5)] my-0.5">{newLines[j]}</div>);
+                    j++;
+                }
+            }
+        }
+    }
+
     return (
         <div className="space-y-4 animate-in zoom-in-95 duration-300">
             <div className="flex items-center justify-between">
@@ -122,13 +166,8 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                 </div>
             </div>
             <div className="relative group overflow-hidden rounded-3xl border border-amber-500/30 bg-amber-500/5 p-1">
-                <div className="grid grid-cols-1 divide-y divide-white/5 bg-gray-900 rounded-[22px] overflow-hidden text-sm leading-relaxed">
-                    <div className="p-4 opacity-50 bg-red-500/5 line-through decoration-red-500/50 text-gray-400 whitespace-pre-wrap">
-                        {original || "(Empty)" }
-                    </div>
-                    <div className="p-4 bg-emerald-500/10 text-emerald-100 whitespace-pre-wrap">
-                        {proposed}
-                    </div>
+                <div className="bg-gray-900 rounded-[22px] overflow-hidden text-sm leading-relaxed py-2">
+                    {diffElements.length > 0 ? diffElements : <div className="p-4 text-gray-500 italic text-center">No visual text differences.</div>}
                 </div>
             </div>
         </div>
@@ -385,12 +424,16 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                 <div className="flex-1 space-y-6 w-full">
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">Character Name</label>
-                                        <input
-                                            value={formData.name}
-                                            onChange={(e) => handleChange("name", e.target.value)}
-                                            className="w-full bg-gray-900 border border-white/10 rounded-2xl px-5 py-4 text-lg font-bold text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                                            placeholder="Enter name..."
-                                        />
+                                        {proposedChanges.name ? (
+                                            <DiffViewer field="name" original={formData.name} proposed={proposedChanges.name} />
+                                        ) : (
+                                            <input
+                                                value={formData.name}
+                                                onChange={(e) => handleChange("name", e.target.value)}
+                                                className="w-full bg-gray-900 border border-white/10 rounded-2xl px-5 py-4 text-lg font-bold text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                                placeholder="Enter name..."
+                                            />
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">Tags</label>

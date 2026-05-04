@@ -947,11 +947,13 @@ pub async fn generate_stream(
         if let Some(choice) = json.choices.first() {
             if let Some(content) = &choice.message.content {
                 response_text = content.clone();
-                let _ = app_handle.emit("stream-token", StreamPayload {
-                    content: response_text.clone(),
-                    gen_id,
-                    target_id
-                });
+                if gen_id != 0 {
+                    let _ = app_handle.emit("stream-token", StreamPayload {
+                        content: response_text.clone(),
+                        gen_id,
+                        target_id
+                    });
+                }
             }
             if let Some(tc_array) = &choice.message.tool_calls {
                 for (idx, tc) in tc_array.iter().enumerate() {
@@ -1073,6 +1075,9 @@ mod tests {
         let json = serde_json::to_string(&msg).unwrap();
         assert!(!json.contains("tool_calls"));
         assert!(json.contains("tool_call_id"));
+        assert!(json.contains("call_123"));
+    }
+}ns("tool_call_id"));
         assert!(json.contains("call_123"));
     }
 }

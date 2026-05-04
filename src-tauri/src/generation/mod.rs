@@ -418,6 +418,7 @@ pub struct StudioMessage {
 pub async fn studio_assist(
     app_handle: AppHandle,
     profile_name: String,
+    preset_name: String,
     messages: Vec<StudioMessage>,
     _db_state: tauri::State<'_, DbState>,
 ) -> Result<String, String> {
@@ -425,6 +426,13 @@ pub async fn studio_assist(
     let profile_path = connections_dir.join(&profile_name);
     let profile_content = fs::read_to_string(profile_path).map_err(|e| e.to_string())?;
     let profile: api_client::ConnectionProfile = serde_json::from_str(&profile_content).map_err(|e| e.to_string())?;
+
+    let presets_dir = get_presets_dir(&app_handle);
+    let preset_path = presets_dir.join(preset_name);
+    let preset: api_client::Preset = fs::read_to_string(preset_path)
+        .map_err(|_| "Failed to read preset".to_string())
+        .and_then(|content| serde_json::from_str(&content).map_err(|_| "Failed to parse preset".to_string()))
+        .unwrap_or_default();
 
     let abort_token = Arc::new(AtomicBool::new(false));
 
@@ -438,8 +446,6 @@ pub async fn studio_assist(
                     tool_call_id: None,
                 }
             }).collect();
-            // Use a default preset for basic settings
-            let preset = api_client::Preset::default();
             let (text, _) = api_client::generate_google(app_handle, profile.api_key, profile.model_id, oai_msgs, &preset, abort_token, 0, None, None).await?;
             Ok(text)
         },
@@ -457,10 +463,18 @@ pub async fn studio_assist(
                 model: profile.model_id,
                 messages: oai_msgs,
                 stream: false,
-                max_tokens: Some(2048),
-                temperature: 0.7,
-                top_p: 1.0,
-                ..Default::default()
+                max_tokens: Some(preset.openai_max_tokens),
+                temperature: preset.temperature,
+                top_p: preset.top_p,
+                presence_penalty: preset.presence_penalty,
+                frequency_penalty: preset.frequency_penalty,
+                stop: None,
+                reasoning_effort: None,
+                top_k: if preset.top_k > 0 { Some(preset.top_k) } else { None },
+                min_p: if preset.min_p > 0.0 { Some(preset.min_p) } else { None },
+                top_a: if preset.top_a > 0.0 { Some(preset.top_a) } else { None },
+                repetition_penalty: if preset.repetition_penalty != 1.0 { Some(preset.repetition_penalty) } else { None },
+                tools: None,
             };
 
             let (text, _) = api_client::generate_stream(app_handle, profile.base_url, profile.api_key, req, abort_token, 0, None).await?;
