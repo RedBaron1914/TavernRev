@@ -1,245 +1,284 @@
-**TavernRev — Complete Project Documentation**  
-**Version:** 0.8.0 (27.02.2026)  
-**Repository:** (internal — Rust + Tauri desktop app)  
-**License:** AGPL v3
+# TavernRev — Complete Project Documentation
+
+**Version:** 1.2.3  
+**Repository:** Internal (Rust + Tauri Desktop Application)  
+**License:** AGPL-3.0-only  
+**Tech Stack:** Rust (Backend), Tauri 2, React 19 + TypeScript + TailwindCSS (Frontend)
 
 ---
 
-### 1. Overview
+## 1. Overview
 
-**TavernRev** is a **lightweight, privacy-first, fully offline-capable** AI role-playing chat client inspired by SillyTavern but rebuilt from the ground up in **Rust + Tauri + React + TypeScript**.
+**TavernRev** is a lightweight, privacy-first, fully offline-capable AI role-playing chat client. It is a modern, high-performance re-implementation of the SillyTavern experience, built from the ground up with Rust and Tauri for maximum performance, security, and cross-platform compatibility (Windows, macOS, Linux, Android).
 
-**Core philosophy:**
-- Maximum control over the prompt (exact SillyTavern-style prompt engineering)
-- Full scriptability via **STScript** (macros + conditionals + DB ops)
-- Zero telemetry, everything stored locally in SQLite
-- Dropbox sync (characters + full chat history with UUID integrity)
-- Beautiful modern UI with image support, swipes, branching, regex, lorebooks, etc.
+### Core Philosophy
+
+- **Maximum Prompt Control**: Precise, modular prompt engineering with fine-grained injection control.
+- **Advanced Memory Systems**: Built-in local RAG (vector memory) using ONNX/FastEmbed + traditional lorebook keyword matching.
+- **Group Chat Excellence**: Full support for multi-character conversations with intelligent routing.
+- **Scriptability**: Powerful STScript macro system + full JavaScript Plugin API.
+- **Zero Telemetry & Full Privacy**: Everything runs locally. SQLite + file-based storage.
+- **Seamless Multi-Device Sync**: Native Dropbox + Google Drive synchronization with conflict resolution via UUIDs.
+- **Modern UI/UX**: Beautiful React interface with markdown + KaTeX support, image handling, swipe system, branching, and more.
 
 ---
 
-### 2. High-Level Architecture
+## 2. High-Level Architecture
 
-```mermaid
+
 graph TD
-    A["Frontend React + Tailwind + Vite"] --> B["Tauri IPC Commands"]
-    B --> C["Rust Backend"]
-    C --> D["SQLite (rusqlite)"]
-    C --> E["Prompt Engine"]
-    C --> F["STScript Evaluator"]
-    C --> G["API Client (OpenAI / Google / Horde)"]
-    C --> H["Dropbox Sync (OAuth2 + PKCE)"]
-    C --> I["Local HTTP Server (embedded dist/)"]
+    A[Frontend: React 19 + Tailwind] -->|Tauri IPC| B[Rust Backend]
+    A -.->|TavernAPI| J[JS Plugin System]
+    B --> C[SQLite Database]
+    B --> D[Prompt Engine]
+    B --> E[STScript Evaluator]
+    B --> F[Vector Memory (FastEmbed)]
+    B --> G[API Client (OpenAI, Claude, Gemini, Grok, Horde, Local)]
+    B --> H[Cloud Sync (Dropbox + Google Drive)]
+    B --> I[Routing Engine (Groups)]
+    B --> K[Regex Scripts & Post-Processing]
 ```
 
-**Key crates / modules:**
+### Key Rust Modules
 
-| Module              | Purpose |
-|---------------------|--------|
-| `database.rs`       | All SQLite tables + CRUD + triggers |
-| `prompt_engine.rs`  | Full prompt assembly, lore scanning, token budgeting |
-| `script_engine/`    | STScript parser + evaluator + commands |
-| `api_client.rs`     | Generation for every backend |
-| `sync_manager.rs`   | Dropbox OAuth2 + file sync |
-| `server.rs`         | Embedded Axum server (web UI fallback) |
-| `transformers.rs`   | Role merging / strict alternation |
-
----
-
-### 3. Database (SQLite)
-
-**File:** `tavern.db` in app data directory
-
-#### Tables
-
-| Table                  | Purpose |
-|------------------------|--------|
-| `characters`           | Full V2 cards + UUID + timestamps |
-| `user_personas`        | Multiple "You" personas (default supported) |
-| `chats`                | Chat metadata + UUID + linked persona |
-| `messages`             | Full swipe history (`swipes` JSON), images JSON |
-| `chat_variables`       | Per-chat `{{var}}` |
-| `global_variables`     | Global `{{var}}` |
-| `lorebooks`            | Books (global flag) |
-| `lore_entries`         | Keys, content, priority, probability, position, depth, constant |
-| `chat_lorebooks` / `character_lorebooks` | Many-to-many links |
-| `regex_scripts`        | Post-processing rules |
-| `quick_replies`        | Global or per-chat buttons |
-
-**Triggers** automatically keep `updated_at` and sync chat timestamps on message changes.
-
-**UUIDs** are used for Dropbox sync (never change on import).
+| Module                        | Purpose |
+|------------------------------|---------|
+| `database.rs`                | SQLite schema, CRUD, migrations, triggers |
+| `prompt_engine.rs`           | Dynamic prompt assembly, lore injection, token budgeting |
+| `script_engine/`             | Parser, AST, Evaluator for STScript macros |
+| `api_client.rs`              | Streaming generation, formatters, tool calling |
+| `vector_memory.rs`           | FastEmbed RAG, embeddings, cosine similarity |
+| `routing.rs`                 | Group chat speaker selection logic |
+| `sync_manager.rs`            | Dropbox OAuth2 + file sync |
+| `google_drive_manager.rs`    | Google Drive OAuth2 + sync |
+| `importer.rs`                | Character card (PNG/JSON) import |
+| `transformers.rs`            | Message role enforcement & merging |
 
 ---
 
-### 4. STScript (Macro + Command System)
+## 3. Database (SQLite)
 
-**Syntax:** `{{macro::arg1::arg2}}` or `/command arg`
+**File:** `tavern.db` (stored in app data directory)
 
-#### Core Features
+### Core Tables
 
-- **Nested execution** (full recursion)
-- **Variables** (`setvar`, `getvar`, `addvar`, `incvar`, `flushvar`, global variants)
-- **Math**: `add`, `sub`, `mul`, `div`, `roll:3d20+5`
-- **Logic**: `gt`, `lt`, `gte`, `lte`, `not`, `or`, `and`, `/if ... | /else | /endif`
-- **Random**: `random::option1::option2`
-- **Time/Date**
-- **Commands** (executed in input):
-  - `/echo`, `/sys`, `/user`, `/char`
-  - `/setvar`, `/setglobalvar`
-  - `/send` → triggers generation
-  - `/toast`, `/bg`, `/popup`, `/bubbles`
-  - `/enableentry 42`, `/lorebook MyBook`
-- **Side effects** stored as `DbOp` and applied atomically after execution
+- **`characters`** — Full Tavern V2 cards + UUID, timestamps, tags
+- **`user_personas`** — Multiple user profiles (name, avatar, description)
+- **`groups`** & **`group_members`** — Group metadata and membership
+- **`chats`** — Chat metadata, linked persona/group, auto-summary memory
+- **`messages`** — Full swipe history (JSON), images (base64), exclude flags, sender info
+- **`memory_vectors`** — Chat history embeddings for RAG
+- **`lore_vectors`** — Lorebook entry embeddings
+- **`lorebooks`** & **`lore_entries`** — World Info / Lore system
+- **`regex_scripts`** — Post-processing rules (user/ai/both)
+- **`quick_replies`** — Custom action buttons
+- **`chat_variables`** / **`global_vars`** — STScript variable storage
+- **`connection_profiles`** — API settings & keys
 
-**Placement in pipeline:**
-1. Input processing (user message)
-2. Lore scanning (can trigger macros)
-3. Prompt assembly
-4. AI response → regex scripts (`ai` placement)
-5. Output display
+**UUID Strategy**: Every major entity has a UUID for robust cloud synchronization and conflict resolution.
 
 ---
 
-### 5. Prompt Engineering
+## 4. Group Chats & Routing
 
-#### 5.1 PromptModules
+TavernRev has first-class support for group chats.
 
-Every prompt piece is a **PromptModule** with:
-- `identifier` (main, charDescription, worldInfo, etc.)
-- `injection_order`
-- `injection_depth` (for in-chat injection)
-- `injection_position` (0 = relative, 1 = in-chat)
-- `role` (system/user/assistant)
-- `enabled`, `forbid_overrides`, `injection_trigger`
+**Routing Strategies** (configurable per group):
 
-#### 5.2 Lore / World Info Engine (`scan_lore`)
+1. **Natural** — Mention detection + talkativeness-based probability
+2. **Round Robin (List)** — Sequential cycling through members
+3. **Manual** — User selects next speaker via UI prompt
 
-**Algorithm:**
-
-1. Build scan text (names + description + scenario + last N messages)
-2. **Recursive keyword scan** (depth = `wi_max_recursion`)
-3. Probability roll per entry
-4. **Constant entries** always trigger
-5. Triggered entries can contain macros → new text is scanned in next depth
-6. **Budgeting**:
-   - Fixed token budget (`wi_token_budget`)
-   - Or % of context (`wi_context_percent`)
-   - Uses `cl100k_base` tokenizer
-7. **Sorting strategies**:
-   - `char_first` (default)
-   - `global_first`
-   - `priority`
-
-**Positions supported:**
-- `before_char`, `after_char`
-- `before_em`, `after_em` (example messages)
-- `before_an`, `after_an` (author note)
-- `at_depth`, `at_depth_user`, `at_depth_assistant`
-- `outlet` (executes macros but adds nothing)
-
-#### 5.3 Transformers
-
-- `merge_consecutive_roles`
-- `enforce_alternating_roles` (SillyTavern "strict" mode)
-
-#### 5.4 Visual Identity
-
-- Character & user avatar injection as multimodal messages (OpenAI vision / Google inlineData)
-- Configurable prompts per avatar
+**Additional Features**:
+- Mute specific characters
+- Allow/Disallow self-responses
+- Dynamic speaker indicators in UI
+- Group avatars and custom scenarios
 
 ---
 
-### 6. Generation Pipeline (`perform_generation`)
+## 5. Memory & Context Management
 
-1. Load profile + preset
-2. Load character, history, variables, active lore
-3. Assemble prompt (`assemble_prompt`)
-4. Apply visual avatars if enabled
-5. Save updated variables
-6. Add assistant prefill
-7. Call correct API (`generate_google`, `generate_horde`, or OpenAI-compatible `generate_stream`)
-8. **Regex post-processing** on AI output (`ai` placement)
-9. Save final message + new variables
+### 5.1 Long-Term Memory (RAG)
 
-**Supported backends:**
-- Any OpenAI-compatible (`/chat/completions`)
-- Google Gemini (with thinking config + inline images)
-- Stable Horde (async polling)
+Powered by `fastembed` (ONNX Runtime):
 
----
+- **Models supported**: MultilingualE5Small, AllMiniLML6V2, NomicEmbedText, custom ONNX models
+- Automatic chat history chunking + embedding
+- Semantic retrieval with configurable `top_k`, `threshold`, injection depth
+- Lorebook RAG — semantic triggering of entries even without exact keywords
+- API fallback support for remote embedding models
 
-### 7. Dropbox Synchronization
+### 5.2 Traditional Lorebooks / World Info
 
-**Flow:**
+- Keyword, regex, and case-sensitive matching
+- Recursive scanning
+- Priority, probability, position (before/after character, depth-based)
+- Token budgeting to prevent context overflow
 
-1. **OAuth2 with PKCE** (no secret needed)
-2. **Characters** → `/characters/{uuid}.json`
-3. **Avatars** → `/avatars/{filename}`
-4. **Chats** → `/chats/{uuid}.jsonl` (header + one JSON per message)
+### 5.3 Context Overflow Protection
 
-**Push algorithm:**
-- Upload every character + avatar
-- Upload every chat as fresh JSONL
+Automatic exclusion of oldest messages when approaching token limit (`auto_exclude_context_overflow`).
 
-**Pull algorithm:**
-- For each remote character → find by UUID → update or create
-- For each remote chat → find by UUID → **delete old messages** → import new JSONL (preserves UUID)
+### 5.4 Auto-Summarization
 
-**Conflict resolution:** UUID-based (last write wins on push/pull)
+Built-in summarization prompt that populates `chats.memory` field.
 
 ---
 
-### 8. UI/UX Capabilities
+## 6. STScript (Macro & Command System)
 
-#### Core Chat Features
-- **Swipes** (multiple generations per message, left/right navigation)
-- **Branching** (`/branch` or button)
-- **Continue** any message
-- **Regenerate** from any point
-- **Edit message** (updates swipe history)
-- **Delete single swipe / entire message / branch**
+**Syntax**: `{{macro::arg1::arg2}}` or `/command args`
 
-#### Visuals
-- **Markdown + KaTeX** (full math support)
-- **Remote images** via any URL (Catbox, imgur, etc.) — auto-rendered
-- **Local image upload** (drag & drop + paste supported)
-- **Avatar zoom** on click
-- **Bubbles vs Document** layout toggle
-- **Content scale** slider
-- **Custom CSS** possible via future extensions
+### Supported Features
 
-#### Advanced Editors
-- Full **Character Editor** (V2 spec + alternate greetings)
-- **Persona Manager** (multiple "You")
-- **Lorebook Editor** (per-chat / per-char / global links, constant entries, probability, depth, positions)
-- **Regex Script Editor** (user/ai/both placement)
-- **Quick Reply** buttons (global or per-chat)
+- **Variables**: `setvar`, `getvar`, `incvar`, `decvar`, global variants
+- **Math**: `add`, `sub`, `mul`, `div`, `roll:1d20+5`
+- **Logic**: `gt`, `lt`, `gte`, `lte`, `and`, `or`, `not`
+- **Control Flow**: `/if ... /else ... /endif`
+- **Time/Date**: `{{time}}`, `{{date}}`
+- **Character/User**: `{{char}}`, `{{user}}`
+- **UI Commands**: `/toast`, `/popup`, `/bg`, `/bubbles`, etc.
+- **Wait**: `{{wait:0.5}}` (asynchronous delays)
+- **Nested Macros**: Full recursive evaluation
 
-#### Quality of Life
-- Token counter + visual tokenizer
-- Macro playground (live testing)
-- Toast notifications, popups from scripts
-- Mobile-optimized (safe-area, touch gestures)
-- Stats modal (messages + token breakdown)
+**Regex Scripts**: Post-generation text transformation with macro evaluation support.
 
 ---
 
-### 9. File System Layout (App Data)
+## 7. Prompt Engineering
+
+The prompt engine is highly modular:
+
+- **PromptModules** with injection_order, depth, and position control
+- System / User / Assistant role handling with strict alternation enforcement
+- Dynamic transformers: `merge_consecutive_roles`, `enforce_alternating_roles`
+- Lore + RAG injection at precise positions
+- Token-aware budgeting
+- Support for vision (image) context
+
+---
+
+## 8. Generation Pipeline
+
+1. Input processing + macro expansion
+2. Speaker determination (for groups)
+3. Context gathering (messages, lore, RAG, variables)
+4. Prompt assembly
+5. API call (streaming)
+6. Post-processing (regex scripts, error detection)
+7. Auto-retry logic (configurable triggers: 429, 503, "overloaded", etc.)
+8. Message saving + cloud auto-sync
+
+**Supported Backends**: OpenAI, Anthropic, Google Gemini, Grok, Horde, Kobold, Ooba, local servers, etc.
+
+**Tool Calling** support during generation.
+
+---
+
+## 9. Cloud Synchronization
+
+**Supported Providers**:
+- **Dropbox** (OAuth2 + PKCE, refresh tokens)
+- **Google Drive**
+
+**Features**:
+- Auto-sync after messages/edits (debounced)
+- Delta detection using timestamps + SHA
+- Full sync of characters, personas, groups, chats (JSONL), avatars
+- Conflict resolution via UUIDs
+
+---
+
+## 10. UI/UX Features
+
+- **Two Chat Styles**: Bubbles (modern) and Document (novel)
+- **Swipe System** with left/right navigation
+- **Branching** from any message
+- **Message Editing**, deletion, exclusion
+- **Image Support**: Paste, upload, base64, remote URLs (auto-render)
+- **Markdown + KaTeX** full support
+- **Content Scaling** and accessibility options
+- **Character Editor** with AI Studio Assistant (diff viewer)
+- **Stats Modal**, Memory Viewer
+- **Quick Replies**
+- **Mobile Optimized** (Android support)
+- **Toast notifications**, modals, sidebars
+
+**Theme**: Dark-first with excellent contrast and readability.
+
+---
+
+## 11. Plugin System (JavaScript)
+
+Extensions placed in `extensions/` folder are loaded at startup.
+
+**TavernAPI** global object provides:
+
+- Event system (`on`, `emit`, `emitAsync`)
+- Backend command invocation
+- UI manipulation (toast, popup, etc.)
+- Prompt interception (`before_send_message`, etc.)
+- Full access to app state and actions
+
+---
+
+## 12. File System Layout
 
 ```
-tavern/
+tavern_data/
 ├── tavern.db
 ├── avatars/
-├── presets/*.json
-├── connections/*.json
-└── (Dropbox sync folder mirrored via API)
+├── characters/
+├── groups/
+├── chats/
+├── presets/
+├── connections/
+├── extensions/
+├── lorebooks/
+├── backups/
+└── vector_cache/ (optional)
 ```
 
 ---
 
-### 10. Extensibility
+## 13. Configuration & Settings
 
-- Full Tauri command surface (can be called from web UI or external tools)
-- All data exportable (JSON/JSONL)
-- Regex + STScript = infinite automation possibilities
+- Multiple connection profiles
+- Generation presets
+- RAG settings (model, top_k, threshold, etc.)
+- Retry logic (triggers, delay)
+- UI preferences (scale, style, background)
+- Auto-sync toggles
+
+All settings are persisted locally.
+
+---
+
+## 14. Development & Building
+
+**Frontend**: Vite + React 19 + TailwindCSS 4  
+**Backend**: Rust + Tauri 2  
+**Build**: `pnpm build` then `tauri build`
+
+**Dependencies**:
+- `fastembed` + ONNX Runtime (dynamic loading)
+- `rusqlite` (bundled)
+- `reqwest`, `tokio`, `handlebars`, etc.
+
+---
+
+## 15. Troubleshooting
+
+**Common Issues**:
+- Missing `onnxruntime.dll` / `.so` / `.dylib` → Place next to executable or in resources
+- Embedding model download failures → Check internet + cache permissions
+- Android-specific path issues → Handled automatically
+- Sync authentication → Re-authorize in Settings
+
+**Logs**: Available in-app debug console + backend logging.
+
+---
+
+**TavernRev** — Built with love for the AI RP community.  
+Fully open source. Contribute, extend, and enjoy maximum freedom in your roleplay.
