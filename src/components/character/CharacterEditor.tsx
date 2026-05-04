@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { 
   X, Image, Cpu, Plus, Trash2, Download, Save, 
   Book, MessageSquare, Sparkles, ChevronRight,
-  UserCircle, Settings as SettingsIcon, History,
+  UserCircle, History,
   Layout, Type, MessageCircle, Menu, Bot
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
@@ -11,7 +11,7 @@ import { Character } from "../../types";
 
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 
-type EditorSection = "general" | "description" | "personality" | "scenario" | "examples" | "greetings" | "advanced";
+type EditorSection = "general" | "description" | "personality" | "scenario" | "examples" | "greetings";
 
 export const CharacterEditor = ({ 
   character,
@@ -55,12 +55,13 @@ export const CharacterEditor = ({
 
     try {
       const activeProfile = localStorage.getItem("active_profile") || "Default";
+      const activePreset = localStorage.getItem("active_preset") || "Default";
       
       const studioSystemPrompt = `You are the TavernRev AI Character Studio Assistant. Your goal is to help users craft high-quality AI characters.
 When suggesting changes to specific character card fields, you MUST use the following XML tags:
 <change field="description">New improved content</change>
 
-Supported fields: name, description, personality, scenario, first_mes, creator_notes.
+Supported fields: name, description, personality, scenario, first_mes, mes_example, creator_notes.
 
 Current Character State:
 - Name: ${formData.name}
@@ -68,12 +69,14 @@ Current Character State:
 - Personality: ${formData.personality}
 - Scenario: ${formData.scenario}
 - First Message: ${formData.first_mes}
+- Message Examples: ${formData.mes_example}
 - Creator Notes: ${formData.creator_notes}
 
 Always explain WHAT you are changing and WHY before or after the tags. Be creative, consistent, and adhere to the character's core concept.`;
 
       const response = await invoke<string>("studio_assist", {
         profileName: activeProfile,
+        presetName: activePreset,
         messages: [
             { role: 'system', content: studioSystemPrompt },
             ...newMsgs.slice(-5)
@@ -320,7 +323,6 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
     { id: "scenario", label: "Scenario", icon: <History size={18}/> },
     { id: "examples", label: "Example Messages", icon: <MessageSquare size={18}/> },
     { id: "greetings", label: "Greetings", icon: <MessageCircle size={18}/> },
-    { id: "advanced", label: "Advanced", icon: <SettingsIcon size={18}/> },
   ];
 
   return (
@@ -470,6 +472,21 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                     Controls how often this character will interject in group conversations without being directly addressed.
                                 </p>
                              </div>
+
+                             <div className="space-y-4">
+                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Creator's Notes</label>
+                                {proposedChanges.creator_notes ? (
+                                    <DiffViewer field="creator_notes" original={formData.creator_notes} proposed={proposedChanges.creator_notes} />
+                                ) : (
+                                    <textarea
+                                        value={formData.creator_notes}
+                                        onChange={(e) => handleChange("creator_notes", e.target.value)}
+                                        rows={5}
+                                        className="w-full bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all custom-scrollbar resize-none leading-relaxed font-mono"
+                                        placeholder="Personal notes about this character..."
+                                    />
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -589,26 +606,6 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                         </div>
                                     )}
                                 </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeSection === "advanced" && (
-                        <div className="space-y-6">
-                            <div className="space-y-4">
-                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Creator's Notes / OOC Instructions</label>
-                                {proposedChanges.creator_notes ? (
-                                    <DiffViewer field="creator_notes" original={formData.creator_notes} proposed={proposedChanges.creator_notes} />
-                                ) : (
-                                    <textarea
-                                        value={formData.creator_notes}
-                                        onChange={(e) => handleChange("creator_notes", e.target.value)}
-                                        rows={5}
-                                        className="w-full bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all custom-scrollbar resize-none leading-relaxed font-mono"
-                                        placeholder="Instructions for the AI that are hidden from the user..."
-                                    />
-                                )}
-                                <p className="text-[10px] text-gray-500 px-2 italic">Metadata field for background info, version history, or authorship details. Not injected into the prompt automatically.</p>
                             </div>
                         </div>
                     )}
