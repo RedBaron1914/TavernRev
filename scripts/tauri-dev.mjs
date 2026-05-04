@@ -38,7 +38,7 @@ if (fs.existsSync(envLocalPath)) {
 
 let args = process.argv.slice(2);
 
-if (env.TAURI_DEV_HOST && args.includes('dev') && !args.includes('--host')) {
+if (env.TAURI_DEV_HOST && args.includes('dev') && (args.includes('android') || args.includes('ios')) && !args.includes('--host')) {
   args.push('--host', env.TAURI_DEV_HOST);
 }
 
