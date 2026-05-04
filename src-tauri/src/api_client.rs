@@ -1077,7 +1077,4 @@ mod tests {
         assert!(json.contains("tool_call_id"));
         assert!(json.contains("call_123"));
     }
-}ns("tool_call_id"));
-        assert!(json.contains("call_123"));
-    }
 }
