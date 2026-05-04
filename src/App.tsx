@@ -541,6 +541,7 @@ const refreshCharacters = async () => {
     parseInt(localStorage.getItem("ui_msg_limit") || "50");
 
   const fetchMessages = useCallback(async (chatId: number) => {
+    if (isGenerating || isRetrying) return;
     try {
       const limit = getMsgLimit();
 

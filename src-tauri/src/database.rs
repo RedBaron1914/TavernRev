@@ -1049,20 +1049,6 @@ pub fn export_cloud_groups(conn: &Connection) -> Result<Vec<CloudGroup>> {
 }
 
 pub fn import_cloud_group(conn: &Connection, cg: &CloudGroup) -> Result<()> {
-    // Upsert the group
-    conn.execute(
-        "INSERT INTO groups (uuid, name, avatar, scenario, activation_strategy, generation_mode, allow_self_responses) 
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-         ON CONFLICT(id) DO UPDATE SET 
-            name = excluded.name, 
-            avatar = excluded.avatar, 
-            scenario = excluded.scenario, 
-            activation_strategy = excluded.activation_strategy, 
-            generation_mode = excluded.generation_mode, 
-            allow_self_responses = excluded.allow_self_responses",
-        rusqlite::params![cg.uuid, cg.name, cg.avatar, cg.scenario, cg.activation_strategy, cg.generation_mode, cg.allow_self_responses],
-    )?;
-
     // We inserted by UUID, but SQLite ON CONFLICT is on Primary Key. We need to handle UUID explicitly.
     // Wait, `groups` table does not have UNIQUE constraint on `uuid`!
     // Let's manually check if it exists.

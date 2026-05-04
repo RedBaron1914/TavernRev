@@ -716,7 +716,7 @@ pub async fn generate_google(
                                                         }
                                                         if let Some(fc) = &part.function_call {
                                                             parsed_tool_calls.push(OpenAIToolCall {
-                                                                id: format!("call_google_{}", uuid::Uuid::new_v4().simple()),
+                                                                id: fc.name.clone(),
                                                                 tool_type: "function".to_string(),
                                                                 function: OpenAIFunctionCall {
                                                                     name: fc.name.clone(),
