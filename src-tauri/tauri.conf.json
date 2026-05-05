@@ -18,6 +18,10 @@
       }
     ],
     "security": {
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      },
       "csp": "default-src 'self' tauri: localhost; img-src 'self' data: asset: https://asset.localhost https: http:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https: http:;"
     }
   },
