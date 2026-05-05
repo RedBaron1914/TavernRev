@@ -67,6 +67,18 @@ pub fn run() {
             
             let avatars_dir = get_avatars_dir(&handle);
             let _ = fs::create_dir_all(&avatars_dir);
+            
+            let attachments_dir = commands::get_attachments_dir(&handle);
+            let _ = fs::create_dir_all(&attachments_dir);
+
+            // Safe Environment Setup for FastEmbed/ORT
+            vector_memory::resolve_ort_dylib(&handle);
+            #[cfg(target_os = "android")]
+            if let Ok(cache_dir) = app.path().app_cache_dir() {
+                std::env::set_var("HOME", cache_dir.clone());
+                std::env::set_var("XDG_CACHE_HOME", cache_dir.clone());
+                std::env::set_var("XDG_DATA_HOME", cache_dir.clone());
+            }
 
             // Setup database
             match init_db(handle) {

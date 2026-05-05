@@ -87,6 +87,7 @@ pub fn init_model(app_handle: Option<&tauri::AppHandle>, model_name: &str) -> Re
 
     // Fix Android crash: explicitly set cache directory using Tauri's path resolver
     // hf-hub and dirs crates panic if HOME or cache directories are missing.
+    // NOTE: Environment variables (HOME, XDG) are now safely set in lib.rs setup block!
     if let Some(app) = app_handle {
         if let Ok(cache_dir) = app.path().app_cache_dir() {
             let fe_cache = cache_dir.join("fastembed");
@@ -94,9 +95,6 @@ pub fn init_model(app_handle: Option<&tauri::AppHandle>, model_name: &str) -> Re
             
             #[cfg(target_os = "android")]
             {
-                std::env::set_var("HOME", cache_dir.clone());
-                std::env::set_var("XDG_CACHE_HOME", cache_dir.clone());
-                std::env::set_var("XDG_DATA_HOME", cache_dir.clone());
                 let _ = std::fs::create_dir_all(&fe_cache);
             }
         }
@@ -428,9 +426,6 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_fastembed_integration() {
-        // Since cargo test runs binaries in target/debug/deps/, we point to the parent dir where our downloaded DLL lives
-        std::env::set_var("ORT_DYLIB_PATH", "../onnxruntime.dll");
-
         // Initialize a very small model just for testing
         let init = init_model(None, "AllMiniLML6V2");
         assert!(init.is_ok(), "Failed to initialize fastembed: {:?}", init.err());
@@ -452,7 +447,6 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_rag_end_to_end_retrieval() {
-        std::env::set_var("ORT_DYLIB_PATH", "../onnxruntime.dll");
         init_model(None, "AllMiniLML6V2").unwrap();
 
         let conn = rusqlite::Connection::open_in_memory().unwrap();

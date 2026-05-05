@@ -62,8 +62,13 @@ const converter = new showdown.Converter({
           filter: (text: string) => {
               // 1. HR Styling
               text = text.replace(/^---$/gm, '<hr class="my-6 border-white/10" />');
-              // 2. Dialogue Highlighting (Teal-300) - safe vs markdown links
-              text = text.replace(/(?<!\]\()(?<!=\s*)"([^"]+)"/g, '<span class="text-teal-300">"$1"</span>');
+              // 2. Dialogue Highlighting (Teal-300) - safe vs markdown links and HTML attributes
+              text = text.replace(/\]\("[^"]+"\)|=\s*"[^"]+"|("([^"]+)")/g, (match, fullDialogue, dialogueInner) => {
+                  if (fullDialogue) {
+                      return `<span class="text-teal-300">"${dialogueInner}"</span>`;
+                  }
+                  return match;
+              });
               text = text.replace(/«([^»]+)»/g, '<span class="text-teal-300">«$1»</span>');
               return text;
           }
@@ -127,6 +132,23 @@ function renderMessageHtml(content: string) {
 
 // --- COMPONENTS ---
 
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { appLocalDataDir, join } from "@tauri-apps/api/path";
+
+const RenderedAttachment = ({ filename }: { filename: string }) => {
+    const [src, setSrc] = useState<string | null>(null);
+    useEffect(() => {
+        let active = true;
+        appLocalDataDir().then(appDataPath => join(appDataPath, "attachments", filename)).then(fullPath => {
+            if (active) setSrc(convertFileSrc(fullPath));
+        }).catch(console.error);
+        return () => { active = false; };
+    }, [filename]);
+
+    if (!src) return <div className="h-48 w-48 bg-gray-900 rounded-lg animate-pulse border border-white/10" />;
+    return <img src={src} className="max-w-full max-h-96 rounded-lg border border-white/10 object-contain" alt="User upload" />;
+};
+
 const MessageContent = React.memo(({ content, isUser, scale, userName, charName, images }: { content: string, isUser: boolean, scale?: number, userName?: string, charName?: string, images?: string[] }) => {
     // Replace visual macros
     let finalContent = content;
@@ -166,7 +188,7 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
             {images && images.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                     {images.map((img, i) => (
-                        <img key={i} src={img} className="max-w-full max-h-96 rounded-lg border border-white/10 object-contain" alt="User upload" />
+                        <RenderedAttachment key={i} filename={img} />
                     ))}
                 </div>
             )}
@@ -284,12 +306,22 @@ function App() {
       fetchQuickReplies();
   }, []);
 
-  const convertToBase64 = (file: File): Promise<string> => {
+  const uploadFileAsAttachment = async (file: File): Promise<string> => {
       return new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => resolve(reader.result as string);
+          reader.onload = async (ev) => {
+              if (ev.target?.result) {
+                  const bytes = Array.from(new Uint8Array(ev.target.result as ArrayBuffer));
+                  try {
+                      const newFilename = await invoke<string>("upload_attachment", { data: bytes });
+                      resolve(newFilename);
+                  } catch (err) {
+                      reject(err);
+                  }
+              }
+          };
           reader.onerror = error => reject(error);
+          reader.readAsArrayBuffer(file);
       });
   };
 
@@ -297,13 +329,14 @@ function App() {
       if (e.target.files) {
           try {
               const files = Array.from(e.target.files);
-              const bases = await Promise.all(files.map(convertToBase64));
-              setAttachedImages(prev => [...prev, ...bases]);
+              const names = await Promise.all(files.map(uploadFileAsAttachment));
+              setAttachedImages(prev => [...prev, ...names]);
           } catch (err) {
-              console.error("Failed to read image files:", err);
-              addToast("Failed to load image.", "error");
+              console.error("Failed to upload image files:", err);
+              addToast("Failed to upload image.", "error");
           }
       }
+      e.target.value = '';
   };
 
   const handlePaste = async (e: React.ClipboardEvent) => {
@@ -313,8 +346,8 @@ function App() {
               const blob = items[i].getAsFile();
               if (blob) {
                   try {
-                      const base64 = await convertToBase64(blob);
-                      setAttachedImages(prev => [...prev, base64]);
+                      const name = await uploadFileAsAttachment(blob);
+                      setAttachedImages(prev => [...prev, name]);
                   } catch (err) {
                       console.error("Failed to paste image:", err);
                       addToast("Failed to paste image.", "error");

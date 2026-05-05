@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   Send,
   MoreVertical,
@@ -10,6 +11,38 @@ import {
   X,
 } from "lucide-react";
 import { QuickReply } from "../../types";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { appLocalDataDir, join } from "@tauri-apps/api/path";
+
+const AttachmentPreview = ({ filename, onRemove }: { filename: string, onRemove: () => void }) => {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+      let active = true;
+      appLocalDataDir().then(appDataPath => join(appDataPath, "attachments", filename)).then(fullPath => {
+          if (active) setSrc(convertFileSrc(fullPath));
+      }).catch(console.error);
+      return () => { active = false; };
+  }, [filename]);
+
+  return (
+    <div className="relative group shrink-0">
+      {src ? (
+          <img
+            src={src}
+            className="h-16 w-16 object-cover rounded-lg border border-white/10 shadow-sm"
+          />
+      ) : (
+          <div className="h-16 w-16 bg-gray-800 rounded-lg animate-pulse border border-white/10" />
+      )}
+      <button
+        onClick={onRemove}
+        className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 text-white shadow-lg opacity-80 hover:opacity-100 transition"
+      >
+        <X size={10} />
+      </button>
+    </div>
+  );
+};
 
 interface MessageInputProps {
   quickReplies: QuickReply[];
@@ -83,20 +116,7 @@ export function MessageInput({
       {attachedImages.length > 0 && (
         <div className="max-w-4xl mx-auto px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
           {attachedImages.map((img, i) => (
-            <div key={i} className="relative group shrink-0">
-              <img
-                src={img}
-                className="h-16 w-16 object-cover rounded-lg border border-white/10 shadow-sm"
-              />
-              <button
-                onClick={() =>
-                  setAttachedImages((prev) => prev.filter((_, idx) => idx !== i))
-                }
-                className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 text-white shadow-lg opacity-80 hover:opacity-100 transition"
-              >
-                <X size={10} />
-              </button>
-            </div>
+            <AttachmentPreview key={i} filename={img} onRemove={() => setAttachedImages((prev) => prev.filter((_, idx) => idx !== i))} />
           ))}
         </div>
       )}

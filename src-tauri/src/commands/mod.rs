@@ -12,6 +12,23 @@ pub fn get_avatars_dir(app_handle: &AppHandle) -> PathBuf {
     app_dir.join("avatars")
 }
 
+pub fn get_attachments_dir(app_handle: &AppHandle) -> PathBuf {
+    let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
+    app_dir.join("attachments")
+}
+
+#[tauri::command]
+pub fn upload_attachment(app_handle: AppHandle, data: Vec<u8>) -> Result<String, String> {
+    let attachments_dir = get_attachments_dir(&app_handle);
+    std::fs::create_dir_all(&attachments_dir).map_err(|e| e.to_string())?;
+    
+    let new_filename = format!("attach_{}.png", chrono::Local::now().timestamp_millis());
+    let dest_path = attachments_dir.join(&new_filename);
+    
+    std::fs::write(&dest_path, &data).map_err(|e| e.to_string())?;
+    Ok(new_filename)
+}
+
 #[tauri::command]
 pub async fn save_extension_script(app_handle: AppHandle, file_name: String, content: String) -> Result<(), String> {
     let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
@@ -32,7 +49,13 @@ pub async fn save_extension_script(app_handle: AppHandle, file_name: String, con
 pub async fn delete_extension_script(app_handle: AppHandle, file_name: String) -> Result<(), String> {
     let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
     let ext_dir = app_dir.join("extensions");
-    let file_path = ext_dir.join(file_name);
+    
+    // Safely extract only the file name
+    let path = std::path::Path::new(&file_name);
+    let safe_base_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+    if safe_base_name.is_empty() { return Err("Invalid file name".to_string()); }
+
+    let file_path = ext_dir.join(safe_base_name);
     
     if file_path.exists() {
         std::fs::remove_file(file_path).map_err(|e| e.to_string())?;
@@ -1045,10 +1068,18 @@ pub async fn process_macros_debug(text: String, character_id: i64, db_state: tau
 }
 
 
+fn get_bpe() -> Result<&'static tiktoken_rs::CoreBPE, String> {
+    static BPE: std::sync::OnceLock<tiktoken_rs::CoreBPE> = std::sync::OnceLock::new();
+    if BPE.get().is_none() {
+        let bpe = tiktoken_rs::cl100k_base().map_err(|e| e.to_string())?;
+        let _ = BPE.set(bpe);
+    }
+    Ok(BPE.get().unwrap())
+}
+
 #[tauri::command]
 pub fn count_tokens(text: String) -> Result<usize, String> {
-    use tiktoken_rs::cl100k_base;
-    let bpe = cl100k_base().map_err(|e| e.to_string())?;
+    let bpe = get_bpe()?;
     let tokens = bpe.encode_with_special_tokens(&text);
     Ok(tokens.len())
 }
@@ -1060,8 +1091,7 @@ pub fn get_modules_token_counts(
     character_id: i64,
     db_state: tauri::State<DbState>
 ) -> Result<std::collections::HashMap<String, usize>, String> {
-    use tiktoken_rs::cl100k_base;
-    let bpe = cl100k_base().map_err(|e| e.to_string())?;
+    let bpe = get_bpe()?;
     
     let conn = db_state.0.lock().unwrap();
     
@@ -1457,6 +1487,14 @@ fn db_time_to_iso(db_time: &str) -> String {
     let t = db_time.trim();
     if t.is_empty() { return String::new(); }
     format!("{}Z", t.replace(" ", "T"))
+}
+
+fn iso_to_timestamp(iso: &str) -> i64 {
+    if iso.is_empty() { return 0; }
+    match chrono::DateTime::parse_from_rfc3339(iso) {
+        Ok(dt) => dt.timestamp(),
+        Err(_) => 0,
+    }
 }
 
 async fn get_valid_token(db_state: &tauri::State<'_, DbState>) -> Result<String, String> {
@@ -2104,7 +2142,7 @@ pub async fn sync_push_all(provider: String, app_handle: tauri::AppHandle, db_st
         let local_iso_time = db_time_to_iso(&char.updated_at);
         
         if let Some(cloud_mod) = cloud_chars.get(&path.to_lowercase()) {
-            if !local_iso_time.is_empty() && cloud_mod >= &local_iso_time {
+            if !local_iso_time.is_empty() && iso_to_timestamp(&cloud_mod) >= iso_to_timestamp(&local_iso_time) {
                 continue;
             }
         }
@@ -2148,7 +2186,7 @@ pub async fn sync_push_all(provider: String, app_handle: tauri::AppHandle, db_st
         let local_iso_time = db_time_to_iso(&group.updated_at);
         
         if let Some(cloud_mod) = cloud_groups.get(&path.to_lowercase()) {
-            if !local_iso_time.is_empty() && cloud_mod >= &local_iso_time {
+            if !local_iso_time.is_empty() && iso_to_timestamp(&cloud_mod) >= iso_to_timestamp(&local_iso_time) {
                 continue;
             }
         }
@@ -2191,7 +2229,7 @@ pub async fn sync_push_all(provider: String, app_handle: tauri::AppHandle, db_st
         let local_iso_time = db_time_to_iso(&updated_at);
 
         if let Some(cloud_mod) = cloud_chats.get(&path.to_lowercase()) {
-            if !local_iso_time.is_empty() && cloud_mod >= &local_iso_time {
+            if !local_iso_time.is_empty() && iso_to_timestamp(&cloud_mod) >= iso_to_timestamp(&local_iso_time) {
                 continue;
             }
         }
@@ -2458,14 +2496,12 @@ pub fn get_last_prompt(state: tauri::State<LastPrompt>) -> String {
 
 #[tauri::command]
 pub async fn init_vector_model(app_handle: AppHandle, model_name: String) -> Result<String, String> {
-    vector_memory::resolve_ort_dylib(&app_handle);
     vector_memory::init_model(Some(&app_handle), &model_name)?;
     Ok(format!("Model {} initialized successfully", model_name))
 }
 
 #[tauri::command]
-pub async fn init_custom_vector_model(app_handle: AppHandle, folder_path: String) -> Result<String, String> {
-    vector_memory::resolve_ort_dylib(&app_handle);
+pub async fn init_custom_vector_model(_app_handle: AppHandle, folder_path: String) -> Result<String, String> {
     vector_memory::init_custom_model(&folder_path)?;
     Ok("Custom model initialized successfully".to_string())
 }

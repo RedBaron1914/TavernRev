@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { appLocalDataDir, join } from "@tauri-apps/api/path";
 import { User, Bot, X } from "lucide-react";
 
 const Avatar = ({
@@ -21,11 +22,19 @@ const Avatar = ({
   useEffect(() => {
     let active = true;
     if (src && src !== "default.png" && src !== "user_default.png") {
-      invoke<string>("read_image_base64", { fileName: src })
-        .then((data) => {
-          if (active && data) setImgData(data);
-        })
-        .catch((e) => console.error("Avatar load error:", e));
+      const loadAvatar = async () => {
+        try {
+          const appDataPath = await appLocalDataDir();
+          const avatarPath = await join(appDataPath, "avatars", src);
+          const assetUrl = convertFileSrc(avatarPath);
+          if (active) setImgData(assetUrl);
+        } catch (e) {
+          console.error("Avatar path resolution error:", e);
+        }
+      };
+      loadAvatar();
+    } else {
+        setImgData(null);
     }
     return () => {
       active = false;
