@@ -139,13 +139,17 @@ const RenderedAttachment = ({ filename }: { filename: string }) => {
     const [src, setSrc] = useState<string | null>(null);
     useEffect(() => {
         let active = true;
-        appLocalDataDir().then(appDataPath => join(appDataPath, "attachments", filename)).then(fullPath => {
-            if (active) setSrc(convertFileSrc(fullPath));
-        }).catch(console.error);
+        if (filename.startsWith("data:image/") || filename.startsWith("http")) {
+            setSrc(filename);
+        } else {
+            appLocalDataDir().then(appDataPath => join(appDataPath, "attachments", filename)).then(fullPath => {
+                if (active) setSrc(convertFileSrc(fullPath));
+            }).catch(console.error);
+        }
         return () => { active = false; };
     }, [filename]);
 
-    if (!src) return <div className="h-48 w-48 bg-gray-900 rounded-lg animate-pulse border border-white/10" />;
+    if (!src) return <div className="max-w-sm h-48 bg-gray-900 rounded-lg animate-pulse border border-white/10" />;
     return <img src={src} className="max-w-full max-h-96 rounded-lg border border-white/10 object-contain" alt="User upload" />;
 };
 

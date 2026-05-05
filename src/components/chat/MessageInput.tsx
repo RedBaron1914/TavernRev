@@ -18,9 +18,13 @@ const AttachmentPreview = ({ filename, onRemove }: { filename: string, onRemove:
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
       let active = true;
-      appLocalDataDir().then(appDataPath => join(appDataPath, "attachments", filename)).then(fullPath => {
-          if (active) setSrc(convertFileSrc(fullPath));
-      }).catch(console.error);
+      if (filename.startsWith("data:image/") || filename.startsWith("http")) {
+          setSrc(filename);
+      } else {
+          appLocalDataDir().then(appDataPath => join(appDataPath, "attachments", filename)).then(fullPath => {
+              if (active) setSrc(convertFileSrc(fullPath));
+          }).catch(console.error);
+      }
       return () => { active = false; };
   }, [filename]);
 
