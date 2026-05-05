@@ -27,7 +27,8 @@ pub fn resolve_ort_dylib(app_handle: &tauri::AppHandle) {
     
     #[cfg(target_os = "android")]
     {
-        std::env::set_var("ORT_DYLIB_PATH", dylib_name);
+        // Android automatically resolves libraries in jniLibs via dlopen,
+        // so setting ORT_DYLIB_PATH is completely unnecessary and dangerous due to set_var panics.
     }
 
     #[cfg(not(target_os = "android"))]

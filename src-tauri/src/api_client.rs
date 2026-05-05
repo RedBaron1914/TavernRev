@@ -654,8 +654,31 @@ pub async fn generate_google(
         })]
     });
 
+    // Merge consecutive messages with the same role to strictly satisfy Gemini's alternating roles requirement
+    let mut alternating_contents: Vec<GoogleContent> = Vec::new();
+    for content in contents {
+        if let Some(last) = alternating_contents.last_mut() {
+            if last.role == content.role {
+                // Merge parts
+                last.parts.extend(content.parts);
+                continue;
+            }
+        }
+        alternating_contents.push(content);
+    }
+    
+    // Gemini also requires the first message to be from the user
+    if let Some(first) = alternating_contents.first() {
+        if first.role != "user" {
+            alternating_contents.insert(0, GoogleContent {
+                role: "user".to_string(),
+                parts: vec![GooglePart { text: Some("Start.".to_string()), inline_data: None, function_call: None, function_response: None }],
+            });
+        }
+    }
+
     let req = GoogleRequest {
-        contents,
+        contents: alternating_contents,
         generation_config: GoogleConfig {
             temperature: preset.temperature,
             max_output_tokens: preset.openai_max_tokens,
