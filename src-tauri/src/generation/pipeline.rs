@@ -26,6 +26,26 @@ fn load_image_base64(path: &Path) -> Option<String> {
     }
 }
 
+pub fn resolve_image_to_base64(img: &str, attach_dir: &Path) -> String {
+    if !img.starts_with("data:") && !img.starts_with("http") {
+        let img_path = attach_dir.join(img);
+        if let Ok(bytes) = std::fs::read(&img_path) {
+            use base64::Engine;
+            let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+            let ext = img_path.extension().unwrap_or_default().to_string_lossy().to_lowercase();
+            let mime = match ext.as_str() {
+                "png" => "image/png",
+                "jpg" | "jpeg" => "image/jpeg",
+                "gif" => "image/gif",
+                "webp" => "image/webp",
+                _ => "image/jpeg"
+            };
+            return format!("data:{};base64,{}", mime, b64);
+        }
+    }
+    img.to_string()
+}
+
 pub struct GenerationContext {
     pub chat_id: i64,
     pub real_char_id: i64,
@@ -481,7 +501,25 @@ pub async fn prepare_prompt(
                 } else {
                     let mut parts = vec![api_client::OpenAIPart { part_type: "text".to_string(), text: Some(m.content.clone()), image_url: None }];
                     for img in images {
-                        parts.push(api_client::OpenAIPart { part_type: "image_url".to_string(), text: None, image_url: Some(api_client::OpenAIImageUrl { url: img.clone() }) });
+                        let mut resolved_img = img.clone();
+                        if !img.starts_with("data:") && !img.starts_with("http") {
+                            let attach_dir = crate::commands::get_attachments_dir(app_handle);
+                            let img_path = attach_dir.join(img);
+                            if let Ok(bytes) = std::fs::read(&img_path) {
+                                use base64::Engine;
+                                let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+                                let ext = img_path.extension().unwrap_or_default().to_string_lossy().to_lowercase();
+                                let mime = match ext.as_str() {
+                                    "png" => "image/png",
+                                    "jpg" | "jpeg" => "image/jpeg",
+                                    "gif" => "image/gif",
+                                    "webp" => "image/webp",
+                                    _ => "image/jpeg"
+                                };
+                                resolved_img = format!("data:{};base64,{}", mime, b64);
+                            }
+                        }
+                        parts.push(api_client::OpenAIPart { part_type: "image_url".to_string(), text: None, image_url: Some(api_client::OpenAIImageUrl { url: resolved_img }) });
                     }
                     api_client::OpenAIContent::Array(parts)
                 }
@@ -657,5 +695,37 @@ pub async fn finalize_response(
     }
             
     Ok(final_response)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_resolve_image_to_base64() {
+        let temp_dir = std::env::temp_dir().join("tavernrev_test_multimodal");
+        let _ = fs::create_dir_all(&temp_dir);
+        
+        let test_file = temp_dir.join("test_avatar.png");
+        fs::write(&test_file, b"fake_image_data").unwrap();
+
+        // 1. App asking for avatars/images in chat (physical file -> Base64 parsing)
+        let resolved = resolve_image_to_base64("test_avatar.png", &temp_dir);
+        assert!(resolved.starts_with("data:image/png;base64,"));
+        assert!(resolved.len() > 25);
+        
+        // 2. Display purposes/Fallback (Legacy Base64 data URL remains untouched)
+        let legacy_b64 = "data:image/jpeg;base64,1234567890";
+        let resolved_legacy = resolve_image_to_base64(legacy_b64, &temp_dir);
+        assert_eq!(resolved_legacy, legacy_b64);
+
+        // 3. Display purposes/Fallback (Remote HTTP URL remains untouched)
+        let remote_url = "https://example.com/image.png";
+        let resolved_remote = resolve_image_to_base64(remote_url, &temp_dir);
+        assert_eq!(resolved_remote, remote_url);
+        
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
 }
 
