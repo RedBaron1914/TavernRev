@@ -37,7 +37,6 @@ graph TD
     B --> H[Cloud Sync (Dropbox + Google Drive)]
     B --> I[Routing Engine (Groups)]
     B --> K[Regex Scripts & Post-Processing]
-```
 
 ### Key Rust Modules
 
