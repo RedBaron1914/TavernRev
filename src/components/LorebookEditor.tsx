@@ -5,11 +5,13 @@ import { BookList } from "./lorebook/BookList";
 import { EntryCard } from "./lorebook/EntryCard";
 import { PinModal } from "./lorebook/PinModal";
 import type { Lorebook, LoreEntry, LorebookLink, LoreTab, PinModalState } from "./lorebook/types";
+import { useTranslation } from 'react-i18next'
 
-const TAB_CONFIG: { id: LoreTab; label: string; icon: typeof Globe; activeText: string; activeBorder: string; activeBg: string; badgeBg: string; badgeText: string }[] = [
-  { id: "global", label: "Global", icon: Globe, activeText: "text-cyan-400", activeBorder: "border-cyan-500", activeBg: "bg-cyan-500/5", badgeBg: "bg-cyan-500/20", badgeText: "text-cyan-300" },
-  { id: "card", label: "Card", icon: User, activeText: "text-pink-400", activeBorder: "border-pink-500", activeBg: "bg-pink-500/5", badgeBg: "bg-pink-500/20", badgeText: "text-pink-300" },
-  { id: "chat", label: "Chat", icon: MessageSquare, activeText: "text-indigo-400", activeBorder: "border-indigo-500", activeBg: "bg-indigo-500/5", badgeBg: "bg-indigo-500/20", badgeText: "text-indigo-300" },
+
+const TAB_CONFIG: { id: LoreTab; labelKey?: string; label: string; icon: typeof Globe; activeText: string; activeBorder: string; activeBg: string; badgeBg: string; badgeText: string }[] = [
+  { id: "global", labelKey: "global", label: "Global", icon: Globe, activeText: "text-cyan-400", activeBorder: "border-cyan-500", activeBg: "bg-cyan-500/5", badgeBg: "bg-cyan-500/20", badgeText: "text-cyan-300" },
+  { id: "card", labelKey: "card", label: "Card", icon: User, activeText: "text-pink-400", activeBorder: "border-pink-500", activeBg: "bg-pink-500/5", badgeBg: "bg-pink-500/20", badgeText: "text-pink-300" },
+  { id: "chat", labelKey: "chat", label: "Chat", icon: MessageSquare, activeText: "text-indigo-400", activeBorder: "border-indigo-500", activeBg: "bg-indigo-500/5", badgeBg: "bg-indigo-500/20", badgeText: "text-indigo-300" },
 ];
 
 export default function LorebookEditor({
@@ -18,6 +20,7 @@ export default function LorebookEditor({
   chatId: number | null; characterId: number | null;
   addToast: (msg: string, type?: "success" | "error" | "info") => void;
 }) {
+  const { t } = useTranslation()
   const [books, setBooks] = useState<Lorebook[]>([]);
   const [activeTab, setActiveTab] = useState<LoreTab>("global");
   const [activeBookId, setActiveBookId] = useState<number | null>(null);
@@ -206,7 +209,7 @@ export default function LorebookEditor({
                   : "text-gray-500 border-transparent hover:text-gray-300 hover:bg-white/5"
               }`}>
               <Icon size={13} />
-              {tab.label}
+              {tab.labelKey ? t(tab.labelKey, tab.label) : tab.label}
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
                 activeTab === tab.id
                   ? `${tab.badgeBg} ${tab.badgeText}`
@@ -222,13 +225,16 @@ export default function LorebookEditor({
       {/* ACTIONS BAR */}
       <div className="shrink-0 border-b border-white/10 px-3 py-1.5 flex items-center gap-2 bg-gray-950/30">
         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex-1">
-          {TAB_CONFIG.find(t => t.id === activeTab)?.label} Books
+          {(() => {
+            const tab = TAB_CONFIG.find(t => t.id === activeTab);
+            return tab ? (tab.labelKey ? t(tab.labelKey, tab.label) : tab.label) : "";
+          })()} {t('books', 'Books')}
         </span>
-        <button onClick={handleCreateBook} title="New Book"
+        <button onClick={handleCreateBook} title={t('newBook', 'New Book')}
           className="p-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition border border-white/5 text-emerald-400">
           <Plus size={14} />
         </button>
-        <label className="p-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition border border-white/5 text-gray-400 hover:text-white cursor-pointer" title="Import JSON">
+        <label className="p-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition border border-white/5 text-gray-400 hover:text-white cursor-pointer" title={t('importJson', 'Import JSON')}>
           <Upload size={14} />
           <input type="file" accept=".json" onChange={e => e.target.files?.[0] && handleImportBook(e.target.files[0])} className="hidden" />
         </label>
@@ -254,10 +260,10 @@ export default function LorebookEditor({
         {activeBookId ? (
           <>
             <div className="flex justify-between items-center mb-1">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{entries.length} Entries</span>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{t('lengthEntries', '{{length}} Entries', { length: entries.length })}</span>
               <button onClick={handleCreateEntry}
                 className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold rounded-lg transition">
-                <Plus size={12} /> Add Entry
+                <Plus size={12} /> {t('addEntry', 'Add Entry')}
               </button>
             </div>
             {entries.map(entry => (
@@ -265,14 +271,14 @@ export default function LorebookEditor({
             ))}
             {entries.length === 0 && (
               <div className="text-center py-10 text-gray-600 text-xs border-2 border-dashed border-gray-800 rounded-xl">
-                No entries yet. Click "Add Entry" to start.
+                {t('noEntriesYetClickAddEntryToStart', 'No entries yet. Click "Add Entry" to start.')}
               </div>
             )}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-600 space-y-3">
             <Book size={36} className="opacity-20"/>
-            <p className="text-xs">Select a lorebook to view entries</p>
+            <p className="text-xs">{t('selectALorebookToViewEntries', 'Select a lorebook to view entries')}</p>
           </div>
         )}
       </div>

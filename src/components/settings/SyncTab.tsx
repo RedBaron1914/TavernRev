@@ -1,5 +1,6 @@
 import { Cloud, Upload, CheckCircle, Lock, RefreshCw } from "lucide-react";
 import { Toggle } from "./shared";
+import { useTranslation } from 'react-i18next'
 
 interface SyncTabProps {
   syncProvider: "dropbox" | "gdrive" | null;
@@ -36,6 +37,7 @@ export function SyncTab({
   autoSyncEnabled,
   setAutoSyncEnabled,
 }: SyncTabProps) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="bg-gray-900/30 p-8 rounded-3xl border border-white/5 flex flex-col items-center text-center space-y-6">
@@ -48,7 +50,7 @@ export function SyncTab({
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            Dropbox
+            {t('dropbox', 'Dropbox')}
           </button>
           <button
             onClick={() => handleSyncProviderChange("gdrive")}
@@ -58,7 +60,7 @@ export function SyncTab({
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            Google Drive
+            {t('googleDrive', 'Google Drive')}
           </button>
         </div>
 
@@ -75,10 +77,10 @@ export function SyncTab({
         </div>
         <div>
           <h3 className="text-xl font-bold text-white mb-2">
-            Cloud Synchronization
+            {t('cloudSynchronization', 'Cloud Synchronization')}
           </h3>
           <p className="text-sm text-gray-400 max-w-sm mx-auto">
-            Keep your characters and chats in sync across devices using your personal {syncProvider === "dropbox" ? "Dropbox" : "Google Drive"} account.
+            {t('keepYourCharactersAndChatsInSyncAcrossDevicesUsingYourPersonal', 'Keep your characters and chats in sync across devices using your personal')} {syncProvider === "dropbox" ? "Dropbox" : "Google Drive"} account.
           </p>
         </div>
 
@@ -87,7 +89,7 @@ export function SyncTab({
             onClick={handleConnectDropbox}
             className="flex items-center gap-3 px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl transition shadow-xl shadow-indigo-900/20 active:scale-95"
           >
-            Connect Dropbox Account
+            {t('connectDropboxAccount', 'Connect Dropbox Account')}
           </button>
         )}
 
@@ -96,7 +98,7 @@ export function SyncTab({
             onClick={handleConnectGDrive}
             className="flex items-center gap-3 px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl transition shadow-xl shadow-emerald-900/20 active:scale-95"
           >
-            Connect Google Drive
+            {t('connectGoogleDrive', 'Connect Google Drive')}
           </button>
         )}
 
@@ -105,7 +107,7 @@ export function SyncTab({
           <div className="w-full space-y-4">
             <div className="flex items-center justify-center gap-2 text-emerald-400 font-bold bg-emerald-500/10 py-2 rounded-xl border border-emerald-500/20">
               <CheckCircle size={18} />{" "}
-              {syncProvider === "dropbox" ? "Dropbox" : "Google Drive"} Connected
+              {syncProvider === "dropbox" ? "Dropbox" : "Google Drive"} {t('connected', 'Connected')}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -118,7 +120,7 @@ export function SyncTab({
               >
                 <Upload size={20} className={isPushing ? "animate-bounce" : ""} />
                 <span className="text-xs font-bold text-center">
-                  {isPushing && syncStatus ? syncStatus : "Push to Cloud"}
+                  {isPushing && syncStatus ? syncStatus : t('pushToCloud', 'Push to Cloud')}
                 </span>
               </button>
               <button
@@ -130,20 +132,20 @@ export function SyncTab({
               >
                 <RefreshCw size={20} className={isPulling ? "animate-spin" : ""} />
                 <span className="text-xs font-bold text-center">
-                  {isPulling && syncStatus ? syncStatus : "Pull from Cloud"}
+                  {isPulling && syncStatus ? syncStatus : t('pullFromCloud', 'Pull from Cloud')}
                 </span>
               </button>
             </div>
             <div className="pt-2 border-t border-white/5">
               <Toggle
-                label="Enable Real-Time Auto-Sync"
+                label={t('enableRealtimeAutosync', 'Enable Real-Time Auto-Sync')}
                 field="autoSync"
                 value={autoSyncEnabled}
                 onChange={(_: any, newValue: any) => {
                   setAutoSyncEnabled(newValue);
                   localStorage.setItem("cloud_auto_sync", newValue.toString());
                 }}
-                helpText="Silently syncs chats to the cloud 5 seconds after you finish typing."
+                helpText={t('silentlySyncsChats', 'Silently syncs chats to the cloud 5 seconds after you finish typing.')}
               />
             </div>
 
@@ -151,13 +153,13 @@ export function SyncTab({
               onClick={syncProvider === "dropbox" ? handleLogoutDropbox : handleLogoutGDrive}
               className="text-xs text-gray-500 hover:text-red-400 transition"
             >
-              Disconnect Account
+              {t('disconnectAccount', 'Disconnect Account')}
             </button>
           </div>
         )}
 
         <div className="pt-4 flex items-center gap-2 text-[10px] text-gray-600 uppercase font-bold tracking-widest">
-          <Lock size={12} /> App Folder Access Only
+          <Lock size={12} /> {t('appFolderAccessOnly', 'App Folder Access Only')}
         </div>
       </div>
     </div>

@@ -4,32 +4,35 @@ import { invoke } from "@tauri-apps/api/core";
 import Avatar from "../Avatar";
 import { Character } from "../../types";
 import { ToastType } from "../Toast";
-
+import { useTranslation } from "react-i18next";
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 
-const SPLASHES = [
-    "Now with Async!",
-    "Rust Powered!",
-    "Waifu inside!",
-    "Don't forget to hydrate!",
-    "Is this simulation?",
-    "Error 418: I'm a teapot",
-    "TavernRev v1.2.4!",
-    "Tokio Drift!",
-    "Regex magic!",
-    "Prompt Engineering is Art",
-    "Also try SillyTavern!",
-    "No memory leaks included (maybe)",
-    "Safe for work? Hopefully.",
-    "Press Alt+F4 for diamonds",
-    "Math verified!",
-    "It works on my machine!",
-    "Syntactically sweet!",
-    "Panic free since 2025!",
+const SPLASH_KEYS: Array<[string, string]> = [
+    ["splashNowWithAsync", "Now with Async!"],
+    ["splashRustPowered", "Rust Powered!"],
+    ["splashWaifuInside", "Waifu inside!"],
+    ["splashHydrate", "Don't forget to hydrate!"],
+    ["splashSimulation", "Is this simulation?"],
+    ["splashTeapot", "Error 418: I'm a teapot"],
+    ["splashVersion", "TavernRev v1.2.4!"],
+    ["splashTokioDrift", "Tokio Drift!"],
+    ["splashRegex", "Regex magic!"],
+    ["splashPromptArt", "Prompt Engineering is Art"],
+    ["splashSillyTavern", "Also try SillyTavern!"],
+    ["splashNoLeaks", "No memory leaks included (maybe)"],
+    ["splashSafeForWork", "Safe for work? Hopefully."],
+    ["splashAltF4", "Press Alt+F4 for diamonds"],
+    ["splashMathVerified", "Math verified!"],
+    ["splashMyMachine", "It works on my machine!"],
+    ["splashSyntax", "Syntactically sweet!"],
+    ["splashPanic", "Panic free since 2025!"],
+    ["splashAiAutocomplete", "AI? Nah, just autocomplete"],
+    ["splashRoleplay", "Roleplay is serious business!"],
 ];
 
 const SplashText = () => {
-    const [text] = useState(() => SPLASHES[Math.floor(Math.random() * SPLASHES.length)]);
+    const { t } = useTranslation();
+    const [[key, fallback]] = useState(() => SPLASH_KEYS[Math.floor(Math.random() * SPLASH_KEYS.length)]);
     return (
         <span 
             className="absolute animate-minecraft-splash drop-shadow-md select-none pointer-events-none z-50 whitespace-nowrap"
@@ -42,7 +45,7 @@ const SplashText = () => {
                 textShadow: "1px 1px 0px #3f3f00" 
             }}
         >
-            {text}
+            {t(key, fallback)}
         </span>
     );
 };
@@ -62,6 +65,7 @@ export const CharacterSelect = ({
     refreshCharacters: () => void, 
     addToast: (msg: string, type?: ToastType) => void 
 }) => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"az" | "za" | "newest" | "oldest">("az");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -115,8 +119,8 @@ export const CharacterSelect = ({
                     <SplashText />
                 </div>
                 <div>
-                    <h1 className="text-xl font-bold tracking-tight">Characters</h1>
-                    <p className="text-xs text-gray-400">Select a character to start chatting</p>
+                    <h1 className="text-xl font-bold tracking-tight">{t('characters', 'Characters')}</h1>
+                    <p className="text-xs text-gray-400">{t('selectACharacterToStartChatting', 'Select a character to start chatting')}</p>
                 </div>
             </div>
             <div className="flex gap-2">
@@ -137,7 +141,7 @@ export const CharacterSelect = ({
             />
             <input
               type="text"
-              placeholder="Search characters..."
+              placeholder={t('searchCharacters', 'Search characters...')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
@@ -156,12 +160,12 @@ export const CharacterSelect = ({
                   <Filter size={14} />
                   <span className="hidden sm:inline">
                     {sort === "az"
-                      ? "Name (A-Z)"
+                      ? t('nameAz', 'Name (A-Z)')
                       : sort === "za"
-                        ? "Name (Z-A)"
+                        ? t('nameZa', 'Name (Z-A)')
                         : sort === "newest"
-                          ? "Newest"
-                          : "Oldest"}
+                          ? t('newest', 'Newest')
+                          : t('oldest', 'Oldest')}
                   </span>
                 </button>
                 <div className={`absolute right-0 top-full mt-2 w-32 bg-gray-800 border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 transition-all origin-top ${showSortDropdown ? "scale-100 opacity-100 visible" : "scale-95 opacity-0 invisible"}`}>
@@ -169,32 +173,32 @@ export const CharacterSelect = ({
                     onMouseDown={() => { setSort("az"); setShowSortDropdown(false); }}
                     className="w-full text-left px-4 py-2 text-xs hover:bg-white/10 flex gap-2"
                   >
-                    <ArrowDownAZ size={12} /> Name A-Z
+                    <ArrowDownAZ size={12} /> {t('nameAz', 'Name A-Z')}
                   </button>
                   <button
                     onMouseDown={() => { setSort("za"); setShowSortDropdown(false); }}
                     className="w-full text-left px-4 py-2 text-xs hover:bg-white/10 flex gap-2"
                   >
-                    <ArrowUpAZ size={12} /> Name Z-A
+                    <ArrowUpAZ size={12} /> {t('nameZa', 'Name Z-A')}
                   </button>
                   <button
                     onMouseDown={() => { setSort("newest"); setShowSortDropdown(false); }}
                     className="w-full text-left px-4 py-2 text-xs hover:bg-white/10 flex gap-2"
                   >
-                    <Clock size={12} /> Newest
+                    <Clock size={12} /> {t('newest', 'Newest')}
                   </button>
                   <button
                     onMouseDown={() => { setSort("oldest"); setShowSortDropdown(false); }}
                     className="w-full text-left px-4 py-2 text-xs hover:bg-white/10 flex gap-2"
                   >
-                    <Clock size={12} /> Oldest
+                    <Clock size={12} /> {t('oldest', 'Oldest')}
                   </button>
                 </div>
               </div>
 
               <label className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl text-xs transition border border-white/10 cursor-pointer">
                 <Download size={14} />{" "}
-                <span className="hidden sm:inline">Import</span>
+                <span className="hidden sm:inline">{t('import', 'Import')}</span>
                 <input
                   type="file"
                   accept=".png,.json"
@@ -210,7 +214,7 @@ export const CharacterSelect = ({
                 className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-indigo-500/20"
               >
                 <Plus size={14} />{" "}
-                <span className="hidden sm:inline">Create</span>
+                <span className="hidden sm:inline">{t('create', 'Create')}</span>
               </button>
             </div>
           )}
@@ -218,9 +222,9 @@ export const CharacterSelect = ({
 
         {/* Header Row */}
         <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-2 bg-gray-950/50 border-b border-white/5 text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-          <div className="col-span-4">Name</div>
-          <div className="col-span-6">Description</div>
-          <div className="col-span-2 text-right">Created</div>
+          <div className="col-span-4">{t('name', 'Name')}</div>
+          <div className="col-span-6">{t('description', 'Description')}</div>
+          <div className="col-span-2 text-right">{t('created', 'Created')}</div>
         </div>
 
         {/* List */}
@@ -334,14 +338,14 @@ export const CharacterSelect = ({
           ))}
           {filtered.length === 0 && (
             <div className="text-center py-20 text-gray-600 italic">
-              No characters found.
+              {t('noCharactersFound', 'No characters found.')}
             </div>
           )}
         </div>
 
         {/* Footer Status */}
         <div className="p-3 bg-gray-950 border-t border-white/5 text-[10px] text-gray-600 flex justify-between px-6">
-            <span>{filtered.length} Characters</span>
+            <span>{t('charactersCount', '{{count}} Characters', { count: filtered.length })}</span>
             <span>TavernRev v1.2.4</span>
         </div>
       </div>

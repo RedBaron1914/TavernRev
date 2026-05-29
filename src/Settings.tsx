@@ -388,6 +388,7 @@ const PromptModuleItem = React.memo(({
   onToggle,
   isAllExpanded,
 }: any) => {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Sync with global "Expand All" state if it changes
@@ -417,10 +418,8 @@ const PromptModuleItem = React.memo(({
             {tokenCount !== undefined && (
               <span
                 className="text-[8px] bg-gray-800 px-1 py-0.5 rounded text-gray-400 border border-white/5 font-mono shrink-0"
-                title="Estimated Tokens"
-              >
-                {tokenCount}t
-              </span>
+                title={t('estimatedTokens', 'Estimated Tokens')}
+              >{t('tokencountt', '{{tokenCount}}t', { tokenCount })}</span>
             )}
             <span className="text-[9px] uppercase tracking-wider bg-gray-800 px-1 py-0.5 rounded text-gray-500 border border-white/5 truncate max-w-[60px] sm:max-w-[80px] shrink-0">
               {module.role}
@@ -434,14 +433,14 @@ const PromptModuleItem = React.memo(({
           <button
             onClick={() => onEdit(module)}
             className="p-1 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white"
-            title="Edit"
+            title={t('edit', 'Edit')}
           >
             <Edit size={12} />
           </button>
           <button
             onClick={() => onDelete(module.identifier)}
             className="p-1 hover:bg-red-500/20 rounded-lg text-gray-600 hover:text-red-400"
-            title="Delete"
+            title={t('delete', 'Delete')}
           >
             <Trash2 size={12} />
           </button>
@@ -464,20 +463,21 @@ const PromptModuleItem = React.memo(({
 });
 
 const ModuleEditor = ({ module, onSave, onCancel }: any) => {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({ ...module, enabled: module.enabled ?? true });
   const handleChange = (field: string, value: any) =>
     setFormData((prev: any) => ({ ...prev, [field]: value }));
 
   const roleOptions = [
-    { value: "system", label: "System" },
-    { value: "user", label: "User" },
-    { value: "assistant", label: "Assistant" },
+    { value: "system", label: t('system', 'System') },
+    { value: "user", label: t('user', 'User') },
+    { value: "assistant", label: t('assistant', 'Assistant') },
   ];
 
   const positionOptions = [
-    { value: 0, label: "Relative (Native)" },
-    { value: 1, label: "In-Chat (Depth)" },
-    { value: 2, label: "RAG / Custom Location" },
+    { value: 0, label: t('relativeNative', 'Relative (Native)') },
+    { value: 1, label: t('inchatDepth', 'In-Chat (Depth)') },
+    { value: 2, label: t('ragCustomLocation', 'RAG / Custom Location') },
   ];
 
   return (
@@ -485,12 +485,12 @@ const ModuleEditor = ({ module, onSave, onCancel }: any) => {
       <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90dvh] border border-white/10 overflow-hidden ring-1 ring-white/10">
         <h2 className="text-lg font-bold p-5 border-b border-white/10 flex items-center gap-3 bg-gray-800/50">
           <LayoutTemplate size={20} className="text-indigo-400" />
-          {module.identifier ? "Edit Module" : "Create New Module"}
+          {module.identifier ? t('editModule', 'Edit Module') : t('createNewModule', 'Create New Module')}
         </h2>
         <main className="p-6 space-y-5 overflow-y-auto custom-scrollbar bg-gray-950/50">
-          <Toggle label="Module Enabled" field="enabled" value={formData.enabled} onChange={(_: any, v: any) => handleChange("enabled", v)} />
+          <Toggle label={t('moduleEnabled', 'Module Enabled')} field="enabled" value={formData.enabled} onChange={(_: any, v: any) => handleChange("enabled", v)} />
           <InputField
-            label="Module Name"
+            label={t('moduleName', 'Module Name')}
             value={formData.name}
             onChange={(v: string) => handleChange("name", v)}
           />
@@ -503,7 +503,7 @@ const ModuleEditor = ({ module, onSave, onCancel }: any) => {
               options={roleOptions}
             />
             <SelectField
-               label="Injection Position"
+               label={t('injectionPosition', 'Injection Position')}
                value={formData.injection_position ?? 0}
                onChange={(v: any) => handleChange("injection_position", Number(v))}
                options={positionOptions}
@@ -512,7 +512,7 @@ const ModuleEditor = ({ module, onSave, onCancel }: any) => {
 
           <div className="grid grid-cols-2 gap-5">
             <InputField
-              label="Injection Order"
+              label={t('injectionOrder', 'Injection Order')}
               value={formData.injection_order}
               onChange={(v: string) =>
                 handleChange("injection_order", Number(v))
@@ -522,7 +522,7 @@ const ModuleEditor = ({ module, onSave, onCancel }: any) => {
             />
             {(formData.injection_position === 1 || formData.injection_position === 2) && (
                <InputField
-                 label="Injection Depth"
+                 label={t('injectionDepth', 'Injection Depth')}
                  value={formData.injection_depth ?? 0}
                  onChange={(v: string) =>
                    handleChange("injection_depth", Number(v))
@@ -545,13 +545,13 @@ const ModuleEditor = ({ module, onSave, onCancel }: any) => {
             onClick={onCancel}
             className="px-5 py-2.5 rounded-xl hover:bg-white/10 text-sm font-medium text-gray-300"
           >
-            Cancel
+            {t('cancel', 'Cancel')}
           </button>
           <button
             onClick={() => onSave(formData)}
             className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-lg"
           >
-            Save Module
+            {t('saveModule', 'Save Module')}
           </button>
         </footer>
       </div>
@@ -560,6 +560,7 @@ const ModuleEditor = ({ module, onSave, onCancel }: any) => {
   };
   
 export const MacroTester = ({ characterId }: { characterId: number | null }) => {
+      const { t } = useTranslation()
       const [input, setInput] = useState(`Math: 10 + 5 = {{add::10::5}}
 Logic: 10 > 5 is {{gt::10::5}}
 Var: {{setvar::hp::100}}HP: {{getvar::hp}}
@@ -578,21 +579,21 @@ Damage: {{setvar::hp::{{sub::{{hp}}::15}}}}New HP: {{hp}}`);
   
       return (
           <div className="bg-gray-900/30 p-4 rounded-2xl border border-white/5 space-y-3 mt-6">
-              <h3 className="font-bold text-gray-300 flex items-center gap-2"><Bug size={18}/> Macro Playground</h3>
+              <h3 className="font-bold text-gray-300 flex items-center gap-2"><Bug size={18}/> {t('macroPlayground', 'Macro Playground')}</h3>
               <div className="grid grid-cols-1 gap-4">
-                  <textarea value={input} onChange={e => setInput(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-sm font-mono focus:outline-none focus:border-indigo-500" rows={3} placeholder="Enter macros..." />
+                  <textarea value={input} onChange={e => setInput(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-sm font-mono focus:outline-none focus:border-indigo-500" rows={3} placeholder={t('enterMacros', 'Enter macros...')} />
                   <div className="bg-black/40 p-3 rounded-xl text-xs font-mono text-gray-400 whitespace-pre-wrap border border-white/5 min-h-[60px]">
                       {output || "// Result will appear here..."}
                   </div>
               </div>
               <div className="flex gap-3">
-                  <button onClick={handleTest} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-indigo-500/20">Test Macros</button>
+                  <button onClick={handleTest} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-indigo-500/20">{t('testMacros', 'Test Macros')}</button>
                   <button onClick={async () => {
                       try {
                           const res = await invoke("debug_lore_generation");
                           setOutput(JSON.stringify(res, null, 2));
                       } catch(e) { setOutput("Error: " + e); }
-                  }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-emerald-500/20">Test Lore Logic</button>
+                  }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-emerald-500/20">{t('testLoreLogic', 'Test Lore Logic')}</button>
               </div>
           </div>
       );
@@ -600,6 +601,8 @@ Damage: {{setvar::hp::{{sub::{{hp}}::15}}}}New HP: {{hp}}`);
   
   // --- MAIN SETTINGS COMPONENT ---
 import { RagSettingsTab } from "./components/RagSettingsTab";
+import { useTranslation, Trans } from 'react-i18next'
+
 
 type SettingsProps = {
   onBack: () => void;
@@ -619,58 +622,58 @@ type SettingsProps = {
 };
 
 const TABS = [
-  { id: "connection", label: "API Connection", icon: Wifi },
-  { id: "ui", label: "Interface & Appearance", icon: Eye },
+  { id: "connection", labelKey: "apiConnection", label: "API Connection", icon: Wifi },
+  { id: "ui", labelKey: "interfaceAppearance", label: "Interface & Appearance", icon: Eye },
   {
     id: "textgen",
-    label: "AI Response Configuration",
+    labelKey: "aiResponseConfiguration", label: "AI Response Configuration",
     icon: SlidersHorizontal,
   },
-  { id: "formatting", label: "AI Response Formatting", icon: FileText },
-  { id: "user_settings", label: "User Settings", icon: UserIcon },
-  { id: "persona", label: "Persona Management", icon: UserCircle },
-  { id: "world", label: "World Info", icon: Globe },
-  { id: "rag", label: "Long-Term Memory", icon: Brain },
-  { id: "regex", label: "Regex Scripts", icon: Code },
-  { id: "qr", label: "Quick Replies", icon: Zap },
-  { id: "sync", label: "Cloud Sync", icon: Cloud },
-  { id: "advanced", label: "Advanced", icon: SettingsIcon },
-  { id: "extensions", label: "Plugins & Extensions", icon: Puzzle },
+  { id: "formatting", labelKey: "aiResponseFormatting", label: "AI Response Formatting", icon: FileText },
+  { id: "user_settings", labelKey: "userSettings", label: "User Settings", icon: UserIcon },
+  { id: "persona", labelKey: "personaManagement", label: "Persona Management", icon: UserCircle },
+  { id: "world", labelKey: "worldInfo", label: "World Info", icon: Globe },
+  { id: "rag", labelKey: "longtermMemory", label: "Long-Term Memory", icon: Brain },
+  { id: "regex", labelKey: "regexScripts", label: "Regex Scripts", icon: Code },
+  { id: "qr", labelKey: "quickReplies", label: "Quick Replies", icon: Zap },
+  { id: "sync", labelKey: "cloudSync", label: "Cloud Sync", icon: Cloud },
+  { id: "advanced", labelKey: "advanced", label: "Advanced", icon: SettingsIcon },
+  { id: "extensions", labelKey: "pluginsExtensions", label: "Plugins & Extensions", icon: Puzzle },
 ];
 
 export const API_TYPES = [
-  { value: "chat_completion", label: "Chat Completion" },
-  { value: "google", label: "Google Gemini" },
-  { value: "text_completion", label: "Text Completion" },
-  { value: "novelai", label: "NovelAI" },
-  { value: "kobold", label: "KoboldAI Classic" },
-  { value: "horde", label: "AI Horde" },
+  { value: "chat_completion", labelKey: "chatCompletion", label: "Chat Completion" },
+  { value: "google", labelKey: "googleGemini", label: "Google Gemini" },
+  { value: "text_completion", labelKey: "textCompletion", label: "Text Completion" },
+  { value: "novelai", labelKey: "novelai", label: "NovelAI" },
+  { value: "kobold", labelKey: "koboldaiClassic", label: "KoboldAI Classic" },
+  { value: "horde", labelKey: "aiHorde", label: "AI Horde" },
 ];
 
 export const CHAT_SOURCES = [
-  { value: "custom", label: "Custom (OpenAI Compatible)" },
-  { value: "openai", label: "OpenAI" },
-  { value: "claude", label: "Claude (Anthropic)" },
-  { value: "deepseek", label: "DeepSeek" },
-  { value: "grok", label: "Grok (xAI)" },
+  { value: "custom", labelKey: "customOpenaiCompatible", label: "Custom (OpenAI Compatible)" },
+  { value: "openai", labelKey: "openai", label: "OpenAI" },
+  { value: "claude", labelKey: "claudeAnthropic", label: "Claude (Anthropic)" },
+  { value: "deepseek", labelKey: "deepseek", label: "DeepSeek" },
+  { value: "grok", labelKey: "grokXai", label: "Grok (xAI)" },
 ];
 
 export const POST_PROCESSING_OPTIONS = [
-  { value: "none", label: "None" },
-  { value: "tools", label: "Tools Only" },
-  { value: "merge", label: "Merge" },
-  { value: "merge_tools", label: "Merge + Tools" },
-  { value: "semi_strict", label: "Semi-Strict" },
-  { value: "semi_strict_tools", label: "Semi-Strict + Tools" },
-  { value: "strict", label: "Strict" },
-  { value: "strict_tools", label: "Strict + Tools" },
+  { value: "none", labelKey: "none", label: "None" },
+  { value: "tools", labelKey: "toolsOnly", label: "Tools Only" },
+  { value: "merge", labelKey: "merge", label: "Merge" },
+  { value: "merge_tools", labelKey: "mergeTools", label: "Merge + Tools" },
+  { value: "semi_strict", labelKey: "semistrict", label: "Semi-Strict" },
+  { value: "semi_strict_tools", labelKey: "semistrictTools", label: "Semi-Strict + Tools" },
+  { value: "strict", labelKey: "strict", label: "Strict" },
+  { value: "strict_tools", labelKey: "strictTools", label: "Strict + Tools" },
 ];
 
 export const REASONING_OPTIONS = [
-  { value: "none", label: "None (Default)" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
+  { value: "none", labelKey: "noneDefault", label: "None (Default)" },
+  { value: "low", labelKey: "low", label: "Low" },
+  { value: "medium", labelKey: "medium", label: "Medium" },
+  { value: "high", labelKey: "high", label: "High" },
 ];
 
 export default function Settings({
@@ -689,6 +692,7 @@ export default function Settings({
   setRetryDelay,
   markDataChanged,
 }: SettingsProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState("connection");
 
   // Data State
@@ -920,7 +924,7 @@ export default function Settings({
 
           await invoke("import_regex_scripts", { scripts });
           await fetchRegexScripts();
-          addToast("Imported " + scripts.length + " scripts.", "success");
+          addToast("Imported " + scripts.length + t('scripts', ' scripts.'), "success");
       } catch(err) {
           addToast("Invalid JSON: " + err, "error");
       } finally {
@@ -930,7 +934,7 @@ export default function Settings({
 
   const handleCreateScript = async () => {
       try {
-          await invoke("create_regex_script", { name: "New Script", regex: "", replacement: "", placement: "both" });
+          await invoke("create_regex_script", { name: t('newScript', 'New Script'), regex: "", replacement: "", placement: "both" });
           await fetchRegexScripts();
       } catch(e) { addToast("Error: " + e, "error"); }
   };
@@ -953,7 +957,7 @@ export default function Settings({
 
   const handleCreateQR = async () => {
       try {
-          await invoke("create_quick_reply", { label: "New QR", content: "/echo Hello", icon: "⚡", isGlobal: true });
+          await invoke("create_quick_reply", { label: t('newQr', 'New QR'), content: "/echo Hello", icon: "⚡", isGlobal: true });
           await fetchQuickReplies();
       } catch(e) { addToast("Error: " + e, "error"); }
   };
@@ -1169,7 +1173,7 @@ export default function Settings({
   const handleCreatePersona = async () => {
     try {
       const id = await invoke<number>("create_user_persona", {
-        name: "New Persona",
+        name: t('newPersona', 'New Persona'),
         avatar: "user_default.png",
         description: "",
       });
@@ -1264,10 +1268,10 @@ export default function Settings({
       <div className="flex justify-between items-center bg-gray-900/30 p-4 rounded-2xl border border-white/5">
         <div className="flex flex-col">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            Prompts
+            {t('prompts', 'Prompts')}
           </h3>
           <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">
-            Prompt Manager
+            {t('promptManager', 'Prompt Manager')}
           </span>
         </div>
         <div className="flex gap-3">
@@ -1275,20 +1279,20 @@ export default function Settings({
             onClick={() => setEditingModule({} as PromptModule)}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-indigo-900/20"
           >
-            <Plus size={16} /> New Module
+            <Plus size={16} /> {t('newModule', 'New Module')}
           </button>
           <div className="w-px h-8 bg-white/10 mx-1" />
           <button
             onClick={() => setAllExpanded(true)}
             className="p-2 hover:bg-white/10 rounded-lg text-gray-400"
-            title="Expand All"
+            title={t('expandAll', 'Expand All')}
           >
             <Maximize2 size={18} />
           </button>
           <button
             onClick={() => setAllExpanded(false)}
             className="p-2 hover:bg-white/10 rounded-lg text-gray-400"
-            title="Collapse All"
+            title={t('collapseAll', 'Collapse All')}
           >
             <Minimize2 size={18} />
           </button>
@@ -1309,7 +1313,7 @@ export default function Settings({
         ))}
         {(formData?.prompts?.length || 0) === 0 && (
           <div className="text-center py-12 text-gray-600 border-2 border-dashed border-gray-800 rounded-2xl">
-            No prompt modules defined.
+            {t('noPromptModulesDefined', 'No prompt modules defined.')}
           </div>
         )}
       </div>
@@ -1319,7 +1323,7 @@ export default function Settings({
   if (!formData)
     return (
       <div className="flex items-center justify-center h-screen h-[100dvh] bg-gray-950 text-white animate-pulse">
-        Loading Configuration...
+        {t('loadingConfiguration', 'Loading Configuration...')}
       </div>
     );
 
@@ -1349,7 +1353,7 @@ export default function Settings({
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
                   <div className="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
-                      <h3 className="text-lg font-bold text-white">Edit Regex Script</h3>
+                      <h3 className="text-lg font-bold text-white">{t('editRegexScript', 'Edit Regex Script')}</h3>
                       <button onClick={() => setEditingScript(null)}><X size={20} className="text-gray-500 hover:text-white"/></button>
                   </div>
                   <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
@@ -1362,7 +1366,7 @@ export default function Settings({
                           />
                       </div>
                       <div className="space-y-1">
-                          <label className="text-xs font-bold text-gray-500 uppercase">Regex Pattern</label>
+                          <label className="text-xs font-bold text-gray-500 uppercase">{t('regexPattern', 'Regex Pattern')}</label>
                           <input 
                               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
                               value={editingScript.regex}
@@ -1370,32 +1374,32 @@ export default function Settings({
                           />
                       </div>
                       <div className="space-y-1">
-                          <label className="text-xs font-bold text-gray-500 uppercase">Replacement</label>
+                          <label className="text-xs font-bold text-gray-500 uppercase">{t('replacement', 'Replacement')}</label>
                           <textarea 
                               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none min-h-[80px]"
                               value={editingScript.replacement}
                               onChange={(e) => setEditingScript({...editingScript, replacement: e.target.value})}
                           />
-                          <p className="text-xs text-gray-600">Supports macros: <code>{"{{setvar::x::1}}"}</code>. Use <code>$1</code> for capture groups.</p>
+                          <p className="text-xs text-gray-600">{t('supportsMacros', 'Supports macros:')} <code>{"{{setvar::x::1}}"}</code><Trans i18nKey="useCode1codeForCaptureGroups">. Use <code>$1</code> for capture groups.</Trans></p>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1">
-                              <label className="text-xs font-bold text-gray-500 uppercase">Placement</label>
+                              <label className="text-xs font-bold text-gray-500 uppercase">{t('placement', 'Placement')}</label>
                               <select 
                                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none appearance-none"
                                   value={editingScript.placement}
                                   onChange={(e) => setEditingScript({...editingScript, placement: e.target.value})}
                               >
-                                  <option value="both">Both</option>
-                                  <option value="user">User Input</option>
-                                  <option value="ai">AI Output</option>
+                                  <option value="both">{t('both', 'Both')}</option>
+                                  <option value="user">{t('userInput', 'User Input')}</option>
+                                  <option value="ai">{t('aiOutput', 'AI Output')}</option>
                               </select>
                           </div>
                       </div>
                   </div>
                   <div className="p-6 border-t border-white/5 flex justify-end gap-3 shrink-0">
-                      <button onClick={() => setEditingScript(null)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition">Cancel</button>
-                      <button onClick={() => { handleUpdateScript(editingScript); setEditingScript(null); }} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg text-sm font-bold transition">Save Script</button>
+                      <button onClick={() => setEditingScript(null)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition">{t('cancel', 'Cancel')}</button>
+                      <button onClick={() => { handleUpdateScript(editingScript); setEditingScript(null); }} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg text-sm font-bold transition">{t('saveScript', 'Save Script')}</button>
                   </div>
               </div>
           </div>
@@ -1405,13 +1409,13 @@ export default function Settings({
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
                   <div className="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
-                      <h3 className="text-lg font-bold text-white">Edit Quick Reply</h3>
+                      <h3 className="text-lg font-bold text-white">{t('editQuickReply', 'Edit Quick Reply')}</h3>
                       <button onClick={() => setEditingQR(null)}><X size={20} className="text-gray-500 hover:text-white"/></button>
                   </div>
                   <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
                       <div className="flex gap-4">
                           <div className="w-1/3">
-                              <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Icon</label>
+                              <label className="text-xs font-bold text-gray-500 uppercase block mb-1">{t('icon', 'Icon')}</label>
                               <input 
                                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none text-center"
                                   value={editingQR.icon}
@@ -1420,7 +1424,7 @@ export default function Settings({
                               />
                           </div>
                           <div className="flex-1">
-                              <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Label</label>
+                              <label className="text-xs font-bold text-gray-500 uppercase block mb-1">{t('label', 'Label')}</label>
                               <input 
                                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
                                   value={editingQR.label}
@@ -1429,7 +1433,7 @@ export default function Settings({
                           </div>
                       </div>
                       <div>
-                          <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Content / Command</label>
+                          <label className="text-xs font-bold text-gray-500 uppercase block mb-1">{t('contentCommand', 'Content / Command')}</label>
                           <textarea 
                               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none min-h-[80px]"
                               value={editingQR.content}
@@ -1439,8 +1443,8 @@ export default function Settings({
                       </div>
                   </div>
                   <div className="p-6 border-t border-white/5 flex justify-end gap-3 shrink-0">
-                      <button onClick={() => setEditingQR(null)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition">Cancel</button>
-                      <button onClick={() => { handleUpdateQR(editingQR); setEditingQR(null); }} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg text-sm font-bold transition">Save</button>
+                      <button onClick={() => setEditingQR(null)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition">{t('cancel', 'Cancel')}</button>
+                      <button onClick={() => { handleUpdateQR(editingQR); setEditingQR(null); }} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg text-sm font-bold transition">{t('save', 'Save')}</button>
                   </div>
               </div>
           </div>
@@ -1455,33 +1459,33 @@ export default function Settings({
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 className="font-bold text-lg tracking-wide">Settings</h1>
+          <h1 className="font-bold text-lg tracking-wide">{t('settings', 'Settings')}</h1>
         </div>
 
         <div className="p-4 md:p-5 border-b border-white/5 bg-gray-900/50 hidden md:block">
           {/* Desktop-only Preset Selector (too big for mobile header) */}
           <div className="flex justify-between items-center mb-3">
             <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-              Active Preset
+              {t('activePreset', 'Active Preset')}
             </label>
             <div className="flex gap-1">
               <button
                 onClick={handleCreatePreset}
                 className="text-emerald-400 hover:text-emerald-300 transition p-1"
-                title="New Preset"
+                title={t('newPreset', 'New Preset')}
               >
                 <Plus size={16} />
               </button>
               <button
                 onClick={handleDeletePreset}
                 className="text-red-400 hover:text-red-300 transition p-1"
-                title="Delete Preset"
+                title={t('deletePreset', 'Delete Preset')}
               >
                 <Trash2 size={16} />
               </button>
               <label
                 className="text-gray-500 hover:text-white transition p-1 cursor-pointer"
-                title="Debug JSON Structure"
+                title={t('debugJsonStructure', 'Debug JSON Structure')}
               >
                 <Bug size={16} />
                 <input
@@ -1535,7 +1539,7 @@ export default function Settings({
               </label>
               <label
                 className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition cursor-pointer"
-                title="Import Preset"
+                title={t('importPreset', 'Import Preset')}
               >
                 <Download size={20} />
                 <input
@@ -1548,7 +1552,7 @@ export default function Settings({
               <button
                 onClick={handleExportPreset}
                 className="text-indigo-400 hover:text-indigo-300 transition p-1"
-                title="Save Preset"
+                title={t('savePreset', 'Save Preset')}
               >
                 <Save size={16} />
               </button>
@@ -1583,22 +1587,25 @@ export default function Settings({
                 size={18}
                 className={`transition-colors shrink-0 ${activeTab === tab.id ? "text-white" : "text-gray-500 group-hover:text-gray-300"}`}
               />
-              {tab.label}
+              {tab.labelKey ? t(tab.labelKey, tab.label) : tab.label}
             </button>
           ))}
         </nav>
             <div className="p-4 text-center text-[10px] text-gray-600 border-t border-white/5 hidden md:block">
-                TavernRev v1.2.4
+                {t('tavernrevV124', 'TavernRev v1.2.4')}
             </div>
         </aside>      {/*MAIN CONTENT AREA */}
       <main className="flex-1 overflow-y-auto bg-gray-950 p-4 md:p-8 custom-scrollbar relative md:pt-[calc(2rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-4xl mx-auto pb-20">
           <header className="mb-8 pb-4 border-b border-white/5">
             <h2 className="text-3xl font-bold text-white mb-2">
-              {TABS.find((t) => t.id === activeTab)?.label}
+              {(() => {
+                const tab = TABS.find((tb) => tb.id === activeTab);
+                return tab ? (tab.labelKey ? t(tab.labelKey, tab.label) : tab.label) : "";
+              })()}
             </h2>
             <p className="text-gray-400">
-              Configure your parameters and preferences.
+              {t('configureYourParametersAndPreferences', 'Configure your parameters and preferences.')}
             </p>
           </header>
 

@@ -1,5 +1,6 @@
 import { Download, Save, Plus, Trash2 } from "lucide-react";
 import { RegexScript } from "../../types";
+import { useTranslation, Trans } from 'react-i18next'
 
 interface RegexTabProps {
   regexScripts: RegexScript[];
@@ -18,27 +19,26 @@ export function RegexTab({
   setEditingScript,
   handleDeleteScript,
 }: RegexTabProps) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-bold text-white">Regex Scripts</h3>
+          <h3 className="text-lg font-bold text-white">{t('regexScripts', 'Regex Scripts')}</h3>
           <p className="text-gray-400 text-sm">
-            Automate actions and replacements using Regular Expressions.
+            {t('automateActionsAndReplacementsUsingRegularExpressions', 'Automate actions and replacements using Regular Expressions.')}
           </p>
         </div>
         <div className="flex gap-2">
           <label className="bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition cursor-pointer">
-            <Download size={16} />
-            Import Regex
+            <Download size={16} /><Trans i18nKey="importRegexInputTypefileAcceptjsonMultipleOnchangehandleimportregexClassnamehidden">Import Regex
             <input
               type="file"
               accept=".json"
               multiple
               onChange={handleImportRegex}
               className="hidden"
-            />
-          </label>
+            /></Trans></label>
           <button
             onClick={handleExportRegex}
             className="bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"
@@ -49,7 +49,7 @@ export function RegexTab({
             onClick={handleCreateScript}
             className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"
           >
-            <Plus size={16} /> New Script
+            <Plus size={16} /> {t('newScript', 'New Script')}
           </button>
         </div>
       </div>
@@ -97,7 +97,7 @@ export function RegexTab({
         ))}
         {regexScripts.length === 0 && (
           <div className="text-center py-12 text-gray-600 italic border border-dashed border-white/10 rounded-xl">
-            No regex scripts created.
+            {t('noRegexScriptsCreated', 'No regex scripts created.')}
           </div>
         )}
       </div>

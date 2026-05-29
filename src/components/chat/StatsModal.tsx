@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { ChatStats } from "../../types";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from 'react-i18next'
 
 export interface ContextStats {
   total_messages: number;
@@ -24,6 +25,7 @@ export const StatsModal = ({
   onTrim: () => void;
   onClose: () => void;
 }) => {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<"stats" | "viz" | "context">("stats");
   const [vizText, setVizText] = useState("");
   const [tokens, setTokens] = useState<string[]>([]);
@@ -106,19 +108,19 @@ export const StatsModal = ({
               onClick={() => setTab("stats")}
               className={`text-sm font-bold transition ${tab === "stats" ? "text-indigo-400" : "text-gray-500 hover:text-gray-300"}`}
             >
-              Statistics
+              {t('statistics', 'Statistics')}
             </button>
             <button
               onClick={() => setTab("viz")}
               className={`text-sm font-bold transition ${tab === "viz" ? "text-indigo-400" : "text-gray-500 hover:text-gray-300"}`}
             >
-              Visualizer
+              {t('visualizer', 'Visualizer')}
             </button>
             <button
               onClick={() => setTab("context")}
               className={`text-sm font-bold transition ${tab === "context" ? "text-indigo-400" : "text-gray-500 hover:text-gray-300"}`}
             >
-              Context
+              {t('context', 'Context')}
             </button>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-white">
@@ -130,24 +132,24 @@ export const StatsModal = ({
           {tab === "stats" && (
             <div className="space-y-4">
               <div className="flex justify-between bg-gray-900/50 p-3 rounded-xl border border-white/5">
-                <span className="text-gray-400 text-sm">Total Messages</span>
+                <span className="text-gray-400 text-sm">{t('totalMessages', 'Total Messages')}</span>
                 <span className="font-mono text-white font-bold">
                   {stats.message_count}
                 </span>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs text-gray-500 px-1">
-                  <span>Token Usage</span>
-                  <span>{stats.total_tokens} total</span>
+                  <span>{t('tokenUsage', 'Token Usage')}</span>
+                  <span>{t('total_tokensTotal', '{{total_tokens}} total', { total_tokens: stats.total_tokens })}</span>
                 </div>
                 <div className="flex justify-between bg-gray-900/50 p-3 rounded-xl border border-white/5">
-                  <span className="text-gray-400 text-sm">User</span>
+                  <span className="text-gray-400 text-sm">{t('user', 'User')}</span>
                   <span className="font-mono text-cyan-400 font-bold">
                     {stats.user_tokens}
                   </span>
                 </div>
                 <div className="flex justify-between bg-gray-900/50 p-3 rounded-xl border border-white/5">
-                  <span className="text-gray-400 text-sm">Character</span>
+                  <span className="text-gray-400 text-sm">{t('character', 'Character')}</span>
                   <span className="font-mono text-pink-400 font-bold">
                     {stats.char_tokens}
                   </span>
@@ -161,14 +163,14 @@ export const StatsModal = ({
               <textarea
                 value={vizText}
                 onChange={(e) => setVizText(e.target.value)}
-                placeholder="Paste text here to visualize tokens..."
+                placeholder={t('pasteTextHereToVisualizeTokens', 'Paste text here to visualize tokens...')}
                 className="w-full bg-gray-900/50 border border-white/10 rounded-xl p-3 text-xs font-mono focus:outline-none focus:border-indigo-500 h-32 resize-none"
               />
               <button
                 onClick={handleVisualize}
                 className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition"
               >
-                Tokenize
+                {t('tokenize', 'Tokenize')}
               </button>
               <div className="flex-1 bg-gray-950 p-3 rounded-xl border border-white/5 font-mono text-xs flex flex-wrap content-start gap-0.5 overflow-y-auto min-h-[100px]">
                 {tokens.map((t, i) => (
@@ -181,7 +183,7 @@ export const StatsModal = ({
                 ))}
                 {tokens.length === 0 && (
                   <span className="text-gray-600 italic">
-                    Tokens will appear here...
+                    {t('tokensWillAppearHere', 'Tokens will appear here...')}
                   </span>
                 )}
               </div>
@@ -196,8 +198,8 @@ export const StatsModal = ({
                 <>
                   <div>
                     <div className="flex justify-between text-xs text-gray-400 mb-1">
-                      <span>Tokens</span>
-                      <span>{tokensUsed} / {contextSize}</span>
+                      <span>{t('tokens', 'Tokens')}</span>
+                      <span>{t('tokensusedContextsize', '{{tokensUsed}} / {{contextSize}}', { tokensUsed, contextSize })}</span>
                     </div>
                     <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                       <div
@@ -211,28 +213,28 @@ export const StatsModal = ({
                         style={{ width: `${contextPercent}%` }}
                       />
                     </div>
-                    <div className="text-[10px] text-right mt-0.5 text-gray-500">{contextPercent}%</div>
+                    <div className="text-[10px] text-right mt-0.5 text-gray-500">{t('contextpercent', '{{contextPercent}}%', { contextPercent })}</div>
                   </div>
 
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between bg-gray-900/50 p-2.5 rounded-lg border border-white/5">
-                      <span className="text-gray-400">Total messages</span>
+                      <span className="text-gray-400">{t('totalMessages2', 'Total messages')}</span>
                       <span className="text-white font-mono font-bold">{contextStats.total_messages}</span>
                     </div>
                     <div className="flex justify-between bg-gray-900/50 p-2.5 rounded-lg border border-white/5">
-                      <span className="text-gray-400">Hidden from prompt</span>
+                      <span className="text-gray-400">{t('hiddenFromPrompt', 'Hidden from prompt')}</span>
                       <span className="text-amber-400 font-mono font-bold">{contextStats.excluded_messages}</span>
                     </div>
                     <div className="flex justify-between bg-gray-900/50 p-2.5 rounded-lg border border-white/5">
-                      <span className="text-gray-400">Auto-trimmed by overflow</span>
+                      <span className="text-gray-400">{t('autotrimmedByOverflow', 'Auto-trimmed by overflow')}</span>
                       <span className="text-amber-400 font-mono font-bold">{contextStats.overflow_trimmed}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between bg-gray-900/50 p-2.5 rounded-lg border border-white/5">
                     <div>
-                      <span className="text-xs text-gray-300">Auto-Trim on Overflow</span>
-                      <p className="text-[10px] text-gray-500">Automatically hide oldest messages when context overflows</p>
+                      <span className="text-xs text-gray-300">{t('autotrimOnOverflow', 'Auto-Trim on Overflow')}</span>
+                      <p className="text-[10px] text-gray-500">{t('automaticallyHideOldestMessagesWhenContextOverflows', 'Automatically hide oldest messages when context overflows')}</p>
                     </div>
                     <button
                       onClick={toggleAutoTrim}
@@ -252,11 +254,11 @@ export const StatsModal = ({
                     onClick={onTrim}
                     className="w-full py-2 text-xs font-semibold bg-amber-600/20 text-amber-300 border border-amber-500/30 rounded-lg hover:bg-amber-600/30 transition"
                   >
-                    Trim 50% Oldest Messages
+                    {t('trim50OldestMessages', 'Trim 50% Oldest Messages')}
                   </button>
                 </>
               ) : (
-                <div className="text-gray-500 text-sm text-center py-4">Failed to load stats</div>
+                <div className="text-gray-500 text-sm text-center py-4">{t('failedToLoadStats', 'Failed to load stats')}</div>
               )}
             </div>
           )}

@@ -8,6 +8,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Message } from "../../types";
+import { useTranslation } from 'react-i18next'
 
 export interface MessageActionsProps {
   message: Message;
@@ -42,6 +43,7 @@ export function MessageActions({
   showGenerationActions = false,
   isGenerating = false,
 }: MessageActionsProps) {
+  const { t } = useTranslation()
   const excluded = !!message.extra?.exclude_from_prompt;
 
   if (variant === "document") {
@@ -62,10 +64,10 @@ export function MessageActions({
               onContinue(message.id);
             }}
             className="flex items-center gap-1 p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5 text-[10px]"
-            title="Continue"
+            title={t('continue', 'Continue')}
           >
             <Play size={12} />
-            <span className="hidden sm:inline">Continue</span>
+            <span className="hidden sm:inline">{t('continue', 'Continue')}</span>
           </button>
         )}
         {!isUser && showGenerationActions && (
@@ -78,7 +80,7 @@ export function MessageActions({
             title="Regenerate"
           >
             <RefreshCw size={12} className={isGenerating ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">Regen</span>
+            <span className="hidden sm:inline">{t('regen', 'Regen')}</span>
           </button>
         )}
         <button
@@ -90,7 +92,7 @@ export function MessageActions({
           title="Branch"
         >
           <GitBranch size={12} />
-          <span className="hidden sm:inline">Branch</span>
+          <span className="hidden sm:inline">{t('branch', 'Branch')}</span>
         </button>
         <button
           onClick={(e) => {
@@ -98,10 +100,10 @@ export function MessageActions({
             onEdit(message);
           }}
           className="flex items-center gap-1 p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5 text-[10px]"
-          title="Edit"
+          title={t('edit', 'Edit')}
         >
           <Pencil size={12} />
-          <span className="hidden sm:inline">Edit</span>
+          <span className="hidden sm:inline">{t('edit', 'Edit')}</span>
         </button>
         <button
           onClick={(e) => {
@@ -113,7 +115,7 @@ export function MessageActions({
               ? "text-amber-400"
               : "text-gray-500 hover:text-white"
           }`}
-          title={excluded ? "Include in prompt" : "Exclude from prompt"}
+          title={excluded ? t('includeInPrompt', 'Include in prompt') : t('excludeFromPrompt', 'Exclude from prompt')}
         >
           {excluded ? <Eye size={12} /> : <EyeOff size={12} />}
           <span className="hidden sm:inline">{excluded ? "Show" : "Hide"}</span>
@@ -125,10 +127,10 @@ export function MessageActions({
               onDelete(message.id);
             }}
             className="flex items-center gap-1 p-1.5 text-gray-500 hover:text-red-400 rounded hover:bg-white/5 text-[10px]"
-            title="Delete"
+            title={t('delete', 'Delete')}
           >
             <Trash2 size={12} />
-            <span className="hidden sm:inline">Delete</span>
+            <span className="hidden sm:inline">{t('delete', 'Delete')}</span>
           </button>
         )}
       </div>
@@ -140,18 +142,18 @@ export function MessageActions({
       <button
         onClick={() => onBranch(message.id)}
         className="flex items-center gap-1 p-1 text-gray-400 hover:text-white text-[10px]"
-        title="Branch Chat"
+        title={t('branchChat', 'Branch Chat')}
       >
         <GitBranch size={12} />
-        <span className="hidden sm:inline">Branch</span>
+        <span className="hidden sm:inline">{t('branch', 'Branch')}</span>
       </button>
       <button
         onClick={() => onEdit(message)}
         className="flex items-center gap-1 p-1 text-gray-400 hover:text-white text-[10px]"
-        title="Edit"
+        title={t('edit', 'Edit')}
       >
         <Pencil size={12} />
-        <span className="hidden sm:inline">Edit</span>
+        <span className="hidden sm:inline">{t('edit', 'Edit')}</span>
       </button>
       <button
         onClick={() => onToggleExclude(message.id, excluded)}
@@ -160,7 +162,7 @@ export function MessageActions({
             ? "text-amber-400"
             : "text-gray-400 hover:text-white"
         }`}
-        title={excluded ? "Include in prompt" : "Exclude from prompt"}
+        title={excluded ? t('includeInPrompt', 'Include in prompt') : t('excludeFromPrompt', 'Exclude from prompt')}
       >
         {excluded ? <Eye size={12} /> : <EyeOff size={12} />}
         <span className="hidden sm:inline">{excluded ? "Show" : "Hide"}</span>
@@ -169,10 +171,10 @@ export function MessageActions({
         <button
           onClick={() => onDelete(message.id)}
           className="flex items-center gap-1 p-1 text-gray-400 hover:text-red-400 text-[10px]"
-          title="Delete"
+          title={t('delete', 'Delete')}
         >
           <Trash2 size={12} />
-          <span className="hidden sm:inline">Delete</span>
+          <span className="hidden sm:inline">{t('delete', 'Delete')}</span>
         </button>
       )}
     </div>

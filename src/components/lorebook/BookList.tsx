@@ -3,6 +3,7 @@ import {
   RotateCcw, Power,
 } from "lucide-react";
 import type { Lorebook, LorebookLink, LoreTab } from "./types";
+import { useTranslation } from 'react-i18next'
 
 interface BookListProps {
   books: Lorebook[];
@@ -24,11 +25,10 @@ export function BookList({
   onSelectBook, onToggleEnabled, onUnpin, onPin, onReturnToGlobal, onDelete,
   isBookEnabled,
 }: BookListProps) {
+  const { t } = useTranslation()
   if (books.length === 0) {
     return (
-      <div className="text-center py-6 text-gray-600 text-xs">
-        No {activeTab} lorebooks
-      </div>
+      <div className="text-center py-6 text-gray-600 text-xs">{t('noActivetabLorebooks', 'No {{activeTab}} lorebooks', { activeTab })}</div>
     );
   }
 
@@ -55,7 +55,7 @@ export function BookList({
               </div>
               <div className="flex gap-1 items-center">
                 {book.is_global && <Globe size={9} className="text-cyan-400" />}
-                {book.excluded_from_global && <span className="text-[8px] text-amber-400 font-bold">EXCL</span>}
+                {book.excluded_from_global && <span className="text-[8px] text-amber-400 font-bold">{t('excl', 'EXCL')}</span>}
                 {charLinks.some(l => l.book_id === book.id) && <User size={9} className="text-pink-400" />}
                 {chatLinks.some(l => l.book_id === book.id) && <MessageSquare size={9} className="text-indigo-400" />}
                 {!bookEnabled && <span className="text-[8px] text-red-400 font-bold">OFF</span>}
@@ -65,30 +65,30 @@ export function BookList({
               <button onClick={() => onToggleEnabled(book.id, activeTab)}
                 className={`p-1 rounded transition ${
                   bookEnabled ? "text-emerald-400 hover:text-red-400" : "text-gray-600 hover:text-emerald-400"
-                }`} title={bookEnabled ? "Disable at this level" : "Enable at this level"}>
+                }`} title={bookEnabled ? t('disableAtThisLevel', 'Disable at this level') : t('enableAtThisLevel', 'Enable at this level')}>
                 <Power size={14} />
               </button>
               {linkType === "chat" && (
                 <button onClick={() => onUnpin(book.id, "chat")}
-                  className="p-1.5 text-indigo-400 hover:text-red-400 rounded transition" title="Unlink from chat">
+                  className="p-1.5 text-indigo-400 hover:text-red-400 rounded transition" title={t('unlinkFromChat', 'Unlink from chat')}>
                   <PinOff size={14} />
                 </button>
               )}
               {linkType === "card" && (
                 <button onClick={() => onUnpin(book.id, "card")}
-                  className="p-1.5 text-pink-400 hover:text-red-400 rounded transition" title="Unlink from character">
+                  className="p-1.5 text-pink-400 hover:text-red-400 rounded transition" title={t('unlinkFromCharacter', 'Unlink from character')}>
                   <PinOff size={14} />
                 </button>
               )}
               {!linkType && (
                 <>
                   <button onClick={() => onPin(book.id, book.name)}
-                    className="p-1.5 text-gray-600 hover:text-indigo-400 rounded transition" title="Link to character">
+                    className="p-1.5 text-gray-600 hover:text-indigo-400 rounded transition" title={t('linkToCharacter', 'Link to character')}>
                     <Pin size={14} />
                   </button>
                   {book.excluded_from_global && (
                     <button onClick={() => onReturnToGlobal(book.id)}
-                      className="p-1.5 text-amber-400 hover:text-emerald-400 rounded transition" title="Return to global pool">
+                      className="p-1.5 text-amber-400 hover:text-emerald-400 rounded transition" title={t('returnToGlobalPool', 'Return to global pool')}>
                       <RotateCcw size={14} />
                     </button>
                   )}
@@ -96,12 +96,12 @@ export function BookList({
               )}
               {(linkType === "card" || linkType === "chat") && book.excluded_from_global && (
                 <button onClick={() => onReturnToGlobal(book.id)}
-                  className="p-1.5 text-amber-400 hover:text-emerald-400 rounded transition" title="Return to global pool">
+                  className="p-1.5 text-amber-400 hover:text-emerald-400 rounded transition" title={t('returnToGlobalPool', 'Return to global pool')}>
                   <RotateCcw size={14} />
                 </button>
               )}
               <button onClick={() => onDelete(book.id)}
-                className="p-1.5 text-gray-600 hover:text-red-400 rounded transition opacity-0 group-hover:opacity-100" title="Delete">
+                className="p-1.5 text-gray-600 hover:text-red-400 rounded transition opacity-0 group-hover:opacity-100" title={t('delete', 'Delete')}>
                 <Trash2 size={14} />
               </button>
             </div>

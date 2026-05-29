@@ -13,6 +13,7 @@ import {
 import { QuickReply } from "../../types";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { appLocalDataDir, join } from "@tauri-apps/api/path";
+import { useTranslation } from 'react-i18next'
 
 const AttachmentPreview = ({ filename, onRemove }: { filename: string, onRemove: () => void }) => {
   const [src, setSrc] = useState<string | null>(null);
@@ -99,6 +100,7 @@ export function MessageInput({
   activePersonaName,
   isMobile,
 }: MessageInputProps) {
+  const { t } = useTranslation()
   return (
     <>
       {showQR && quickReplies.length > 0 && (
@@ -165,7 +167,7 @@ export function MessageInput({
                           chatMemory.trim() ? "text-amber-400" : "text-gray-400"
                         }
                       />
-                      Chat Memory
+                      {t('chatMemory', 'Chat Memory')}
                     </button>
                     <button
                       onClick={() => {
@@ -178,7 +180,7 @@ export function MessageInput({
                         size={16}
                         className="text-amber-400 fill-amber-400/20"
                       />{" "}
-                      Impersonate Me
+                      {t('impersonateMe', 'Impersonate Me')}
                     </button>
                     <button
                       onClick={() => {
@@ -187,7 +189,7 @@ export function MessageInput({
                       }}
                       className="w-full text-left px-4 py-3 text-sm hover:bg-indigo-600/20 flex gap-3 items-center text-gray-200 transition sm:hidden"
                     >
-                      <Download size={16} className="text-blue-400" /> Download chat
+                      <Download size={16} className="text-blue-400" /> {t('downloadChat', 'Download chat')}
                     </button>
                     <button
                       onClick={() => {
@@ -200,7 +202,7 @@ export function MessageInput({
                         size={16}
                         className={showQR ? "text-indigo-400" : "text-gray-500"}
                       />
-                      {showQR ? "Hide" : "Show"} Quick Replies
+                      {showQR ? "Hide" : "Show"} {t('quickReplies', 'Quick Replies')}
                     </button>
                     <button
                       onClick={() => {
@@ -209,7 +211,7 @@ export function MessageInput({
                       }}
                       className="w-full text-left px-4 py-3 text-sm hover:bg-indigo-600/20 flex gap-3 items-center text-gray-200 transition"
                     >
-                      <Image size={16} /> Attach Image
+                      <Image size={16} /> {t('attachImage', 'Attach Image')}
                     </button>
                   </div>
                 </div>
@@ -227,7 +229,7 @@ export function MessageInput({
                 handleSendMessage();
               }
             }}
-            placeholder={`Message as ${activePersonaName}...`}
+            placeholder={t('messageAsActivepersonaname', 'Message as {{activePersonaName}}...', { activePersonaName })}
             rows={1}
             className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 px-2 py-2 focus:outline-none resize-none max-h-32 min-h-[40px] custom-scrollbar"
             disabled={activeChatId === null}
@@ -240,7 +242,7 @@ export function MessageInput({
                   ? "bg-amber-600 hover:bg-amber-500 shadow-amber-500/20"
                   : "bg-red-600 hover:bg-red-500 shadow-red-500/20"
               }`}
-              title={isRetrying ? "Cancel Retry" : "Stop Generation"}
+              title={isRetrying ? t('cancelRetry', 'Cancel Retry') : t('stopGeneration', 'Stop Generation')}
             >
               {isRetrying ? (
                 <RefreshCw size={18} className="animate-spin" />

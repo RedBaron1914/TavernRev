@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Link, Save, ChevronRight, Server, Database, RefreshCw, Zap } from "lucide-react";
 import {
   API_TYPES,
@@ -48,13 +49,14 @@ export function ConnectionTab({
   retryDelay,
   setRetryDelay,
 }: ConnectionTabProps) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Profile Manager */}
       <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-bold text-gray-300 flex items-center gap-2">
-            <Link size={20} /> Connection Profile
+            <Link size={20} /> {t('connectionProfile', 'Connection Profile')}
           </h3>
           <div className="flex gap-2">
             <button
@@ -64,19 +66,19 @@ export function ConnectionTab({
               }}
               className="px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-gray-700 rounded-lg transition border border-white/5"
             >
-              New
+              {t('new', 'New')}
             </button>
             <button
               onClick={handleDeleteConnection}
               className="px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-red-900/30 text-red-400 hover:text-red-300 rounded-lg transition border border-white/5"
             >
-              Delete
+              {t('delete', 'Delete')}
             </button>
             <button
               onClick={handleSaveConnection}
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition shadow-lg shadow-indigo-500/20"
             >
-              <Save size={14} /> Save Profile
+              <Save size={14} /> {t('saveProfile', 'Save Profile')}
             </button>
           </div>
         </div>
@@ -87,7 +89,7 @@ export function ConnectionTab({
             className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500 appearance-none shadow-inner"
           >
             <option value="" disabled>
-              Select a profile...
+              {t('selectAProfile', 'Select a profile...')}
             </option>
             {connectionProfiles.map((name) => (
               <option key={name} value={name}>
@@ -105,11 +107,11 @@ export function ConnectionTab({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-5">
           <h3 className="text-lg font-bold text-indigo-400 flex items-center gap-2">
-            <Server size={20} /> API Settings
+            <Server size={20} /> {t('apiSettings', 'API Settings')}
           </h3>
 
           <SelectField
-            label="API Type"
+            label={t('apiType', 'API Type')}
             value={connectionData.api_type}
             onChange={(v: any) => handleConnectionChange("api_type", v)}
             options={API_TYPES}
@@ -117,7 +119,7 @@ export function ConnectionTab({
 
           {connectionData.api_type === "chat_completion" && (
             <SelectField
-              label="Chat Source"
+              label={t('chatSource', 'Chat Source')}
               value={connectionData.chat_source}
               onChange={(v: any) => handleConnectionChange("chat_source", v)}
               options={CHAT_SOURCES}
@@ -128,7 +130,7 @@ export function ConnectionTab({
             connectionData.api_type === "text_completion") &&
             connectionData.chat_source === "custom" && (
               <InputField
-                label="Base URL"
+                label={t('baseUrl', 'Base URL')}
                 value={connectionData.base_url}
                 onChange={(v: any) => handleConnectionChange("base_url", v)}
                 placeholder="http://127.0.0.1:5000/v1"
@@ -137,13 +139,13 @@ export function ConnectionTab({
 
           <div className="pt-2">
             <InputField
-              label="API Key"
+              label={t('apiKey', 'API Key')}
               type="password"
               value={connectionData.api_key}
               onChange={(v: any) => handleConnectionChange("api_key", v)}
               placeholder={
                 connectionData.chat_source === "custom"
-                  ? "Optional for local LLMs"
+                  ? t('optionalForLocalLlms', 'Optional for local LLMs')
                   : "sk-..."
               }
             />
@@ -153,21 +155,21 @@ export function ConnectionTab({
         <div className="space-y-6">
           <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-5">
             <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2">
-              <Database size={20} /> Model Selection
+              <Database size={20} /> {t('modelSelection', 'Model Selection')}
             </h3>
             <div className="flex gap-2 items-end">
               <div className="flex-1">
                 <InputField
-                  label="Enter Model ID"
+                  label={t('enterModelId', 'Enter Model ID')}
                   value={connectionData.model_id}
                   onChange={(v: any) => handleConnectionChange("model_id", v)}
-                  placeholder="gpt-4, meta-llama/Llama-3..."
+                  placeholder={t('gpt4Metallamallama3', 'gpt-4, meta-llama/Llama-3...')}
                 />
               </div>
               <button
                 onClick={handleFetchModels}
                 className="p-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl mb-0.5 text-gray-300 transition"
-                title="Fetch Available Models"
+                title={t('fetchAvailableModels', 'Fetch Available Models')}
               >
                 <RefreshCw size={18} />
               </button>
@@ -175,7 +177,7 @@ export function ConnectionTab({
 
             {fetchedModels.length > 0 && (
               <SelectField
-                label="Available Models"
+                label={t('availableModels', 'Available Models')}
                 value={connectionData.model_id}
                 onChange={(v: any) => handleConnectionChange("model_id", v)}
                 options={fetchedModels.map((m) => ({
@@ -187,21 +189,21 @@ export function ConnectionTab({
 
             <div className="pt-4 mt-2 border-t border-white/5">
               <Slider
-                label="Context Size"
+                label={t('contextSize', 'Context Size')}
                 field="context_size"
                 value={connectionData.context_size}
                 min={512}
                 max={2000000}
                 step={512}
                 onChange={handleConnectionChange}
-                helpText="Max tokens for prompt + response (Context Window)."
+                helpText={t('maxTokensForPromptResponseContextWindow', 'Max tokens for prompt + response (Context Window).')}
               />
             </div>
           </div>
 
           <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-5">
             <h3 className="text-lg font-bold text-amber-400 flex items-center gap-2">
-              <Zap size={20} /> Post-Processing
+              <Zap size={20} /> {t('postprocessing', 'Post-Processing')}
             </h3>
             <SelectField
               label="Strategy"
@@ -213,22 +215,22 @@ export function ConnectionTab({
 
           <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-4">
             <h3 className="text-lg font-bold text-yellow-400 flex items-center gap-2">
-              <RefreshCw size={20} /> Auto-Retry Strategy
+              <RefreshCw size={20} /> {t('autoretryStrategy', 'Auto-Retry Strategy')}
             </h3>
             <div className="flex items-center justify-between pb-2 border-b border-white/5">
-              <label className="text-sm text-gray-300 font-medium">Enable Auto-Retry</label>
+              <label className="text-sm text-gray-300 font-medium">{t('enableAutoretry', 'Enable Auto-Retry')}</label>
               <Toggle field="retry" value={retryEnabled} onChange={() => setRetryEnabled(!retryEnabled)} />
             </div>
             {retryEnabled && (
               <>
                 <InputField
-                  label="Trigger Phrases (comma separated)"
+                  label={t('triggerPhrasesCommaSeparated', 'Trigger Phrases (comma separated)')}
                   value={retryTriggers}
                   onChange={setRetryTriggers}
-                  placeholder="429, 503, overloaded..."
+                  placeholder={t('429503Overloaded', '429, 503, overloaded...')}
                 />
                 <InputField
-                  label="Retry Delay (seconds)"
+                  label={t('retryDelaySeconds', 'Retry Delay (seconds)')}
                   value={retryDelay}
                   onChange={setRetryDelay}
                   type="number"

@@ -1,4 +1,6 @@
-import { Globe, Upload } from "lucide-react";
+import { Globe, Upload, Languages } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { AVAILABLE_LANGUAGES } from "../../i18n";
 
 interface UiTabProps {
   bgMode: "default" | "custom" | "character";
@@ -7,11 +9,30 @@ interface UiTabProps {
 }
 
 export function UiTab({ bgMode, setBgMode, setCustomBg }: UiTabProps) {
+  const { t, i18n } = useTranslation();
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-4">
         <h3 className="text-lg font-bold text-gray-300 flex items-center gap-2">
-          <Globe size={20} /> Background
+          <Languages size={20} /> {t('language', 'Language')}
+        </h3>
+        <select
+          value={i18n.language}
+          onChange={(e) => i18n.changeLanguage(e.target.value)}
+          className="w-full bg-gray-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
+        >
+          {AVAILABLE_LANGUAGES.map((lng) => (
+            <option key={lng} value={lng}>
+              {new Intl.DisplayNames([lng], { type: "language" }).of(lng) || lng}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-4">
+        <h3 className="text-lg font-bold text-gray-300 flex items-center gap-2">
+          <Globe size={20} /> {t('background', 'Background')}
         </h3>
         <div className="space-y-3">
           <div className="flex gap-2">
@@ -23,7 +44,7 @@ export function UiTab({ bgMode, setBgMode, setCustomBg }: UiTabProps) {
                   : "bg-gray-800 border-white/5 text-gray-400 hover:bg-gray-700"
               }`}
             >
-              Default
+              {t('default', 'Default')}
             </button>
             <button
               onClick={() => setBgMode("character")}
@@ -33,7 +54,7 @@ export function UiTab({ bgMode, setBgMode, setCustomBg }: UiTabProps) {
                   : "bg-gray-800 border-white/5 text-gray-400 hover:bg-gray-700"
               }`}
             >
-              Character Card
+              {t('characterCard', 'Character Card')}
             </button>
             <button
               onClick={() => setBgMode("custom")}
@@ -43,7 +64,7 @@ export function UiTab({ bgMode, setBgMode, setCustomBg }: UiTabProps) {
                   : "bg-gray-800 border-white/5 text-gray-400 hover:bg-gray-700"
               }`}
             >
-              Custom Image
+              {t('customImage', 'Custom Image')}
             </button>
           </div>
 
@@ -52,7 +73,7 @@ export function UiTab({ bgMode, setBgMode, setCustomBg }: UiTabProps) {
               <label className="block w-full cursor-pointer bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 rounded-xl p-4 text-center transition group">
                 <Upload className="mx-auto mb-2 text-gray-500 group-hover:text-white transition" />
                 <span className="text-sm text-gray-400 group-hover:text-gray-200">
-                  Click to upload background
+                  {t('clickToUploadBackground', 'Click to upload background')}
                 </span>
                 <input
                   type="file"

@@ -3,6 +3,7 @@ import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { Group, Character } from "../types";
 import { X, Users, Image as ImageIcon, Save, UserMinus, UserPlus } from "lucide-react";
 import Avatar from "./Avatar";
+import { useTranslation } from 'react-i18next'
 
 type GroupEditorProps = {
   group: Group;
@@ -12,6 +13,7 @@ type GroupEditorProps = {
 };
 
 export const GroupEditor: React.FC<GroupEditorProps> = ({ group, allCharacters, onClose, onSave }) => {
+  const { t } = useTranslation()
   const [name, setName] = useState(group.name);
   const [scenario, setScenario] = useState(group.scenario);
   const [avatar, setAvatar] = useState(group.avatar);
@@ -121,7 +123,7 @@ export const GroupEditor: React.FC<GroupEditorProps> = ({ group, allCharacters, 
               <input id="group-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             </div>
             <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-3 truncate">
-              Edit Group
+              {t('editGroup', 'Edit Group')}
             </h2>
           </div>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/10 transition shrink-0">
@@ -131,14 +133,14 @@ export const GroupEditor: React.FC<GroupEditorProps> = ({ group, allCharacters, 
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 min-h-0">
           {loading ? (
-            <div className="text-center text-gray-500 mt-10">Loading members...</div>
+            <div className="text-center text-gray-500 mt-10">{t('loadingMembers', 'Loading members...')}</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 h-full">
               
               {/* Left Col: Settings */}
               <div className="space-y-6 flex flex-col">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Group Name</label>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t('groupName', 'Group Name')}</label>
                   <input
                     type="text"
                     value={name}
@@ -148,28 +150,28 @@ export const GroupEditor: React.FC<GroupEditorProps> = ({ group, allCharacters, 
                 </div>
 
                 <div className="flex-1 flex flex-col min-h-[150px]">
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Group Scenario (Optional)</label>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t('groupScenarioOptional', 'Group Scenario (Optional)')}</label>
                   <textarea
                     value={scenario}
                     onChange={e => setScenario(e.target.value)}
                     className="w-full flex-1 bg-gray-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition resize-none custom-scrollbar"
-                    placeholder="Describe the overall setting or context for this group chat..."
+                    placeholder={t('describeTheOverallSettingOrContextForThisGroupChat', 'Describe the overall setting or context for this group chat...')}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Routing Strategy</label>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t('routingStrategy', 'Routing Strategy')}</label>
                   <select
                     value={activationStrategy}
                     onChange={e => setActivationStrategy(parseInt(e.target.value))}
                     className="w-full bg-gray-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none appearance-none"
                   >
-                    <option value={0}>Natural (Mentions + Random)</option>
-                    <option value={1}>List (Round Robin)</option>
-                    <option value={2}>Manual (Pick before gen)</option>
+                    <option value={0}>{t('naturalMentionsRandom', 'Natural (Mentions + Random)')}</option>
+                    <option value={1}>{t('listRoundRobin', 'List (Round Robin)')}</option>
+                    <option value={2}>{t('manualPickBeforeGen', 'Manual (Pick before gen)')}</option>
                   </select>
                   <p className="text-[10px] text-gray-500 mt-2 leading-tight">
-                    Determines who speaks when you send a message without explicitly mentioning a name.
+                    {t('determinesWhoSpeaksWhenYouSendAMessageWithoutExplicitlyMentioningAName', 'Determines who speaks when you send a message without explicitly mentioning a name.')}
                   </p>
                 </div>
 
@@ -182,9 +184,9 @@ export const GroupEditor: React.FC<GroupEditorProps> = ({ group, allCharacters, 
                     className="w-4 h-4 accent-indigo-500 bg-gray-900 border-white/20 rounded shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <label htmlFor="allowSelfResponses" className="text-sm font-bold text-white cursor-pointer select-none block truncate">Allow Self-Responses</label>
+                    <label htmlFor="allowSelfResponses" className="text-sm font-bold text-white cursor-pointer select-none block truncate">{t('allowSelfresponses', 'Allow Self-Responses')}</label>
                     <p className="text-[10px] text-gray-400 leading-tight mt-0.5">
-                      If disabled, algorithm forces a different character to speak next.
+                      {t('ifDisabledAlgorithmForcesADifferentCharacterToSpeakNext', 'If disabled, algorithm forces a different character to speak next.')}
                     </p>
                   </div>
                 </div>
@@ -193,8 +195,8 @@ export const GroupEditor: React.FC<GroupEditorProps> = ({ group, allCharacters, 
               {/* Right Col: Members */}
               <div className="flex flex-col h-full min-h-[300px] border border-white/10 rounded-xl bg-gray-950 overflow-hidden">
                 <div className="p-3 bg-gray-900 border-b border-white/5 flex items-center justify-between shrink-0">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Members ({members.length})</span>
-                    <span className="text-[10px] text-gray-500">Click to add/remove</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('membersLength', 'Members ({{length}})', { length: members.length })}</span>
+                    <span className="text-[10px] text-gray-500">{t('clickToAddremove', 'Click to add/remove')}</span>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
@@ -259,7 +261,7 @@ export const GroupEditor: React.FC<GroupEditorProps> = ({ group, allCharacters, 
             onClick={onClose}
             className="px-6 py-2.5 rounded-xl text-sm font-bold text-gray-400 hover:text-white hover:bg-white/5 transition"
           >
-            Cancel
+            {t('cancel', 'Cancel')}
           </button>
           <button
             onClick={handleSave}
@@ -267,7 +269,7 @@ export const GroupEditor: React.FC<GroupEditorProps> = ({ group, allCharacters, 
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg shadow-indigo-900/20"
           >
             <Save size={18} />
-            Save Changes
+            {t('saveChanges', 'Save Changes')}
           </button>
         </div>
 

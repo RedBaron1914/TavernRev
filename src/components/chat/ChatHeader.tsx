@@ -1,6 +1,7 @@
 import { Menu, Pencil, Activity, UserCircle, Download, CloudUpload, Check, X, Settings } from "lucide-react";
 import Avatar from "../Avatar";
 import { Character, Group } from "../../types";
+import { useTranslation } from 'react-i18next'
 
 export interface ChatHeaderProps {
   modelName: string;
@@ -32,6 +33,7 @@ export function ChatHeader({
   onPersona,
   onSettings,
 }: ChatHeaderProps) {
+  const { t } = useTranslation()
   const avatarSrc =
     activeGroupId && activeGroup
       ? activeGroup.avatar || "default.png"
@@ -78,7 +80,7 @@ export function ChatHeader({
                   ? "text-red-400"
                   : "text-blue-400"
             }`}
-            title={`Auto-Sync: ${autoSyncStatus}`}
+            title={t('autosyncAutosyncstatus', 'Auto-Sync: {{autoSyncStatus}}', { autoSyncStatus })}
           >
             {autoSyncStatus === "syncing" && (
               <CloudUpload size={16} className="animate-pulse" />
@@ -91,7 +93,7 @@ export function ChatHeader({
         )}
         <button
           onClick={onExportChat}
-          title="Download chat"
+          title={t('downloadChat', 'Download chat')}
           className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition hidden sm:flex"
         >
           <Download size={20} />
@@ -99,14 +101,14 @@ export function ChatHeader({
 
         <button
           onClick={onStats}
-          title="Chat Stats"
+          title={t('chatStats', 'Chat Stats')}
           className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition"
         >
           <Activity size={20} />
         </button>
         <button
           onClick={onPersona}
-          title="Switch Persona"
+          title={t('switchPersona2', 'Switch Persona')}
           className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition"
         >
           <UserCircle size={20} />

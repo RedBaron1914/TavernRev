@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Trash2, Anchor, ChevronDown, ChevronRight } from "lucide-react";
 import type { LoreEntry } from "./types";
+import { useTranslation } from 'react-i18next'
 
 interface EntryCardProps {
   entry: LoreEntry;
@@ -9,6 +10,7 @@ interface EntryCardProps {
 }
 
 export function EntryCard({ entry, onUpdate, onDelete }: EntryCardProps) {
+  const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -30,12 +32,12 @@ export function EntryCard({ entry, onUpdate, onDelete }: EntryCardProps) {
             <input defaultValue={entry.keys}
               onBlur={e => onUpdate(entry, { keys: e.target.value })}
               className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-xs text-emerald-400 font-mono focus:outline-none focus:border-indigo-500 min-w-0"
-              placeholder="tag1, tag2"
+              placeholder={t('tag1Tag2', 'tag1, tag2')}
             />
             <button onClick={() => onUpdate(entry, { constant: !entry.constant })}
               className={`shrink-0 text-[9px] uppercase font-bold flex items-center gap-0.5 transition ${
                 entry.constant ? "text-cyan-400" : "text-gray-600 hover:text-gray-400"
-              }`} title="Always Active">
+              }`} title={t('alwaysActive', 'Always Active')}>
               <Anchor size={9}/> C
             </button>
           </>
@@ -53,47 +55,47 @@ export function EntryCard({ entry, onUpdate, onDelete }: EntryCardProps) {
             onBlur={e => onUpdate(entry, { content: e.target.value })}
             rows={2}
             className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-indigo-500 custom-scrollbar resize-y font-mono leading-relaxed"
-            placeholder="Lore entry content..."
+            placeholder={t('loreEntryContent', 'Lore entry content...')}
           />
           <details>
             <summary className="text-[9px] text-gray-500 hover:text-gray-300 cursor-pointer font-bold uppercase">
-              Advanced
+              {t('advanced', 'Advanced')}
             </summary>
             <div className="flex flex-wrap gap-3 pt-2 border-t border-white/5 mt-2">
               <div className="flex items-center gap-1.5">
-                <span className="text-[9px] uppercase font-bold text-gray-500">Order</span>
+                <span className="text-[9px] uppercase font-bold text-gray-500">{t('order', 'Order')}</span>
                 <input type="number" defaultValue={entry.priority}
                   onBlur={e => onUpdate(entry, { priority: Number(e.target.value) })}
                   className="w-10 bg-gray-900 border border-gray-700 rounded px-1 py-0.5 text-[10px] text-gray-300 text-center focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[9px] uppercase font-bold text-gray-500">Prob%</span>
+                <span className="text-[9px] uppercase font-bold text-gray-500">{t('prob', 'Prob%')}</span>
                 <input type="number" defaultValue={entry.probability} min={0} max={100}
                   onBlur={e => onUpdate(entry, { probability: Number(e.target.value) })}
                   className="w-10 bg-gray-900 border border-gray-700 rounded px-1 py-0.5 text-[10px] text-gray-300 text-center focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[9px] uppercase font-bold text-gray-500">Pos</span>
+                <span className="text-[9px] uppercase font-bold text-gray-500">{t('pos', 'Pos')}</span>
                 <select value={entry.position} onChange={e => onUpdate(entry, { position: e.target.value })}
                   className="bg-gray-900 border border-gray-700 rounded px-1 py-0.5 text-[10px] text-gray-300 focus:outline-none focus:border-indigo-500"
                 >
-                  <option value="before_char">↓Char</option>
-                  <option value="after_char">↑Char</option>
-                  <option value="before_em">↓EM</option>
-                  <option value="after_em">↑EM</option>
-                  <option value="before_an">↓AN</option>
-                  <option value="after_an">↑AN</option>
-                  <option value="at_depth">@D</option>
-                  <option value="at_depth_user">@D User</option>
-                  <option value="at_depth_assistant">@D Asst</option>
-                  <option value="outlet">Outlet</option>
+                  <option value="before_char">{t('char', '↓Char')}</option>
+                  <option value="after_char">{t('char2', '↑Char')}</option>
+                  <option value="before_em">{t('em', '↓EM')}</option>
+                  <option value="after_em">{t('em2', '↑EM')}</option>
+                  <option value="before_an">{t('an', '↓AN')}</option>
+                  <option value="after_an">{t('an2', '↑AN')}</option>
+                  <option value="at_depth">{t('d', '@D')}</option>
+                  <option value="at_depth_user">{t('dUser', '@D User')}</option>
+                  <option value="at_depth_assistant">{t('dAsst', '@D Asst')}</option>
+                  <option value="outlet">{t('outlet', 'Outlet')}</option>
                 </select>
               </div>
               {entry.position.startsWith("at_depth") && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] uppercase font-bold text-gray-500">Depth</span>
+                  <span className="text-[9px] uppercase font-bold text-gray-500">{t('depth', 'Depth')}</span>
                   <input type="number" defaultValue={entry.depth || 4}
                     onBlur={e => onUpdate(entry, { depth: Number(e.target.value) })}
                     className="w-10 bg-gray-900 border border-gray-700 rounded px-1 py-0.5 text-[10px] text-gray-300 text-center focus:outline-none focus:border-indigo-500"

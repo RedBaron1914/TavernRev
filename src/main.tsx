@@ -35,7 +35,7 @@ class ErrorBoundary extends React.Component<
             height: "100vh",
           }}
         >
-          <h1>Something went wrong.</h1>
+          <h1>{i18next.t('somethingWentWrong', 'Something went wrong.')}</h1>
           <pre>{this.state.error}</pre>
         </div>
       );
@@ -45,10 +45,22 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      {isConsoleWindow ? <DebugConsole standalone /> : <App />}
-    </ErrorBoundary>
-  </React.StrictMode>,
-);
+import { I18nextProvider } from "react-i18next";
+import i18n, { initI18n } from "./i18n";
+import i18next from 'i18next'
+
+async function renderApp() {
+  await initI18n();
+
+  ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+    <React.StrictMode>
+      <I18nextProvider i18n={i18n}>
+        <ErrorBoundary>
+          {isConsoleWindow ? <DebugConsole standalone /> : <App />}
+        </ErrorBoundary>
+      </I18nextProvider>
+    </React.StrictMode>,
+  );
+}
+
+void renderApp();

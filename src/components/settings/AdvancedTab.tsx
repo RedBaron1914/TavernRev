@@ -1,5 +1,6 @@
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { Terminal } from "lucide-react";
+import { useTranslation } from 'react-i18next'
 
 interface AdvancedTabProps {
   addToast: (message: string, type?: "success" | "error" | "info") => void;
@@ -12,6 +13,7 @@ export function AdvancedTab({
   addToast,
   setShowConsole,
 }: AdvancedTabProps) {
+  const { t } = useTranslation()
   const openConsoleWindow = async () => {
     if (isMobile) {
       setShowConsole(true);
@@ -27,7 +29,7 @@ export function AdvancedTab({
       }
 
       const consoleWindow = new WebviewWindow("system-console", {
-        title: "System Console",
+        title: t('systemConsole', 'System Console'),
         url: "/?view=console",
         width: 1100,
         height: 720,
@@ -49,9 +51,9 @@ export function AdvancedTab({
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-4">
-        <h3 className="text-lg font-bold text-white">Debug Tools</h3>
+        <h3 className="text-lg font-bold text-white">{t('debugTools', 'Debug Tools')}</h3>
         <p className="text-gray-400 text-sm">
-          Use these tools to diagnose issues.
+          {t('useTheseToolsToDiagnoseIssues', 'Use these tools to diagnose issues.')}
         </p>
 
         <button
@@ -63,9 +65,9 @@ export function AdvancedTab({
               <Terminal size={20} />
             </div>
             <div className="text-left">
-              <div className="font-bold">System Console</div>
+              <div className="font-bold">{t('systemConsole', 'System Console')}</div>
               <div className="text-xs text-gray-500">
-                View app logs and errors
+                {t('viewAppLogsAndErrors', 'View app logs and errors')}
               </div>
             </div>
           </div>

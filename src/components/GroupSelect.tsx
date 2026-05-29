@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Group, Character } from "../types";
 import { Search, Plus, Users, Trash2 } from "lucide-react";
 import Avatar from "./Avatar";
+import { useTranslation } from 'react-i18next'
 
 type GroupSelectProps = {
   groups: Group[];
@@ -12,6 +13,7 @@ type GroupSelectProps = {
 };
 
 export const GroupSelect: React.FC<GroupSelectProps> = ({ groups, characters, onSelect, onCreate, onDelete }) => {
+  const { t } = useTranslation()
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -45,7 +47,7 @@ export const GroupSelect: React.FC<GroupSelectProps> = ({ groups, characters, on
             <Search className="absolute left-3.5 text-gray-500 pointer-events-none" size={16} />
             <input
               type="text"
-              placeholder="Search groups..."
+              placeholder={t('searchGroups', 'Search groups...')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-gray-900 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
@@ -54,7 +56,7 @@ export const GroupSelect: React.FC<GroupSelectProps> = ({ groups, characters, on
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl aspect-square w-12 transition-colors shadow-lg shadow-indigo-900/20"
-            title="Create Group"
+            title={t('createGroup', 'Create Group')}
           >
             <Plus size={20} />
           </button>
@@ -65,7 +67,7 @@ export const GroupSelect: React.FC<GroupSelectProps> = ({ groups, characters, on
       <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar pb-[env(safe-area-inset-bottom)]">
         {filtered.length === 0 ? (
           <div className="text-center text-gray-500 mt-10">
-            No groups found. Create one!
+            {t('noGroupsFoundCreateOne', 'No groups found. Create one!')}
           </div>
         ) : (
           filtered.map(group => (
@@ -84,7 +86,7 @@ export const GroupSelect: React.FC<GroupSelectProps> = ({ groups, characters, on
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-white truncate text-base">{group.name}</h3>
                 <p className="text-xs text-gray-400 truncate mt-1">
-                  {group.scenario || "No scenario set"}
+                  {group.scenario || t('noScenarioSet', 'No scenario set')}
                 </p>
               </div>
               <button
@@ -93,7 +95,7 @@ export const GroupSelect: React.FC<GroupSelectProps> = ({ groups, characters, on
                   onDelete(group.id, group.name);
                 }}
                 className="p-3 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors md:opacity-0 group-hover:opacity-100"
-                title="Delete Group"
+                title={t('deleteGroup', 'Delete Group')}
               >
                 <Trash2 size={18} />
               </button>
@@ -109,25 +111,25 @@ export const GroupSelect: React.FC<GroupSelectProps> = ({ groups, characters, on
             <div className="p-4 border-b border-white/5 shrink-0">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <Users size={20} className="text-indigo-400" />
-                Create New Group
+                {t('createNewGroup', 'Create New Group')}
               </h2>
             </div>
             
             <div className="p-4 space-y-4 overflow-y-auto custom-scrollbar flex-1">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Group Name</label>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t('groupName', 'Group Name')}</label>
                 <input
                   type="text"
                   value={newGroupName}
                   onChange={e => setNewGroupName(e.target.value)}
                   className="w-full bg-gray-950 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-indigo-500 outline-none"
-                  placeholder="The Fellowship"
+                  placeholder={t('theFellowship', 'The Fellowship')}
                   autoFocus
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Select Members ({selectedMembers.length})</label>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t('selectMembersLength', 'Select Members ({{length}})', { length: selectedMembers.length })}</label>
                 <div className="space-y-1 bg-gray-950 border border-white/5 rounded-lg p-2 max-h-60 overflow-y-auto custom-scrollbar">
                   {characters.filter(c => c.name !== "System").map(c => (
                     <label key={c.id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-md cursor-pointer transition">
@@ -152,14 +154,14 @@ export const GroupSelect: React.FC<GroupSelectProps> = ({ groups, characters, on
                 onClick={() => setShowCreateModal(false)}
                 className="px-4 py-2 text-sm text-gray-400 hover:text-white transition"
               >
-                Cancel
+                {t('cancel', 'Cancel')}
               </button>
               <button
                 onClick={handleCreate}
                 disabled={!newGroupName.trim() || selectedMembers.length === 0}
                 className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition"
               >
-                Create Group
+                {t('createGroup', 'Create Group')}
               </button>
             </div>
           </div>

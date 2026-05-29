@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { X, CheckCircle, AlertCircle, Info } from "lucide-react";
+import { useTranslation } from 'react-i18next'
 
 export type ToastType = "success" | "error" | "info";
 
@@ -10,15 +11,16 @@ export type ToastMessage = {
 };
 
 const Toast = ({ toast, onClose }: { toast: ToastMessage; onClose: (id: string) => void }) => {
+  const { t } = useTranslation()
   useEffect(() => {
     const timer = setTimeout(() => onClose(toast.id), 3000);
     return () => clearTimeout(timer);
   }, [toast.id, onClose]);
 
   const bgColors = {
-    success: "bg-emerald-600 border border-emerald-500",
-    error: "bg-red-600 border border-red-500",
-    info: "bg-indigo-600 border border-indigo-500",
+    success: t('bgemerald600BorderBorderemerald500', 'bg-emerald-600 border border-emerald-500'),
+    error: t('bgred600BorderBorderred500', 'bg-red-600 border border-red-500'),
+    info: t('bgindigo600BorderBorderindigo500', 'bg-indigo-600 border border-indigo-500'),
   };
 
   const icons = {

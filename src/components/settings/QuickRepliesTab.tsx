@@ -1,5 +1,6 @@
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { QuickReply } from "../../types";
+import { useTranslation } from 'react-i18next'
 
 interface QuickRepliesTabProps {
   quickReplies: QuickReply[];
@@ -14,20 +15,21 @@ export function QuickRepliesTab({
   setEditingQR,
   handleDeleteQR,
 }: QuickRepliesTabProps) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-bold text-white">Quick Replies</h3>
+          <h3 className="text-lg font-bold text-white">{t('quickReplies', 'Quick Replies')}</h3>
           <p className="text-gray-400 text-sm">
-            Buttons for quick actions or commands.
+            {t('buttonsForQuickActionsOrCommands', 'Buttons for quick actions or commands.')}
           </p>
         </div>
         <button
           onClick={handleCreateQR}
           className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"
         >
-          <Plus size={16} /> New QR
+          <Plus size={16} /> {t('newQr', 'New QR')}
         </button>
       </div>
 
@@ -66,7 +68,7 @@ export function QuickRepliesTab({
         ))}
         {quickReplies.length === 0 && (
           <div className="text-center py-12 text-gray-600 italic border border-dashed border-white/10 rounded-xl">
-            No Quick Replies created.
+            {t('noQuickRepliesCreated', 'No Quick Replies created.')}
           </div>
         )}
       </div>

@@ -21,6 +21,7 @@ import { DEFAULT_CONNECTION_PROFILE } from "../settings/shared";
 import LorebookEditor from "../LorebookEditor";
 import { WorldInfoTab } from "../settings/WorldInfoTab";
 import { useActiveConnectionProfile, useActivePreset } from "../settings/runtime";
+import { useTranslation } from 'react-i18next'
 
 type SidebarTab =
   | "chats"
@@ -61,6 +62,7 @@ export function Sidebar({
   handleDeleteChat,
   addToast,
 }: SidebarProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<SidebarTab>("chats");
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem("sidebarWidth");
@@ -117,22 +119,22 @@ export function Sidebar({
     label: string;
     icon: typeof MessageSquare;
   }[] = [
-    { id: "chats", label: "Chats", icon: MessageSquare },
+    { id: "chats", label: t('chats', 'Chats'), icon: MessageSquare },
     {
       id: "response-config",
-      label: "AI response configuration",
+      label: t('aiResponseConfiguration2', 'AI response configuration'),
       icon: SlidersHorizontal,
     },
     {
       id: "response-formatting",
-      label: "AI response formatting",
+      label: t('aiResponseFormatting2', 'AI response formatting'),
       icon: Type,
     },
-    { id: "world-info", label: "World info", icon: BookOpen },
-    { id: "lorebooks", label: "Lorebooks", icon: Library },
+    { id: "world-info", label: t('worldInfo2', 'World info'), icon: BookOpen },
+    { id: "lorebooks", label: t('lorebooks', 'Lorebooks'), icon: Library },
     {
       id: "long-term-memory",
-      label: "Long-term memory",
+      label: t('longtermMemory2', 'Long-term memory'),
       icon: BrainCircuit,
     },
   ];
@@ -176,14 +178,14 @@ export function Sidebar({
                 <button
                   onClick={() => handleRenameChat(chat.id, chat.name)}
                   className="p-1 text-gray-500 hover:text-white"
-                  title="Rename Chat"
+                  title={t('renameChat', 'Rename Chat')}
                 >
                   <Pencil size={12} />
                 </button>
                 <button
                   onClick={() => handleDeleteChat(chat.id, chat.name)}
                   className="p-1 text-gray-500 hover:text-red-400"
-                  title="Delete Chat"
+                  title={t('deleteChat', 'Delete Chat')}
                 >
                   <Trash2 size={12} />
                 </button>
@@ -206,7 +208,7 @@ export function Sidebar({
       if (!formData) {
         return (
           <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 text-sm text-gray-400">
-            Loading world info settings...
+            {t('loadingWorldInfoSettings', 'Loading world info settings...')}
           </div>
         );
       }
@@ -242,7 +244,7 @@ export function Sidebar({
       if (!formData) {
         return (
           <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 text-sm text-gray-400">
-            Loading formatting settings...
+            {t('loadingFormattingSettings', 'Loading formatting settings...')}
           </div>
         );
       }
@@ -263,7 +265,7 @@ export function Sidebar({
       if (!formData) {
         return (
           <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 text-sm text-gray-400">
-            Loading response configuration...
+            {t('loadingResponseConfiguration', 'Loading response configuration...')}
           </div>
         );
       }
@@ -283,14 +285,14 @@ export function Sidebar({
             renderPromptManager={() => (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2 text-sm text-gray-400">
                 <div className="text-xs font-bold uppercase tracking-[0.24em] text-gray-500">
-                  Prompt Manager
+                  {t('promptManager', 'Prompt Manager')}
                 </div>
-                <p>Prompt manager is still available in the full Settings screen.</p>
+                <p>{t('promptManagerIsStillAvailableInTheFullSettingsScreen', 'Prompt manager is still available in the full Settings screen.')}</p>
                 <button
                   onClick={() => setCurrentView("settings")}
                   className="mt-2 rounded-lg border border-indigo-500/30 bg-indigo-600/15 px-3 py-2 text-sm font-medium text-indigo-100 transition hover:bg-indigo-600/25"
                 >
-                  Open Full Settings
+                  {t('openFullSettings', 'Open Full Settings')}
                 </button>
               </div>
             )}
@@ -306,12 +308,11 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 text-sm text-gray-400">
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
           <div className="text-xs font-bold uppercase tracking-[0.24em] text-gray-500">
-            In Progress
+            {t('inProgress', 'In Progress')}
           </div>
           <div className="text-base font-semibold text-gray-200">{activeTabLabel}</div>
           <p>
-            This tab shell is ready. The actual settings content will be moved here in the next
-            step.
+            {t('thisTabShellIsReadyTheActualSettingsContentWillBeMovedHereInTheNextStep', 'This tab shell is ready. The actual settings content will be moved here in the next\r\n            step.')}
           </p>
         </div>
       </div>
@@ -338,12 +339,12 @@ export function Sidebar({
         >
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
             <div className="text-xs font-bold uppercase tracking-[0.24em] text-gray-500">
-              Chat Sidebar
+              {t('chatSidebar', 'Chat Sidebar')}
             </div>
             <button
               onClick={() => setSidebarVisible(false)}
               className="rounded-lg p-2 text-gray-400 transition hover:bg-white/10 hover:text-white"
-              title="Hide sidebar"
+              title={t('hideSidebar', 'Hide sidebar')}
             >
               <PanelLeftClose size={18} />
             </button>
@@ -355,18 +356,18 @@ export function Sidebar({
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-2 py-2 text-[11px] font-semibold text-gray-300 transition hover:bg-white/[0.08] hover:text-white"
               >
                 <Users size={14} />
-                <span>Character</span>
+                <span>{t('character', 'Character')}</span>
               </button>
               <button
                 onClick={handleNewChat}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-indigo-500/30 bg-indigo-600/15 px-2 py-2 text-[11px] font-semibold text-indigo-100 transition hover:bg-indigo-600/25"
               >
                 <Plus size={14} />
-                <span>New</span>
+                <span>{t('new', 'New')}</span>
               </button>
               <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-2 py-2 text-[11px] font-semibold text-gray-300 transition hover:bg-white/[0.08] hover:text-white">
                 <Download size={14} />
-                <span>Import</span>
+                <span>{t('import', 'Import')}</span>
                 <input
                   type="file"
                   accept=".jsonl"
@@ -404,7 +405,7 @@ export function Sidebar({
             <div
               onMouseDown={handleResizeStart}
               className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-indigo-500/30 transition-colors z-10"
-              title="Drag to resize"
+              title={t('dragToResize', 'Drag to resize')}
             />
           )}
         </aside>

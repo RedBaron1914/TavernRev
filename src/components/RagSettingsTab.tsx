@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Brain } from "lucide-react";
 import { Toggle, InputField } from "./settings/shared";
+import { useTranslation } from 'react-i18next'
 
 export const RagSettingsTab = ({ 
   chatId,
@@ -12,6 +13,7 @@ export const RagSettingsTab = ({
   addToast: (msg: string, type?: "info" | "error" | "success") => void;
   compact?: boolean;
 }) => {
+  const { t } = useTranslation()
   const [ragEnabled, setRagEnabled] = useState(localStorage.getItem("rag_enabled") === "true");
   const [ragApiType, setRagApiType] = useState<"local" | "api">(
     (localStorage.getItem("rag_api_type") as "local" | "api") || "local"
@@ -27,7 +29,7 @@ export const RagSettingsTab = ({
   const [ragTopK, setRagTopK] = useState(parseInt(localStorage.getItem("rag_top_k") || "3"));
   const [ragThreshold, setRagThreshold] = useState(parseFloat(localStorage.getItem("rag_threshold") || "0.5"));
   const [ragTemplate, setRagTemplate] = useState(
-    localStorage.getItem("rag_template") || "[System Note: Relevant context from past memory:\n{{text}}\n]"
+    localStorage.getItem("rag_template") || '[System Note: Relevant context from past memory:\n{{text}}\n]'
   );
 
   useEffect(() => {
@@ -51,16 +53,16 @@ export const RagSettingsTab = ({
         <div className={`pb-4 border-b border-white/5 ${compact ? "space-y-3" : "flex items-center justify-between"}`}>
           <div>
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              <Brain size={24} className="text-purple-400" /> Long-Term Memory (RAG)
+              <Brain size={24} className="text-purple-400" /> {t('longtermMemoryRag', 'Long-Term Memory (RAG)')}
             </h3>
-            <p className="text-sm text-gray-400 mt-1">Automatically embed and recall past chat history using local AI models.</p>
+            <p className="text-sm text-gray-400 mt-1">{t('automaticallyEmbedAndRecallPastChatHistoryUsingLocalAiModels', 'Automatically embed and recall past chat history using local AI models.')}</p>
           </div>
           <Toggle label="Enabled" field="ragEnabled" value={ragEnabled} onChange={() => setRagEnabled(!ragEnabled)} />
         </div>
 
         <div className={`space-y-6 transition-opacity duration-300 ${ragEnabled ? "opacity-100" : "opacity-50 pointer-events-none"}`}>
           <div className="space-y-4">
-            <h4 className="text-sm font-bold text-gray-300">Embedding Engine</h4>
+            <h4 className="text-sm font-bold text-gray-300">{t('embeddingEngine', 'Embedding Engine')}</h4>
             
             <div className="flex gap-2">
               <button
@@ -69,7 +71,7 @@ export const RagSettingsTab = ({
                   ragApiType === "local" ? "bg-purple-600/20 border-purple-500/50 text-purple-300" : "bg-gray-900 border-white/10 text-gray-500 hover:text-gray-300"
                 }`}
               >
-                Local (FastEmbed)
+                {t('localFastembed', 'Local (FastEmbed)')}
               </button>
               <button
                 onClick={() => setRagApiType("api")}
@@ -77,30 +79,30 @@ export const RagSettingsTab = ({
                   ragApiType === "api" ? "bg-indigo-600/20 border-indigo-500/50 text-indigo-300" : "bg-gray-900 border-white/10 text-gray-500 hover:text-gray-300"
                 }`}
               >
-                External API
+                {t('externalApi', 'External API')}
               </button>
             </div>
 
             {ragApiType === "local" ? (
               <div className="space-y-3 p-4 bg-gray-950/50 rounded-xl border border-white/5">
                 <div>
-                  <label className="block text-sm font-bold text-gray-300 mb-2">Embedding Model</label>
+                  <label className="block text-sm font-bold text-gray-300 mb-2">{t('embeddingModel', 'Embedding Model')}</label>
                   <select
                     value={ragModel}
                     onChange={(e) => setRagModel(e.target.value)}
                     className="w-full bg-gray-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none appearance-none"
                   >
-                    <option value="MultilingualE5Small">Multilingual E5 Small (Recommended, 100 languages, ~120MB)</option>
-                    <option value="AllMiniLML6V2">All MiniLM L6 v2 (English Only, Fastest, ~90MB)</option>
-                    <option value="NomicEmbedText">Nomic Embed Text (English, High Quality, ~130MB)</option>
-                    <option value="Custom">Custom Local Model (ONNX Folder)</option>
+                    <option value="MultilingualE5Small">{t('multilingualE5SmallRecommended100Languages120mb', 'Multilingual E5 Small (Recommended, 100 languages, ~120MB)')}</option>
+                    <option value="AllMiniLML6V2">{t('allMinilmL6V2EnglishOnlyFastest90mb', 'All MiniLM L6 v2 (English Only, Fastest, ~90MB)')}</option>
+                    <option value="NomicEmbedText">{t('nomicEmbedTextEnglishHighQuality130mb', 'Nomic Embed Text (English, High Quality, ~130MB)')}</option>
+                    <option value="Custom">{t('customLocalModelOnnxFolder', 'Custom Local Model (ONNX Folder)')}</option>
                   </select>
                 </div>
                 {ragModel === "Custom" && (
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <InputField
-                        label="Path to Custom ONNX Folder"
+                        label={t('pathToCustomOnnxFolder', 'Path to Custom ONNX Folder')}
                         value={ragCustomModelPath}
                         onChange={setRagCustomModelPath}
                         placeholder="C:/models/my-embedding-model/"
@@ -112,20 +114,20 @@ export const RagSettingsTab = ({
             ) : (
               <div className="space-y-3 p-4 bg-gray-950/50 rounded-xl border border-white/5">
                 <InputField
-                  label="API URL"
+                  label={t('apiUrl', 'API URL')}
                   value={ragApiUrl}
                   onChange={setRagApiUrl}
                   placeholder="https://api.openai.com/v1/embeddings"
                 />
                 <InputField
-                  label="API Key"
+                  label={t('apiKey', 'API Key')}
                   value={ragApiKey}
                   onChange={setRagApiKey}
                   placeholder="sk-..."
                   type="password"
                 />
                 <InputField
-                  label="Model ID"
+                  label={t('modelId', 'Model ID')}
                   value={ragApiModel}
                   onChange={setRagApiModel}
                   placeholder="text-embedding-3-small"
@@ -135,17 +137,17 @@ export const RagSettingsTab = ({
           </div>
 
           <div className="pt-4 border-t border-white/5">
-            <h4 className="text-sm font-bold text-gray-300 mb-4">Indexing Strategy</h4>
+            <h4 className="text-sm font-bold text-gray-300 mb-4">{t('indexingStrategy', 'Indexing Strategy')}</h4>
             <div className="grid grid-cols-1 gap-6">
               <InputField
-                label="Messages per Chunk"
+                label={t('messagesPerChunk', 'Messages per Chunk')}
                 type="number"
                 value={ragChunkSize.toString()}
                 onChange={(v: string) => setRagChunkSize(parseInt(v) || 4)}
                 placeholder="4"
               />
               <InputField
-                label="Chunk Overlap (Messages)"
+                label={t('chunkOverlapMessages', 'Chunk Overlap (Messages)')}
                 type="number"
                 value={ragOverlap.toString()}
                 onChange={(v: string) => setRagOverlap(parseInt(v) || 1)}
@@ -155,11 +157,11 @@ export const RagSettingsTab = ({
           </div>
 
           <div className="pt-4 border-t border-white/5">
-            <h4 className="text-sm font-bold text-gray-300 mb-4">Retrieval Strategy</h4>
+            <h4 className="text-sm font-bold text-gray-300 mb-4">{t('retrievalStrategy', 'Retrieval Strategy')}</h4>
             <div className="grid grid-cols-1 gap-6">
               <div>
                 <div className="flex justify-between mb-2">
-                  <label className="text-sm font-bold text-gray-400">Top-K Results</label>
+                  <label className="text-sm font-bold text-gray-400">{t('topkResults', 'Top-K Results')}</label>
                   <span className="text-sm text-white font-mono">{ragTopK}</span>
                 </div>
                 <input
@@ -174,7 +176,7 @@ export const RagSettingsTab = ({
               </div>
               <div>
                 <div className="flex justify-between mb-2">
-                  <label className="text-sm font-bold text-gray-400">Min Similarity Threshold</label>
+                  <label className="text-sm font-bold text-gray-400">{t('minSimilarityThreshold', 'Min Similarity Threshold')}</label>
                   <span className="text-sm text-white font-mono">{ragThreshold.toFixed(2)}</span>
                 </div>
                 <input
@@ -191,14 +193,14 @@ export const RagSettingsTab = ({
           </div>
 
           <div className="pt-4 border-t border-white/5">
-            <h4 className="text-sm font-bold text-gray-300 mb-2">Injection Template</h4>
+            <h4 className="text-sm font-bold text-gray-300 mb-2">{t('injectionTemplate', 'Injection Template')}</h4>
             <textarea
               value={ragTemplate}
               onChange={(e) => setRagTemplate(e.target.value)}
               className="w-full h-32 bg-gray-950 border border-white/10 rounded-xl p-3 text-sm text-white font-mono focus:border-indigo-500 outline-none resize-none custom-scrollbar"
             />
             <p className="text-xs text-gray-500 mt-2">
-              Use <code className="text-indigo-400">{"{{text}}"}</code> to inject the retrieved memory text.
+              {t('use', 'Use')} <code className="text-indigo-400">{"{{text}}"}</code> {t('toInjectTheRetrievedMemoryText', 'to inject the retrieved memory text.')}
             </p>
           </div>
 
@@ -222,7 +224,7 @@ export const RagSettingsTab = ({
               }}
               className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-sm transition"
             >
-              Test / Initialize Model
+              {t('testInitializeModel', 'Test / Initialize Model')}
             </button>
             <button
               onClick={async () => {
@@ -252,7 +254,7 @@ export const RagSettingsTab = ({
               }}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition"
             >
-              Index Current Chat Now
+              {t('indexCurrentChatNow', 'Index Current Chat Now')}
             </button>
             <button
               onClick={async () => {
@@ -282,7 +284,7 @@ export const RagSettingsTab = ({
               }}
               className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl text-sm transition"
             >
-              Index Active Lorebooks
+              {t('indexActiveLorebooks', 'Index Active Lorebooks')}
             </button>
           </div>
         </div>

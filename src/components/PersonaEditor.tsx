@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { X, Image, Cpu } from "lucide-react";
 import { UserPersona } from "../types";
 import Avatar from "./Avatar";
+import { useTranslation } from 'react-i18next'
 
 const PersonaEditor = ({
   persona,
@@ -13,6 +14,7 @@ const PersonaEditor = ({
   onSave: (p: UserPersona) => void;
   onCancel: () => void;
 }) => {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState(persona);
   const [tokens, setTokens] = useState(0);
   const handleChange = (field: keyof UserPersona, value: string) =>
@@ -43,7 +45,7 @@ const PersonaEditor = ({
 
   useEffect(() => {
     const timer = setTimeout(async () => {
-      const text = `${formData.name}\n${formData.description}`;
+      const text = t('nameDescription', '{{name}}\n{{description}}', { name: formData.name, description: formData.description });
       try {
         const count = await invoke<number>("count_tokens", { text });
         setTokens(count);
@@ -78,11 +80,10 @@ const PersonaEditor = ({
             </div>
             <div>
               <h2 className="text-lg font-bold flex items-center gap-2">
-                Edit Persona
+                {t('editPersona', 'Edit Persona')}
               </h2>
               <div className="flex items-center gap-1.5 mt-1 px-2 py-0.5 bg-gray-900 rounded text-[10px] font-mono text-cyan-400 w-fit">
-                <Cpu size={10} /> {tokens} tokens
-              </div>
+                <Cpu size={10} />{t('tokensTokens', '{{tokens}} tokens', { tokens })}</div>
             </div>
           </div>
           <button onClick={onCancel} className="text-gray-500 hover:text-white">
@@ -102,7 +103,7 @@ const PersonaEditor = ({
           </div>
           <div className="space-y-1.5">
             <label className="text-sm text-gray-300 font-medium ml-1">
-              Description
+              {t('description', 'Description')}
             </label>
             <textarea
               value={formData.description}
@@ -117,13 +118,13 @@ const PersonaEditor = ({
             onClick={onCancel}
             className="px-5 py-2.5 rounded-xl hover:bg-white/10 text-sm font-medium text-gray-300"
           >
-            Cancel
+            {t('cancel', 'Cancel')}
           </button>
           <button
             onClick={() => onSave(formData)}
             className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-lg"
           >
-            Save Changes
+            {t('saveChanges', 'Save Changes')}
           </button>
         </div>
       </div>

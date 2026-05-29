@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ConnectionProfile, Preset } from "./shared";
+import i18next from 'i18next'
 
 export const DEFAULT_PRESET_VALUES: Preset = {
   model_name: "",
@@ -20,9 +21,9 @@ export const DEFAULT_PRESET_VALUES: Preset = {
   continue_nudge_prompt: "",
   stop_strings: "",
   instruct_mode_enabled: true,
-  input_sequence: "### Instruction:\n",
-  output_sequence: "### Response:\n",
-  system_sequence: "### System:\n",
+  input_sequence: i18next.t('instruction', '### Instruction:\n'),
+  output_sequence: i18next.t('response', '### Response:\n'),
+  system_sequence: i18next.t('system2', '### System:\n'),
   wi_format: "{0}",
   scenario_format: "{{scenario}}",
   personality_format: "{{personality}}",
@@ -49,8 +50,8 @@ export const DEFAULT_PRESET_VALUES: Preset = {
   request_images: true,
   send_char_avatar: false,
   send_user_avatar: false,
-  char_avatar_prompt: "This is your appearance.",
-  user_avatar_prompt: "This is {{user}}'s appearance.",
+  char_avatar_prompt: i18next.t('thisIsYourAppearance', 'This is your appearance.'),
+  user_avatar_prompt: i18next.t('thisIsUsersAppearance', 'This is {{user}}\'s appearance.'),
 };
 
 const ST_DEFAULT_ORDER = [
@@ -262,7 +263,7 @@ export const fetchAvailableModels = async (connectionData: ConnectionProfile) =>
     if (!res.ok) throw new Error(res.statusText);
     const data = await res.json();
     const models = data.map((m: any) => m.name).sort();
-    return { models, message: `Fetched ${models.length} Horde models.`, type: "success" as const };
+    return { models, message: i18next.t('fetchedLengthHordeModels', 'Fetched {{length}} Horde models.', { length: models.length }), type: "success" as const };
   }
 
   if (
@@ -278,13 +279,13 @@ export const fetchAvailableModels = async (connectionData: ConnectionProfile) =>
     if (url.endsWith("/")) url = url.slice(0, -1);
 
     const res = await fetch(`${url}/models`, {
-      headers: { Authorization: `Bearer ${connectionData.api_key}` },
+      headers: { Authorization: i18next.t('bearerApi_key', 'Bearer {{api_key}}', { api_key: connectionData.api_key }) },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
     const models = Array.isArray(data.data) ? data.data.map((m: any) => m.id).sort() : [];
-    return { models, message: `Fetched ${models.length} models.`, type: "success" as const };
+    return { models, message: i18next.t('fetchedLengthModels', 'Fetched {{length}} models.', { length: models.length }), type: "success" as const };
   }
 
   if ((connectionData.api_type as string) === "google") {
@@ -297,12 +298,12 @@ export const fetchAvailableModels = async (connectionData: ConnectionProfile) =>
       .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
       .map((m: any) => m.name.replace("models/", ""))
       .sort();
-    return { models, message: `Fetched ${models.length} Gemini models.`, type: "success" as const };
+    return { models, message: i18next.t('fetchedLengthGeminiModels', 'Fetched {{length}} Gemini models.', { length: models.length }), type: "success" as const };
   }
 
   return {
     models: [] as string[],
-    message: "Model fetching not supported for this API type yet.",
+    message: i18next.t('modelFetchingNotSupportedForThisApiTypeYet', 'Model fetching not supported for this API type yet.'),
     type: "info" as const,
   };
 };

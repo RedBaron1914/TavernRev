@@ -8,6 +8,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import Avatar from "../Avatar";
 import { Character } from "../../types";
+import { useTranslation } from 'react-i18next'
 
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 
@@ -24,12 +25,13 @@ export const CharacterEditor = ({
   onCancel: () => void;
   addToast: (msg: string, type?: "success" | "error" | "info") => void;
 }) => {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState(character);
   const [activeSection, setActiveSection] = useState<EditorSection>("general");
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [showAssistant, setShowAssistant] = useState(!isMobile);
   const [assistantMessages, setAssistantMessages] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([
-    { role: 'assistant', content: "Hello! I am your AI Studio Assistant. I can help you improve your character card. Try asking me to 'make the description more detailed' or 'suggest some snarky personality traits'." }
+    { role: 'assistant', content: t('helloIAmYourAiStudioAssistantICanHelpYouImproveYourCharacterCardTryAskingMeToMakeTheDescriptionMoreDetailedOrSuggestSomeSnarkyPersonalityTraits', 'Hello! I am your AI Studio Assistant. I can help you improve your character card. Try asking me to \'make the description more detailed\' or \'suggest some snarky personality traits\'.') }
   ]);
   const [assistantInput, setAssistantInput] = useState("");
   const [isAssistantThinking, setIsAssistantThinking] = useState(false);
@@ -57,22 +59,7 @@ export const CharacterEditor = ({
       const activeProfile = localStorage.getItem("active_profile") || "Default";
       const activePreset = localStorage.getItem("active_preset") || "Default";
       
-      const studioSystemPrompt = `You are the TavernRev AI Character Studio Assistant. Your goal is to help users craft high-quality AI characters.
-When suggesting changes to specific character card fields, you MUST use the following XML tags:
-<change field="description">New improved content</change>
-
-Supported fields: name, description, personality, scenario, first_mes, mes_example, creator_notes.
-
-Current Character State:
-- Name: ${formData.name}
-- Description: ${formData.description}
-- Personality: ${formData.personality}
-- Scenario: ${formData.scenario}
-- First Message: ${formData.first_mes}
-- Message Examples: ${formData.mes_example}
-- Creator Notes: ${formData.creator_notes}
-
-Always explain WHAT you are changing and WHY before or after the tags. Be creative, consistent, and adhere to the character's core concept.`;
+      const studioSystemPrompt = `You are the TavernRev AI Character Studio Assistant. Your goal is to help users craft high-quality AI characters.\nWhen suggesting changes to specific character card fields, you MUST use the following XML tags:\n<change field="description">New improved content</change>\n\nSupported fields: name, description, personality, scenario, first_mes, mes_example, creator_notes.\n\nCurrent Character State:\n- Name: ${formData.name}\n- Description: ${formData.description}\n- Personality: ${formData.personality}\n- Scenario: ${formData.scenario}\n- First Message: ${formData.first_mes}\n- Message Examples: ${formData.mes_example}\n- Creator Notes: ${formData.creator_notes}\n\nAlways explain WHAT you are changing and WHY before or after the tags. Be creative, consistent, and adhere to the character's core concept.`;
 
       const response = await invoke<string>("studio_assist", {
         profileName: activeProfile,
@@ -161,16 +148,15 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
         <div className="space-y-4 animate-in zoom-in-95 duration-300">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-widest">
-                    <Sparkles size={14} /> Proposed Changes for {field}
-                </div>
+                    <Sparkles size={14} />{t('proposedChangesForField', 'Proposed Changes for {{field}}', { field })}</div>
                 <div className="flex gap-2">
-                    <button onClick={() => rejectChange(field)} className="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg text-[10px] font-bold uppercase transition">Reject</button>
-                    <button onClick={() => applyChange(field)} className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold uppercase transition shadow-lg shadow-indigo-900/20">Apply Change</button>
+                    <button onClick={() => rejectChange(field)} className="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg text-[10px] font-bold uppercase transition">{t('reject', 'Reject')}</button>
+                    <button onClick={() => applyChange(field)} className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold uppercase transition shadow-lg shadow-indigo-900/20">{t('applyChange', 'Apply Change')}</button>
                 </div>
             </div>
             <div className="relative group overflow-hidden rounded-3xl border border-amber-500/30 bg-amber-500/5 p-1">
                 <div className="bg-gray-900 rounded-[22px] overflow-hidden text-sm leading-relaxed py-2">
-                    {diffElements.length > 0 ? diffElements : <div className="p-4 text-gray-500 italic text-center">No visual text differences.</div>}
+                    {diffElements.length > 0 ? diffElements : <div className="p-4 text-gray-500 italic text-center">{t('noVisualTextDifferences', 'No visual text differences.')}</div>}
                 </div>
             </div>
         </div>
@@ -273,8 +259,8 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
             });
             await navigator.share({
               files: [file],
-              title: "Export Character",
-              text: `TavernRev Character Export: ${filename}`,
+              title: t('exportCharacter', 'Export Character'),
+              text: t('tavernrevCharacterExportFilename', 'TavernRev Character Export: {{filename}}', { filename }),
             });
             return;
           } catch (e) {
@@ -317,12 +303,12 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
   };
 
   const sections = [
-    { id: "general", label: "General Info", icon: <UserCircle size={18}/> },
-    { id: "description", label: "Description", icon: <Type size={18}/> },
-    { id: "personality", label: "Personality", icon: <Layout size={18}/> },
-    { id: "scenario", label: "Scenario", icon: <History size={18}/> },
-    { id: "examples", label: "Example Messages", icon: <MessageSquare size={18}/> },
-    { id: "greetings", label: "Greetings", icon: <MessageCircle size={18}/> },
+    { id: "general", label: t('generalInfo', 'General Info'), icon: <UserCircle size={18}/> },
+    { id: "description", label: t('description', 'Description'), icon: <Type size={18}/> },
+    { id: "personality", label: t('personality', 'Personality'), icon: <Layout size={18}/> },
+    { id: "scenario", label: t('scenario', 'Scenario'), icon: <History size={18}/> },
+    { id: "examples", label: t('exampleMessages', 'Example Messages'), icon: <MessageSquare size={18}/> },
+    { id: "greetings", label: t('greetings', 'Greetings'), icon: <MessageCircle size={18}/> },
   ];
 
   return (
@@ -347,8 +333,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
              <div className="hidden sm:block">
                 <h1 className="text-sm font-bold truncate max-w-[200px]">{formData.name || "Unnamed Character"}</h1>
                 <div className="flex items-center gap-1.5 text-[10px] font-mono text-cyan-400">
-                    <Cpu size={10} /> {tokens} tokens
-                </div>
+                    <Cpu size={10} />{t('tokensTokens', '{{tokens}} tokens', { tokens })}</div>
              </div>
           </div>
         </div>
@@ -357,7 +342,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
             <button
                 onClick={() => setShowAssistant(!showAssistant)}
                 className={`p-2 rounded-xl transition ${showAssistant ? 'bg-indigo-600 text-white' : 'bg-white/5 text-amber-400'}`}
-                title="Toggle AI Assistant"
+                title={t('toggleAiAssistant', 'Toggle AI Assistant')}
             >
                 <Bot size={20} />
             </button>
@@ -365,13 +350,13 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                 onClick={handleExportChar}
                 className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-gray-400 hover:bg-white/5 hover:text-indigo-400 transition border border-transparent hover:border-indigo-500/20"
             >
-                <Download size={16} /> Export JSON
+                <Download size={16} /> {t('exportJson', 'Export JSON')}
             </button>
             <button
                 onClick={handleSave}
                 className="flex items-center gap-2 px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-900/20 transition active:scale-95"
             >
-                <Save size={16} /> Save Changes
+                <Save size={16} /> {t('saveChanges', 'Save Changes')}
             </button>
         </div>
       </header>
@@ -382,7 +367,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
         {/* LEFT NAVIGATOR (SIDEBAR) */}
         <aside className={`${isMobile ? `fixed inset-y-16 left-0 z-30 w-64 bg-gray-900 border-r border-white/10 shadow-2xl transform transition-transform duration-300 ${showMobileNav ? 'translate-x-0' : 'translate-x-[-100%]'}` : 'w-64 border-r border-white/5 bg-gray-950/50 flex flex-col'}`}>
             <nav className="p-4 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-4">Studio Navigator</div>
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-4">{t('studioNavigator', 'Studio Navigator')}</div>
                 {sections.map(s => (
                     <button
                         key={s.id}
@@ -399,9 +384,9 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
             </nav>
             <div className="p-4 border-t border-white/5">
                 <div className="p-3 bg-gray-900/50 rounded-xl border border-white/5">
-                    <div className="text-[10px] text-gray-500 font-bold mb-1">DATA BANK</div>
+                    <div className="text-[10px] text-gray-500 font-bold mb-1">{t('dataBank', 'DATA BANK')}</div>
                     <div className="text-[11px] text-gray-300 flex items-center gap-2 italic">
-                         <Book size={12} className="text-emerald-400" /> Linked Lorebooks (Coming Soon)
+                         <Book size={12} className="text-emerald-400" /> {t('linkedLorebooksComingSoon', 'Linked Lorebooks (Coming Soon)')}
                     </div>
                 </div>
             </div>
@@ -421,11 +406,11 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                         <Image size={32} className="text-white animate-bounce" />
                                     </div>
                                     <input type="file" accept="image/*" onChange={handleAvatarUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-indigo-600 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg">CHANGE PHOTO</div>
+                                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-indigo-600 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg">{t('changePhoto', 'CHANGE PHOTO')}</div>
                                 </div>
                                 <div className="flex-1 space-y-6 w-full">
                                     <div className="space-y-2">
-                                        <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">Character Name</label>
+                                        <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">{t('characterName', 'Character Name')}</label>
                                         {proposedChanges.name ? (
                                             <DiffViewer field="name" original={formData.name} proposed={proposedChanges.name} />
                                         ) : (
@@ -433,12 +418,12 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                                 value={formData.name}
                                                 onChange={(e) => handleChange("name", e.target.value)}
                                                 className="w-full bg-gray-900 border border-white/10 rounded-2xl px-5 py-4 text-lg font-bold text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                                                placeholder="Enter name..."
+                                                placeholder={t('enterName', 'Enter name...')}
                                             />
                                         )}
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">Tags</label>
+                                        <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">{t('tags', 'Tags')}</label>
                                         <input
                                             value={(() => {
                                                 try { return JSON.parse(formData.tags || "[]").join(", "); } catch { return formData.tags; }
@@ -448,7 +433,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                                 handleChange("tags", JSON.stringify(tagsArray));
                                             }}
                                             className="w-full bg-gray-900 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all"
-                                            placeholder="e.g. fantasy, hero, snarky"
+                                            placeholder={t('egFantasyHeroSnarky', 'e.g. fantasy, hero, snarky')}
                                         />
                                     </div>
                                 </div>
@@ -456,7 +441,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
 
                              <div className="p-6 bg-gray-900/50 rounded-3xl border border-white/5 space-y-4">
                                 <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex justify-between items-center">
-                                    <span>Talkativeness (Group Chats)</span>
+                                    <span>{t('talkativenessGroupChats', 'Talkativeness (Group Chats)')}</span>
                                     <span className="text-indigo-300 font-mono text-base">{Math.round(talkativeness * 100)}%</span>
                                 </label>
                                 <input
@@ -469,12 +454,12 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                     className="w-full accent-indigo-500 bg-gray-800 rounded-lg appearance-none h-3 cursor-pointer"
                                 />
                                 <p className="text-xs text-gray-500 leading-relaxed italic">
-                                    Controls how often this character will interject in group conversations without being directly addressed.
+                                    {t('controlsHowOftenThisCharacterWillInterjectInGroupConversationsWithoutBeingDirectlyAddressed', 'Controls how often this character will interject in group conversations without being directly addressed.')}
                                 </p>
                              </div>
 
                              <div className="space-y-4">
-                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Creator's Notes</label>
+                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">{t('creatorsNotes', 'Creator\'s Notes')}</label>
                                 {proposedChanges.creator_notes ? (
                                     <DiffViewer field="creator_notes" original={formData.creator_notes} proposed={proposedChanges.creator_notes} />
                                 ) : (
@@ -483,7 +468,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                         onChange={(e) => handleChange("creator_notes", e.target.value)}
                                         rows={5}
                                         className="w-full bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all custom-scrollbar resize-none leading-relaxed font-mono"
-                                        placeholder="Personal notes about this character..."
+                                        placeholder={t('personalNotesAboutThisCharacter', 'Personal notes about this character...')}
                                     />
                                 )}
                             </div>
@@ -492,7 +477,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
 
                     {activeSection === "description" && (
                         <div className="space-y-4 h-full flex flex-col">
-                            <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Core Description</label>
+                            <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">{t('coreDescription', 'Core Description')}</label>
                             {proposedChanges.description ? (
                                 <DiffViewer field="description" original={formData.description} proposed={proposedChanges.description} />
                             ) : (
@@ -500,7 +485,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                     value={formData.description}
                                     onChange={(e) => handleChange("description", e.target.value)}
                                     className="w-full flex-1 bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all custom-scrollbar min-h-[400px] resize-none leading-relaxed"
-                                    placeholder="Describe physical appearance, history, and defining traits..."
+                                    placeholder={t('describePhysicalAppearanceHistoryAndDefiningTraits', 'Describe physical appearance, history, and defining traits...')}
                                 />
                             )}
                         </div>
@@ -508,7 +493,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
 
                     {activeSection === "personality" && (
                         <div className="space-y-4 h-full flex flex-col">
-                            <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Personality Traits</label>
+                            <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">{t('personalityTraits', 'Personality Traits')}</label>
                             {proposedChanges.personality ? (
                                 <DiffViewer field="personality" original={formData.personality} proposed={proposedChanges.personality} />
                             ) : (
@@ -516,7 +501,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                     value={formData.personality}
                                     onChange={(e) => handleChange("personality", e.target.value)}
                                     className="w-full flex-1 bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all custom-scrollbar min-h-[400px] resize-none leading-relaxed font-mono"
-                                    placeholder="e.g. snarky, loyal, secretive... or use W++ format"
+                                    placeholder={t('egSnarkyLoyalSecretiveOrUseWFormat', 'e.g. snarky, loyal, secretive... or use W++ format')}
                                 />
                             )}
                         </div>
@@ -524,7 +509,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
 
                     {activeSection === "scenario" && (
                         <div className="space-y-4 h-full flex flex-col">
-                            <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Current Scenario</label>
+                            <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">{t('currentScenario', 'Current Scenario')}</label>
                             {proposedChanges.scenario ? (
                                 <DiffViewer field="scenario" original={formData.scenario} proposed={proposedChanges.scenario} />
                             ) : (
@@ -532,7 +517,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                     value={formData.scenario}
                                     onChange={(e) => handleChange("scenario", e.target.value)}
                                     className="w-full flex-1 bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all custom-scrollbar min-h-[400px] resize-none leading-relaxed"
-                                    placeholder="Define the current situation or world state..."
+                                    placeholder={t('defineTheCurrentSituationOrWorldState', 'Define the current situation or world state...')}
                                 />
                             )}
                         </div>
@@ -541,8 +526,8 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                     {activeSection === "examples" && (
                         <div className="space-y-4 h-full flex flex-col">
                             <div className="flex justify-between items-center ml-1">
-                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider text-shadow-sm">Example Dialogue</label>
-                                <span className="text-[10px] text-gray-500 font-bold bg-white/5 px-2 py-0.5 rounded">Use &lt;START&gt; between blocks</span>
+                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider text-shadow-sm">{t('exampleDialogue', 'Example Dialogue')}</label>
+                                <span className="text-[10px] text-gray-500 font-bold bg-white/5 px-2 py-0.5 rounded">{t('useLtstartgtBetweenBlocks', 'Use &lt;START&gt; between blocks')}</span>
                             </div>
                             {proposedChanges.mes_example ? (
                                 <DiffViewer field="mes_example" original={formData.mes_example} proposed={proposedChanges.mes_example} />
@@ -551,7 +536,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                     value={formData.mes_example}
                                     onChange={(e) => handleChange("mes_example", e.target.value)}
                                     className="w-full flex-1 bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all custom-scrollbar min-h-[400px] resize-none leading-relaxed font-mono"
-                                    placeholder={"<START>\n{{user}}: Hello!\n{{char}}: *smiles* Welcome to the tavern!"}
+                                    placeholder={t('startUserHelloCharSmilesWelcomeToTheTavern', '<START>\n{{user}}: Hello!\n{{char}}: *smiles* Welcome to the tavern!')}
                                 />
                             )}
                         </div>
@@ -560,7 +545,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                     {activeSection === "greetings" && (
                         <div className="space-y-6">
                             <div className="space-y-4">
-                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">Main Greeting</label>
+                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">{t('mainGreeting', 'Main Greeting')}</label>
                                 {proposedChanges.first_mes ? (
                                     <DiffViewer field="first_mes" original={formData.first_mes} proposed={proposedChanges.first_mes} />
                                 ) : (
@@ -569,16 +554,16 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                         onChange={(e) => handleChange("first_mes", e.target.value)}
                                         rows={6}
                                         className="w-full bg-gray-900 border border-white/10 rounded-3xl px-6 py-5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all custom-scrollbar resize-none leading-relaxed"
-                                        placeholder="The very first message the character says..."
+                                        placeholder={t('theVeryFirstMessageTheCharacterSays', 'The very first message the character says...')}
                                     />
                                 )}
                             </div>
                             
                             <div className="pt-6 border-t border-white/5 space-y-4">
                                 <div className="flex justify-between items-center ml-1">
-                                    <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider text-shadow-sm">Alternate Greetings</label>
+                                    <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider text-shadow-sm">{t('alternateGreetings', 'Alternate Greetings')}</label>
                                     <button onClick={() => setAlts([...alts, ""])} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600/20 rounded-xl text-[10px] font-bold transition uppercase tracking-wider">
-                                        <Plus size={14}/> Add Variant
+                                        <Plus size={14}/> {t('addVariant', 'Add Variant')}
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-1 gap-4">
@@ -593,7 +578,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                                 }}
                                                 rows={3}
                                                 className="w-full bg-gray-900/60 border border-white/10 rounded-2xl px-5 py-4 pr-12 text-sm text-gray-300 focus:outline-none focus:border-indigo-500 transition-all custom-scrollbar resize-none"
-                                                placeholder={`Alternate Greeting #${i+2}`}
+                                                placeholder={t('alternateGreetingVal', 'Alternate Greeting #{{val}}', { val: i+2 })}
                                             />
                                             <button onClick={() => setAlts(alts.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 p-2 bg-gray-800/80 hover:bg-red-900/40 text-gray-500 hover:text-red-400 rounded-lg transition md:opacity-0 group-hover:opacity-100 shadow-lg">
                                                 <Trash2 size={14}/>
@@ -602,7 +587,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                     ))}
                                     {alts.length === 0 && (
                                         <div className="text-center py-10 bg-gray-900/20 border-2 border-dashed border-white/5 rounded-3xl text-gray-600 text-xs font-medium">
-                                            No alternate greetings defined.
+                                            {t('noAlternateGreetingsDefined', 'No alternate greetings defined.')}
                                         </div>
                                     )}
                                 </div>
@@ -618,9 +603,11 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-gray-800/20">
                 <div className="flex items-center gap-3">
                     <Sparkles size={18} className="text-amber-400 animate-pulse" />
-                    <span className="text-sm font-bold tracking-tight">Studio Assistant <span className="text-[10px] text-amber-500/50 ml-1">(BETA)</span></span>
+                    <span className="text-sm font-bold tracking-tight">
+                        {t('studioAssistant', 'Studio Assistant')} <span className="text-[10px] text-amber-500/50 ml-1">(BETA)</span>
+                    </span>
                 </div>
-                <div className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-bold text-indigo-400 uppercase">Live Context</div>
+                <div className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-bold text-indigo-400 uppercase">{t('liveContext', 'Live Context')}</div>
             </div>
             
             {/* Assistant Chat History */}
@@ -657,19 +644,19 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                         onClick={() => sendAssistantMessage("Improve the character description to be more vivid and immersive.")}
                         className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
                     >
-                        ? Improve Desc
+                        {t('improveDesc', '? Improve Desc')}
                     </button>
                     <button 
                         onClick={() => sendAssistantMessage("Analyze my personality block and suggest 3 more distinct traits.")}
                         className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
                     >
-                        ? Suggest Traits
+                        {t('suggestTraits', '? Suggest Traits')}
                     </button>
                     <button 
                         onClick={() => sendAssistantMessage("Write a catchy first message for this character based on the current scenario.")}
                         className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
                     >
-                        ? Gen Greeting
+                        {t('genGreeting', '? Gen Greeting')}
                     </button>
                 </div>
             </div>
@@ -686,7 +673,7 @@ Always explain WHAT you are changing and WHY before or after the tags. Be creati
                                 sendAssistantMessage();
                             }
                         }}
-                        placeholder="Ask the Assistant..."
+                        placeholder={t('askTheAssistant', 'Ask the Assistant...')}
                         className="w-full bg-gray-950 border border-white/10 rounded-2xl pl-4 pr-12 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 transition-all resize-none h-20 custom-scrollbar"
                     />
                     <button 

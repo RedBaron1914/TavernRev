@@ -42,7 +42,7 @@ const getRagConfig = () => ({
   top_k: parseInt(localStorage.getItem("rag_top_k") || "3"),
   threshold: parseFloat(localStorage.getItem("rag_threshold") || "0.5"),
   injection_depth: parseInt(localStorage.getItem("rag_injection_depth") || "0"),
-  template: localStorage.getItem("rag_template") || "[System Note: Relevant context from past memory:\n{{text}}\n]",
+  template: localStorage.getItem("rag_template") || '[System Note: Relevant context from past memory:\n{{text}}\n]',
   api_type: localStorage.getItem("rag_api_type") || "local",
   api_url: localStorage.getItem("rag_api_url") || "",
   api_key: localStorage.getItem("rag_api_key") || "",
@@ -65,7 +65,7 @@ const converter = new showdown.Converter({
               // 2. Dialogue Highlighting (Teal-300) - safe vs markdown links and HTML attributes
               text = text.replace(/\]\("[^"]+"\)|=\s*"[^"]+"|("([^"]+)")/g, (match, fullDialogue, dialogueInner) => {
                   if (fullDialogue) {
-                      return `<span class="text-teal-300">"${dialogueInner}"</span>`;
+                      return i18next.t('spanClasstextteal300dialogueinnerspan', '<span class="text-teal-300">"{{dialogueInner}}"</span>', { dialogueInner });
                   }
                   return match;
               });
@@ -78,7 +78,7 @@ const converter = new showdown.Converter({
           filter: (text: string) => {
               // Auto-render image links (e.g. Catbox)
               return text.replace(/<a href="(https?:\/\/[^"]+\.(?:png|jpg|jpeg|gif|webp|bmp))"[^>]*>.*?<\/a>/gi, (_match, url) => {
-                  return `<img src="${url}" class="max-w-full max-h-[500px] rounded-lg my-2 border border-white/10 shadow-lg object-contain" alt="Remote Image" />`;
+                  return i18next.t('imgSrcurlClassmaxwfullMaxh500pxRoundedlgMy2BorderBorderwhite10ShadowlgObjectcontainAltremoteImage', '<img src="{{url}}" class="max-w-full max-h-[500px] rounded-lg my-2 border border-white/10 shadow-lg object-contain" alt="Remote Image" />', { url });
               });
           }
       }
@@ -134,8 +134,11 @@ function renderMessageHtml(content: string) {
 
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { appLocalDataDir, join } from "@tauri-apps/api/path";
+import { useTranslation, Trans } from 'react-i18next'
+import i18next from 'i18next'
 
 const RenderedAttachment = ({ filename }: { filename: string }) => {
+    const { t } = useTranslation()
     const [src, setSrc] = useState<string | null>(null);
     useEffect(() => {
         let active = true;
@@ -150,7 +153,7 @@ const RenderedAttachment = ({ filename }: { filename: string }) => {
     }, [filename]);
 
     if (!src) return <div className="max-w-sm h-48 bg-gray-900 rounded-lg animate-pulse border border-white/10" />;
-    return <img src={src} className="max-w-full max-h-96 rounded-lg border border-white/10 object-contain" alt="User upload" />;
+    return <img src={src} className="max-w-full max-h-96 rounded-lg border border-white/10 object-contain" alt={t('userUpload', 'User upload')} />;
 };
 
 const MessageContent = React.memo(({ content, isUser, scale, userName, charName, images }: { content: string, isUser: boolean, scale?: number, userName?: string, charName?: string, images?: string[] }) => {
@@ -198,10 +201,8 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
             )}
             {hasReasoning && (
                 <details className="bg-gray-950/30 rounded-lg border border-white/5 overflow-hidden group/think open:bg-gray-950/50 mb-1">
-                    <summary className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-widest text-gray-500 cursor-pointer hover:bg-white/5 hover:text-gray-300 transition select-none flex items-center gap-2 outline-none list-none">
-                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/50 group-open/think:bg-indigo-400 group-open/think:shadow-[0_0_8px_rgba(129,140,248,0.6)] transition-all"/>
-                        Reasoning Process
-                    </summary>
+                    <summary className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-widest text-gray-500 cursor-pointer hover:bg-white/5 hover:text-gray-300 transition select-none flex items-center gap-2 outline-none list-none"><Trans i18nKey="divClassnamew15H15RoundedfullBgindigo50050Groupopenthinkbgindigo400Groupopenthinkshadow0_0_8px_rgba12914024806TransitionallReasoningProcess"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500/50 group-open/think:bg-indigo-400 group-open/think:shadow-[0_0_8px_rgba(129,140,248,0.6)] transition-all"/>
+                        Reasoning Process</Trans></summary>
                     <div className="p-3 text-xs text-gray-400 font-mono whitespace-pre-wrap border-t border-white/5 bg-black/20 selection:bg-indigo-500/20 leading-relaxed">
                         {reasoning}
                     </div>
@@ -216,6 +217,7 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
 });
 
 function App() {
+  const { t } = useTranslation()
   const [currentView, setCurrentView] = useState<
     "character_select" | "chat" | "settings" | "character_editor"
   >("character_select");
@@ -337,7 +339,7 @@ function App() {
               setAttachedImages(prev => [...prev, ...names]);
           } catch (err) {
               console.error("Failed to upload image files:", err);
-              addToast("Failed to upload image.", "error");
+              addToast(t('failedToUploadImage', 'Failed to upload image.'), "error");
           }
       }
       e.target.value = '';
@@ -354,7 +356,7 @@ function App() {
                       setAttachedImages(prev => [...prev, name]);
                   } catch (err) {
                       console.error("Failed to paste image:", err);
-                      addToast("Failed to paste image.", "error");
+                      addToast(t('failedToPasteImage', 'Failed to paste image.'), "error");
                   }
               }
           }
@@ -415,7 +417,7 @@ function App() {
 
   const activePersona =
     userPersonas.find((p) => p.id === activeChat?.user_persona_id) ||
-    userPersonas[0] || { name: "You", avatar: "user_default.png", id: 0, description: "" };
+    userPersonas[0] || { name: t('you', 'You'), avatar: "user_default.png", id: 0, description: "" };
 
   const activeCharacter = characters.find((c) => c.id === activeCharacterId);
   const activeGroup = groups.find((g) => g.id === activeGroupId);
@@ -526,9 +528,9 @@ const refreshCharacters = async () => {
       // Open settings for the new group
       setIsEditingGroup(true);
       
-      addToast(`Group "${name}" created!`, "success");
+      addToast(t('groupCreated', 'Group "{{name}}" created!', { name }), "success");
     } catch (e) {
-      addToast("Failed to create group: " + e, "error");
+      addToast(t('failedToCreateGroup', 'Failed to create group: ') + e, "error");
     }
   };
 
@@ -541,9 +543,9 @@ const refreshCharacters = async () => {
             setMessages([]);
         }
         await refreshGroups();
-        addToast(`Group ${name} deleted.`, "success");
+        addToast(t('groupDeleted', 'Group {{name}} deleted.', { name }), "success");
       } catch (e) {
-        addToast("Failed to delete group: " + e, "error");
+        addToast(t('failedToDeleteGroup', 'Failed to delete group: ') + e, "error");
       }
     }
   };
@@ -692,7 +694,7 @@ const refreshCharacters = async () => {
           const currentChatAtError = activeChatId; 
           setIsGenerating(true);
           setIsRetrying(true);
-          addToast(`Error detected. Retrying in ${retryDelay}s...`, "info");
+          addToast(t('errorDetectedRetrying', 'Error detected. Retrying in {{retryDelay}}s...', { retryDelay }), "info");
           
           if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
           
@@ -748,7 +750,7 @@ const refreshCharacters = async () => {
                 return;
             }
         } catch(e) {
-            addToast("Command Error: " + e, "error");
+            addToast(t('commandError', 'Command Error: ') + e, "error");
             setIsGenerating(false);
             return;
         }
@@ -760,7 +762,7 @@ const refreshCharacters = async () => {
 
     const safeChar = activeCharacter || {
       id: 0,
-      name: "Tavern",
+      name: t('tavern', 'Tavern'),
       avatar: "",
       description: "",
       personality: "",
@@ -893,13 +895,13 @@ const refreshCharacters = async () => {
             }
 
             if (localErrStr.includes("Aborted")) {
-                addToast("Generation stopped.", "info");
+                addToast(t('generationStopped', 'Generation stopped.'), "info");
                 // Refresh to see if partial content was saved by backend
                 await fetchMessages(activeChatId!);
             } else {
                 retryScheduled = attemptAutoRetry(localErrStr, () => performGeneration(forcedSpeakerId));
                 if (!retryScheduled) {
-                    addToast("Generation failed: " + localErrStr, "error");
+                    addToast(t('generationFailed', 'Generation failed: ') + localErrStr, "error");
                 }
             }
         } finally {
@@ -951,9 +953,9 @@ const refreshCharacters = async () => {
             setMessages([]);
         }
         if (activeCharacterId !== null) refreshChats(activeCharacterId, activeGroupId);
-        addToast("Chat deleted", "info");
+        addToast(t('chatDeleted', 'Chat deleted'), "info");
       } catch (e) {
-        addToast("Failed to delete chat: " + e, "error");
+        addToast(t('failedToDeleteChat', 'Failed to delete chat: ') + e, "error");
       }
     }
   };
@@ -987,9 +989,9 @@ const refreshCharacters = async () => {
             await navigator.share({
               files: [file],
 
-              title: "Download chat",
+              title: t('downloadChat', 'Download chat'),
 
-              text: `TavernRev Chat Export: ${filename}`,
+              text: t('tavernrevChatExportFilename', 'TavernRev Chat Export: {{filename}}', { filename }),
             });
 
             return;
@@ -1004,7 +1006,7 @@ const refreshCharacters = async () => {
 
                   await navigator.clipboard.writeText(data);
 
-                  addToast("Share failed or not supported. Chat data copied to clipboard!", "info");
+                  addToast(t('shareFailed', 'Share failed or not supported. Chat data copied to clipboard!'), "info");
 
                 } catch (e) {
           alert("Export failed: " + e);
@@ -1021,7 +1023,7 @@ const refreshCharacters = async () => {
           content: data,
         });
 
-        addToast(`File saved to Downloads folder!\nPath: ${savedPath}`, "success");
+        addToast(t('fileSavedToDownloads', 'File saved to Downloads folder!\nPath: {{savedPath}}', { savedPath }), "success");
 
         return;
       } catch (err) {
@@ -1052,7 +1054,7 @@ const refreshCharacters = async () => {
 
   const handleImportChat = async (file: File) => {
     if (!activeCharacterId) {
-      addToast("Select a character first!", "error");
+      addToast(t('selectACharacterFirst', 'Select a character first!'), "error");
       return;
     }
 
@@ -1078,11 +1080,11 @@ const refreshCharacters = async () => {
 
     
 
-              addToast("Chat imported successfully!", "success");
+              addToast(t('chatImportedSuccessfully', 'Chat imported successfully!'), "success");
 
             } catch (err) {
 
-              addToast("Import failed: " + err, "error");
+              addToast(t('importFailed', 'Import failed: ') + err, "error");
 
             }
 
@@ -1096,7 +1098,7 @@ const refreshCharacters = async () => {
   const handleCreateCharacter = async () => {
     try {
       const id = await invoke<number>("create_character", {
-        name: "New Character",
+        name: t('newCharacter', 'New Character'),
         avatar: "default.png",
         description: "",
       });
@@ -1128,10 +1130,10 @@ const refreshCharacters = async () => {
               fileName: file.name,
             });
             await refreshCharacters();
-            addToast("Character imported successfully!", "success");
+            addToast(t('characterImportedSuccessfully', 'Character imported successfully!'), "success");
           } catch (e) {
             console.error(e);
-            addToast("Import failed: " + e, "error");
+            addToast(t('importFailed', 'Import failed: ') + e, "error");
           }
         }
       };
@@ -1147,14 +1149,14 @@ const refreshCharacters = async () => {
       setCurrentView("chat");
     } catch (e) {
       console.error(e);
-      addToast("Failed to update character: " + e, "error");
+      addToast(t('failedToUpdateCharacter', 'Failed to update character: ') + e, "error");
     }
   };
 
   const handleCreatePersona = async () => {
     try {
       const id = await invoke<number>("create_user_persona", {
-        name: "New Persona",
+        name: t('newPersona', 'New Persona'),
         avatar: "user_default.png",
         description: "",
       });
@@ -1180,7 +1182,7 @@ const refreshCharacters = async () => {
       setEditingPersona(null);
     } catch (e) {
       console.error(e);
-      addToast("Failed to update persona: " + e, "error");
+      addToast(t('failedToUpdatePersona', 'Failed to update persona: ') + e, "error");
     }
   };
 
@@ -1253,12 +1255,12 @@ const refreshCharacters = async () => {
       } catch (e: any) {
         const errStr = e.toString();
         if (errStr.includes("Aborted")) {
-            addToast("Regeneration stopped.", "info");
+            addToast(t('regenerationStopped', 'Regeneration stopped.'), "info");
             await fetchMessages(activeChatId!); // Restore previous state
         } else {
             retryScheduled = attemptAutoRetry(errStr, performRegeneration);
             if (!retryScheduled) {
-                addToast("Regeneration failed: " + errStr, "error");
+                addToast(t('regenerationFailed', 'Regeneration failed: ') + errStr, "error");
                 await fetchMessages(activeChatId!); // Restore previous state on error
             }
         }
@@ -1305,12 +1307,12 @@ const refreshCharacters = async () => {
       } catch (e: any) {
         const errStr = e.toString();
         if (errStr.includes("Aborted")) {
-            addToast("Continue stopped.", "info");
+            addToast(t('continueStopped', 'Continue stopped.'), "info");
             await fetchMessages(activeChatId!);
         } else {
             retryScheduled = attemptAutoRetry(errStr, performContinue);
             if (!retryScheduled) {
-                addToast("Continue failed: " + errStr, "error");
+                addToast(t('continueFailed', 'Continue failed: ') + errStr, "error");
                 await fetchMessages(activeChatId!);
             }
         }
@@ -1350,10 +1352,10 @@ const refreshCharacters = async () => {
       } catch (e: any) {
         const errStr = e.toString();
         if (errStr.includes("Aborted")) {
-            addToast("Impersonation stopped.", "info");
+            addToast(t('impersonationStopped', 'Impersonation stopped.'), "info");
         } else {
             retryScheduled = attemptAutoRetry(errStr, performImpersonate);
-            if (!retryScheduled) addToast("Impersonation failed: " + errStr, "error");
+            if (!retryScheduled) addToast(t('impersonationFailed', 'Impersonation failed: ') + errStr, "error");
         }
       } finally {
         if (generationIdRef.current === genId && !retryScheduled) {
@@ -1410,26 +1412,26 @@ const refreshCharacters = async () => {
       await fetchMessages(activeChatId);
       triggerAutoSync(activeChatId);
       if (count > 0) {
-        addToast(`Moved ${count} oldest message${count > 1 ? "s" : ""} to hidden (context overflow)`, "info");
+        addToast(t('trimmedContextOverflow', 'Moved {{count}} oldest messages to hidden (context overflow)', { count }), "info");
       } else {
-        addToast("No active messages to hide", "info");
+        addToast(t('noActiveMessagesToHide', 'No active messages to hide'), "info");
       }
     } catch (e) {
-      addToast("Context overflow failed: " + e, "error");
+      addToast(t('contextOverflowFailed', 'Context overflow failed: ') + e, "error");
     }
   };
 
   const handleDelete = async (mode: "swipe" | "message" | "branch") => {
     if (deletingMessageId && activeChatId) {
       if (deletingMessageId < 0) {
-          addToast("Cannot delete a message that is still generating.", "error");
+          addToast(t('cannotDeleteGeneratingMessage', 'Cannot delete a message that is still generating.'), "error");
           setDeletingMessageId(null);
           return;
       }
       
       // Prevent deleting the very first message
       if (messages.length > 0 && messages[0].id === deletingMessageId) {
-          addToast("Cannot delete the greeting message.", "info");
+          addToast(t('cannotDeleteGreetingMessage', 'Cannot delete the greeting message.'), "info");
           setDeletingMessageId(null);
           return;
       }
@@ -1453,7 +1455,7 @@ const refreshCharacters = async () => {
     if (!activeChatId) return;
     let newName = prompt("Branch Name:", `${activeChat?.name} (Branch)`);
     if (newName === null) return;
-    if (newName.trim() === "") newName = `${activeChat?.name} (Branch)`;
+    if (newName.trim() === "") newName = t('valBranch', '{{val}} (Branch)', { val: activeChat?.name });
 
     if (newName) {
       try {
@@ -1464,7 +1466,7 @@ const refreshCharacters = async () => {
         });
         setActiveChatId(newChatId);
       } catch (e) {
-        addToast("Failed to branch: " + e, "error");
+        addToast(t('failedToBranch', 'Failed to branch: ') + e, "error");
       }
     }
   };
@@ -1597,7 +1599,7 @@ const refreshCharacters = async () => {
     });
 
     const unlistenRag = listen<{count: number}>("rag_status", (e) => {
-        addToast(`?? Recalled ${e.payload.count} past memories!`, "info");
+        addToast(t('ragMemoriesRecalled', 'Recalled {{count}} past memories!', { count: e.payload.count }), "info");
     });
     const unlistenToast = listen<{message: string, type: string}>("toast-message", (e) => {
         addToast(e.payload.message, e.payload.type as any);
@@ -1605,12 +1607,12 @@ const refreshCharacters = async () => {
 
     const unlistenBg = listen<string>("set-background", (e) => {
         setBgImage(e.payload);
-        addToast("Background updated", "success");
+        addToast(t('backgroundUpdated', 'Background updated'), "success");
     });
 
     const unlistenStyle = listen<"bubbles" | "document">("set-style", (e) => {
         setChatStyle(e.payload);
-        addToast("Chat style updated", "success");
+        addToast(t('chatStyleUpdated', 'Chat style updated'), "success");
     });
 
     const unlistenPopup = listen<string>("show-popup", (e) => {
@@ -1762,13 +1764,13 @@ const refreshCharacters = async () => {
                   onClick={() => setSelectMode("characters")}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition ${selectMode === "characters" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white"}`}
                 >
-                  Characters
+                  {t('characters', 'Characters')}
                 </button>
                 <button 
                   onClick={() => setSelectMode("groups")}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition ${selectMode === "groups" ? "bg-emerald-600 text-white" : "text-gray-400 hover:text-white"}`}
                 >
-                  Groups
+                  {t('groups', 'Groups')}
                 </button>
               </div>
               <button
@@ -1862,7 +1864,7 @@ const refreshCharacters = async () => {
                 onClick={handleLoadMore}
                 className="text-xs text-gray-500 hover:text-white bg-gray-800/50 px-3 py-1 rounded-full transition hover:bg-gray-700"
               >
-                Load previous messages...
+                {t('loadPreviousMessages', 'Load previous messages...')}
               </button>
             </div>
           )}
@@ -1951,12 +1953,12 @@ const refreshCharacters = async () => {
                                             value={editContent} 
                                             onChange={e => setEditContent(e.target.value)} 
                                             className="w-full bg-transparent text-gray-100 p-0 border-0 focus:ring-0 focus:outline-none text-base leading-relaxed font-sans" 
-                                            placeholder="Edit message..."
+                                            placeholder={t('editMessage', 'Edit message...')}
                                             autoFocus
                                         />
                                         <div className="flex gap-2 mt-2 justify-end">
-                                            <button onClick={() => setEditingMessageId(null)} className="text-xs text-gray-500 hover:text-white px-3 py-1">Cancel</button>
-                                            <button onClick={handleSaveEdit} className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg font-bold">Save</button>
+                                            <button onClick={() => setEditingMessageId(null)} className="text-xs text-gray-500 hover:text-white px-3 py-1">{t('cancel', 'Cancel')}</button>
+                                            <button onClick={handleSaveEdit} className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg font-bold">{t('save', 'Save')}</button>
                                         </div>
                                     </div>
                                  ) : (
@@ -2095,7 +2097,7 @@ const refreshCharacters = async () => {
                               <button
                                 onClick={() => handleContinue(msg.id)}
                                 className="p-1.5 hover:text-white hover:bg-white/5 rounded-lg transition"
-                                title="Continue"
+                                title={t('continue', 'Continue')}
                               >
                                 <FilePlus size={12} />
                               </button>
@@ -2141,8 +2143,8 @@ const refreshCharacters = async () => {
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
             <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-sm flex flex-col shadow-2xl">
               <div className="p-4 border-b border-white/10 shrink-0">
-                <h2 className="text-lg font-bold text-white">Select Next Speaker</h2>
-                <p className="text-xs text-gray-400 mt-1">Manual Routing Strategy is active.</p>
+                <h2 className="text-lg font-bold text-white">{t('selectNextSpeaker', 'Select Next Speaker')}</h2>
+                <p className="text-xs text-gray-400 mt-1">{t('manualRoutingStrategyIsActive', 'Manual Routing Strategy is active.')}</p>
               </div>
               <div className="p-2 max-h-60 overflow-y-auto custom-scrollbar space-y-1">
                 {manualGenerationMembers.map(char => {
@@ -2163,7 +2165,7 @@ const refreshCharacters = async () => {
                   onClick={() => setPendingManualGeneration(null)}
                   className="px-4 py-2 text-sm text-gray-400 hover:text-white"
                 >
-                  Cancel
+                  {t('cancel', 'Cancel')}
                 </button>
               </div>
             </div>
@@ -2196,7 +2198,7 @@ const refreshCharacters = async () => {
             <div className="bg-gray-800 rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl flex flex-col">
               <div className="p-4 border-b border-white/10 flex justify-between items-center">
                 <h3 className="font-bold flex items-center gap-2">
-                  <RefreshCw size={18} className="text-emerald-400" /> Regenerate Greeting
+                  <RefreshCw size={18} className="text-emerald-400" /> {t('regenerateGreeting', 'Regenerate Greeting')}
                 </h3>
                 <button
                   onClick={() => setRegenGreetingModal(null)}
@@ -2207,11 +2209,11 @@ const refreshCharacters = async () => {
               </div>
               <div className="p-4 space-y-4">
                 <p className="text-sm text-gray-400">
-                  You can randomize the first message using the default preset randomizer, or write a custom scenario nudge to steer the roleplay.
+                  {t('youCanRandomizeTheFirstMessageUsingTheDefaultPresetRandomizerOrWriteACustomScenarioNudgeToSteerTheRoleplay', 'You can randomize the first message using the default preset randomizer, or write a custom scenario nudge to steer the roleplay.')}
                 </p>
                 <textarea
                   className="w-full bg-gray-900 border border-white/10 rounded-xl p-3 text-sm text-gray-200 outline-none focus:border-emerald-500/50 resize-none h-32 custom-scrollbar"
-                  placeholder="Optional: Tell the bot how to start the roleplay (e.g. 'You are sitting at the bar when I walk in...')"
+                  placeholder={t('optionalTellTheBotHowToStartTheRoleplayEgYouAreSittingAtTheBarWhenIWalkIn', 'Optional: Tell the bot how to start the roleplay (e.g. \'You are sitting at the bar when I walk in...\')')}
                   value={customRegenNudge}
                   onChange={(e) => setCustomRegenNudge(e.target.value)}
                 />
@@ -2225,7 +2227,7 @@ const refreshCharacters = async () => {
                   }}
                   className="px-4 py-2 text-sm font-bold text-gray-400 hover:text-white transition"
                 >
-                  Randomize (Default)
+                  {t('randomizeDefault', 'Randomize (Default)')}
                 </button>
                 <button
                   onClick={() => {
@@ -2235,7 +2237,7 @@ const refreshCharacters = async () => {
                   }}
                   className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg shadow-emerald-900/20 active:scale-95"
                 >
-                  Generate
+                  {t('generate', 'Generate')}
                 </button>
               </div>
             </div>
@@ -2247,8 +2249,7 @@ const refreshCharacters = async () => {
             <div className="bg-gray-800 rounded-2xl w-full max-w-md border border-white/10 shadow-2xl flex flex-col max-h-[80vh]">
               <div className="p-4 border-b border-white/10 flex justify-between items-center">
                 <h3 className="font-bold flex items-center gap-2">
-                  <UserCircle size={18} className="text-indigo-400" /> Switch
-                  Persona
+                  <UserCircle size={18} className="text-indigo-400" /> {t('switchPersona', 'Switch\r\n                  Persona')}
                 </h3>
                 <button
                   onClick={() => setShowPersonaModal(false)}
@@ -2280,7 +2281,7 @@ const refreshCharacters = async () => {
                           {persona.name}
                         </div>
                         <div className="text-[10px] text-gray-500 truncate">
-                          {persona.description || "No description"}
+                          {persona.description || t('noDescription', 'No description')}
                         </div>
                       </div>
                     </button>
@@ -2297,7 +2298,7 @@ const refreshCharacters = async () => {
                   onClick={handleCreatePersona}
                   className="w-full py-2.5 flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-xl text-xs font-bold transition border border-white/5"
                 >
-                  <Plus size={14} /> Create New Persona
+                  <Plus size={14} /> {t('createNewPersona', 'Create New Persona')}
                 </button>
               </div>
             </div>
@@ -2307,7 +2308,7 @@ const refreshCharacters = async () => {
         {deletingMessageId && (
           <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95">
             <div className="bg-gray-800 rounded-2xl w-full max-w-sm border border-white/10 shadow-2xl p-5 space-y-4">
-              <h3 className="font-bold text-lg text-white">Delete Message?</h3>
+              <h3 className="font-bold text-lg text-white">{t('deleteMessage', 'Delete Message?')}</h3>
               <div className="flex flex-col gap-2">
                 {messages.find((m) => m.id === deletingMessageId)?.swipes &&
                   messages.find((m) => m.id === deletingMessageId)!.swipes!
@@ -2316,27 +2317,27 @@ const refreshCharacters = async () => {
                       onClick={() => handleDelete("swipe")}
                       className="p-3 bg-gray-700 hover:bg-gray-600 rounded-xl text-sm font-medium text-left transition text-gray-200 hover:text-white"
                     >
-                      Only this Swipe (Variant)
+                      {t('onlyThisSwipeVariant', 'Only this Swipe (Variant)')}
                     </button>
                   )}
                 <button
                   onClick={() => handleDelete("message")}
                   className="p-3 bg-gray-700 hover:bg-gray-600 rounded-xl text-sm font-medium text-left transition text-gray-200 hover:text-white"
                 >
-                  Entire Message (All Swipes)
+                  {t('entireMessageAllSwipes', 'Entire Message (All Swipes)')}
                 </button>
                 <button
                   onClick={() => handleDelete("branch")}
                   className="p-3 bg-red-900/20 hover:bg-red-900/40 text-red-300 border border-red-500/20 rounded-xl text-sm font-medium text-left transition"
                 >
-                  Delete Message & All Following
+                  {t('deleteMessageAllFollowing', 'Delete Message & All Following')}
                 </button>
               </div>
               <button
                 onClick={() => setDeletingMessageId(null)}
                 className="w-full py-2 text-gray-500 hover:text-white text-sm transition"
               >
-                Cancel
+                {t('cancel', 'Cancel')}
               </button>
             </div>
           </div>

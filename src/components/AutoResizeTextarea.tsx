@@ -1,10 +1,12 @@
 import React, { useRef, useLayoutEffect } from 'react';
+import { useTranslation } from 'react-i18next'
 
 interface Props extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string;
 }
 
 export const AutoResizeTextarea: React.FC<Props> = ({ value, className, ...props }) => {
+  const { t } = useTranslation()
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
@@ -28,7 +30,7 @@ export const AutoResizeTextarea: React.FC<Props> = ({ value, className, ...props
 
       node.style.overflow = 'hidden';
       node.style.height = 'auto';
-      node.style.height = `${node.scrollHeight}px`;
+      node.style.height = t('scrollheightpx', '{{scrollHeight}}px', { scrollHeight: node.scrollHeight });
       node.style.overflow = 'auto';
 
       // Restore scroll position to prevent jumping

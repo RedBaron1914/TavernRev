@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Bug, ChevronRight } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from 'react-i18next'
+import i18next from 'i18next'
 
 export type PromptModule = {
   identifier: string;
@@ -100,7 +102,7 @@ export type ConnectionProfile = {
 };
 
 export const DEFAULT_CONNECTION_PROFILE: ConnectionProfile = {
-  name: "Default",
+  name: i18next.t('default', 'Default'),
   api_type: "chat_completion",
   chat_source: "custom",
   base_url: "http://127.0.0.1:5000/v1",
@@ -111,38 +113,38 @@ export const DEFAULT_CONNECTION_PROFILE: ConnectionProfile = {
 };
 
 export const API_TYPES = [
-  { value: "chat_completion", label: "Chat Completion" },
-  { value: "google", label: "Google Gemini" },
-  { value: "text_completion", label: "Text Completion" },
-  { value: "novelai", label: "NovelAI" },
-  { value: "kobold", label: "KoboldAI Classic" },
-  { value: "horde", label: "AI Horde" },
+  { value: "chat_completion", labelKey: "chatCompletion", label: "Chat Completion" },
+  { value: "google", labelKey: "googleGemini", label: "Google Gemini" },
+  { value: "text_completion", labelKey: "textCompletion", label: "Text Completion" },
+  { value: "novelai", labelKey: "novelai", label: "NovelAI" },
+  { value: "kobold", labelKey: "koboldaiClassic", label: "KoboldAI Classic" },
+  { value: "horde", labelKey: "aiHorde", label: "AI Horde" },
 ];
 
 export const CHAT_SOURCES = [
-  { value: "custom", label: "Custom (OpenAI Compatible)" },
-  { value: "openai", label: "OpenAI" },
-  { value: "claude", label: "Claude (Anthropic)" },
-  { value: "deepseek", label: "DeepSeek" },
-  { value: "grok", label: "Grok (xAI)" },
+  { value: "custom", labelKey: "customOpenaiCompatible", label: "Custom (OpenAI Compatible)" },
+  { value: "openai", labelKey: "openai", label: "OpenAI" },
+  { value: "claude", labelKey: "claudeAnthropic", label: "Claude (Anthropic)" },
+  { value: "deepseek", labelKey: "deepseek", label: "DeepSeek" },
+  { value: "grok", labelKey: "grokXai", label: "Grok (xAI)" },
 ];
 
 export const POST_PROCESSING_OPTIONS = [
-  { value: "none", label: "None" },
-  { value: "tools", label: "Tools Only" },
-  { value: "merge", label: "Merge" },
-  { value: "merge_tools", label: "Merge + Tools" },
-  { value: "semi_strict", label: "Semi-Strict" },
-  { value: "semi_strict_tools", label: "Semi-Strict + Tools" },
-  { value: "strict", label: "Strict" },
-  { value: "strict_tools", label: "Strict + Tools" },
+  { value: "none", labelKey: "none", label: "None" },
+  { value: "tools", labelKey: "toolsOnly", label: "Tools Only" },
+  { value: "merge", labelKey: "merge", label: "Merge" },
+  { value: "merge_tools", labelKey: "mergeTools", label: "Merge + Tools" },
+  { value: "semi_strict", labelKey: "semistrict", label: "Semi-Strict" },
+  { value: "semi_strict_tools", labelKey: "semistrictTools", label: "Semi-Strict + Tools" },
+  { value: "strict", labelKey: "strict", label: "Strict" },
+  { value: "strict_tools", labelKey: "strictTools", label: "Strict + Tools" },
 ];
 
 export const REASONING_OPTIONS = [
-  { value: "none", label: "None (Default)" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
+  { value: "none", labelKey: "noneDefault", label: "None (Default)" },
+  { value: "low", labelKey: "low", label: "Low" },
+  { value: "medium", labelKey: "medium", label: "Medium" },
+  { value: "high", labelKey: "high", label: "High" },
 ];
 
 export const Slider = ({
@@ -283,29 +285,33 @@ export const TextAreaField = React.memo(({
   );
 });
 
-export const SelectField = ({ label, value, onChange, options }: any) => (
-  <div className="space-y-1.5">
-    <label className="text-sm text-gray-300 font-medium ml-1">{label}</label>
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-indigo-500 appearance-none"
-      >
-        {options.map((opt: any) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <div className="absolute right-4 top-3 pointer-events-none text-gray-500">
-        <ChevronRight size={14} className="rotate-90" />
+export const SelectField = ({ label, value, onChange, options }: any) => {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm text-gray-300 font-medium ml-1">{label}</label>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-indigo-500 appearance-none"
+        >
+          {options.map((opt: any) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.labelKey ? t(opt.labelKey, opt.label) : opt.label}
+            </option>
+          ))}
+        </select>
+        <div className="absolute right-4 top-3 pointer-events-none text-gray-500">
+          <ChevronRight size={14} className="rotate-90" />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const MacroTester = ({ characterId }: { characterId: number | null }) => {
+  const { t } = useTranslation()
   const [input, setInput] = useState(`Math: 10 + 5 = {{add::10::5}}
 Logic: 10 > 5 is {{gt::10::5}}
 Var: {{setvar::hp::100}}HP: {{getvar::hp}}
@@ -327,7 +333,7 @@ Damage: {{setvar::hp::{{sub::{{hp}}::15}}}}New HP: {{hp}}`);
   return (
     <div className="bg-gray-900/30 p-4 rounded-2xl border border-white/5 space-y-3 mt-6">
       <h3 className="font-bold text-gray-300 flex items-center gap-2">
-        <Bug size={18} /> Macro Playground
+        <Bug size={18} /> {t('macroPlayground', 'Macro Playground')}
       </h3>
       <div className="grid grid-cols-1 gap-4">
         <textarea
@@ -335,7 +341,7 @@ Damage: {{setvar::hp::{{sub::{{hp}}::15}}}}New HP: {{hp}}`);
           onChange={(e) => setInput(e.target.value)}
           className="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-sm font-mono focus:outline-none focus:border-indigo-500"
           rows={3}
-          placeholder="Enter macros..."
+          placeholder={t('enterMacros', 'Enter macros...')}
         />
         <div className="bg-black/40 p-3 rounded-xl text-xs font-mono text-gray-400 whitespace-pre-wrap border border-white/5 min-h-[60px]">
           {output || "// Result will appear here..."}
@@ -346,7 +352,7 @@ Damage: {{setvar::hp::{{sub::{{hp}}::15}}}}New HP: {{hp}}`);
           onClick={handleTest}
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-indigo-500/20"
         >
-          Test Macros
+          {t('testMacros', 'Test Macros')}
         </button>
         <button
           onClick={async () => {
@@ -359,7 +365,7 @@ Damage: {{setvar::hp::{{sub::{{hp}}::15}}}}New HP: {{hp}}`);
           }}
           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-emerald-500/20"
         >
-          Test Lore Logic
+          {t('testLoreLogic', 'Test Lore Logic')}
         </button>
       </div>
     </div>
