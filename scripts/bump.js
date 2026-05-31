@@ -48,4 +48,20 @@ let charSelect = fs.readFileSync(charSelectPath, 'utf8');
 charSelect = charSelect.replace(new RegExp(`TavernRev v${escapeRegExp(oldVersion)}`, 'g'), `TavernRev v${cleanVersion}`);
 fs.writeFileSync(charSelectPath, charSelect, 'utf8');
 
+// src/i18n/locales/en/common.json
+const enLocalePath = path.join(root, 'src', 'i18n', 'locales', 'en', 'common.json');
+if (fs.existsSync(enLocalePath)) {
+    let enLocale = fs.readFileSync(enLocalePath, 'utf8');
+    enLocale = enLocale.replace(new RegExp(`TavernRev v${escapeRegExp(oldVersion)}`, 'g'), `TavernRev v${cleanVersion}`);
+    fs.writeFileSync(enLocalePath, enLocale, 'utf8');
+}
+
+// src/i18n/locales/ru/common.json
+const ruLocalePath = path.join(root, 'src', 'i18n', 'locales', 'ru', 'common.json');
+if (fs.existsSync(ruLocalePath)) {
+    let ruLocale = fs.readFileSync(ruLocalePath, 'utf8');
+    ruLocale = ruLocale.replace(new RegExp(`TavernRev v${escapeRegExp(oldVersion)}`, 'g'), `TavernRev v${cleanVersion}`);
+    fs.writeFileSync(ruLocalePath, ruLocale, 'utf8');
+}
+
 console.log(`✅ Bumped version from ${oldVersion} to ${cleanVersion} across all files!`);
