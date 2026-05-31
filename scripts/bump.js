@@ -64,4 +64,12 @@ if (fs.existsSync(ruLocalePath)) {
     fs.writeFileSync(ruLocalePath, ruLocale, 'utf8');
 }
 
+// README.md
+const readmePath = path.join(root, 'README.md');
+if (fs.existsSync(readmePath)) {
+    let readme = fs.readFileSync(readmePath, 'utf8');
+    readme = readme.replace(new RegExp(`v${escapeRegExp(oldVersion)}`, 'g'), `v${cleanVersion}`);
+    fs.writeFileSync(readmePath, readme, 'utf8');
+}
+
 console.log(`✅ Bumped version from ${oldVersion} to ${cleanVersion} across all files!`);
