@@ -1334,16 +1334,36 @@ export default function Settings({
           module={editingModule}
           onCancel={() => setEditingModule(null)}
           onSave={(m: any) => {
-            const prompts = editingModule.identifier
-              ? formData.prompts.map((p) =>
-                  p.identifier === m.identifier ? m : p,
-                )
-              : [
-                  ...formData.prompts,
-                  { ...m, identifier: Date.now().toString() },
-                ];
+            const isNew = !editingModule.identifier;
+            const newIdentifier = isNew ? Date.now().toString() : m.identifier;
+            const finalModule = { ...m, identifier: newIdentifier };
 
-            setFormData({ ...formData, prompts });
+            const prompts = isNew
+              ? [...formData.prompts, finalModule]
+              : formData.prompts.map((p) =>
+                  p.identifier === newIdentifier ? finalModule : p,
+                );
+
+            let nextData = { ...formData, prompts };
+
+            // If a new module is added, we must append it to prompt_order so it doesn't get discarded by ST or our normalizePreset.
+            if (isNew && "prompt_order" in nextData) {
+              const poArray = (nextData as any).prompt_order;
+              if (Array.isArray(poArray)) {
+                if (poArray.length > 0 && poArray[0].order && Array.isArray(poArray[0].order)) {
+                  // Format: [{ character_id: X, order: [...] }]
+                  (nextData as any).prompt_order = poArray.map((po: any) => ({
+                    ...po,
+                    order: [...po.order, { identifier: newIdentifier, enabled: finalModule.enabled }]
+                  }));
+                } else {
+                  // Format: [{ identifier: ... }] or ["main", ...]
+                  (nextData as any).prompt_order = [...poArray, { identifier: newIdentifier, enabled: finalModule.enabled }];
+                }
+              }
+            }
+
+            setFormData(nextData);
             setEditingModule(null);
           }}
         />
