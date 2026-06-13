@@ -1,5 +1,6 @@
-﻿use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use tauri::Manager;
 use std::fs;
 use crate::database::{self, DbState};
 use crate::api_client;
@@ -408,10 +409,18 @@ pub async fn summarize_chat(chat_id: i64, profile_name: String, preset_name: Str
     Ok(())
 }
 
+#[derive(serde::Serialize)]
+pub struct StudioAssistResponse {
+    pub text: String,
+    pub proposed_changes: std::collections::HashMap<String, String>,
+}
+
 #[derive(serde::Deserialize)]
 pub struct StudioMessage {
     pub role: String,
     pub content: String,
+    #[serde(default)]
+    pub images: Option<Vec<String>>,
 }
 
 #[tauri::command]
@@ -421,7 +430,7 @@ pub async fn studio_assist(
     preset_name: String,
     messages: Vec<StudioMessage>,
     _db_state: tauri::State<'_, DbState>,
-) -> Result<String, String> {
+) -> Result<StudioAssistResponse, String> {
     let connections_dir = get_connections_dir(&app_handle);
     let profile_path = connections_dir.join(&profile_name);
     let profile_content = fs::read_to_string(profile_path).map_err(|e| e.to_string())?;
@@ -436,52 +445,176 @@ pub async fn studio_assist(
 
     let abort_token = Arc::new(AtomicBool::new(false));
 
-    match profile.api_type.as_str() {
-        "google" => {
-            let oai_msgs: Vec<api_client::OpenAIMessage> = messages.into_iter().map(|m| {
-                api_client::OpenAIMessage {
+    let use_tools = profile.post_processing.ends_with("_tools") || profile.post_processing == "tools";
+    
+    let tools = if use_tools {
+        Some(vec![api_client::OpenAITool {
+            tool_type: "function".to_string(),
+            function: api_client::OpenAIFunctionDef {
+                name: "replace".to_string(),
+                description: "Replace a specific field in the character card.".to_string(),
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "field": {
+                            "type": "string",
+                            "description": "The field to update (name, description, personality, scenario, first_mes, alternate_greetings, mes_example, creator_notes)"
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "The new content for this field. For alternate_greetings, provide a JSON array of strings or separate by newlines."
+                        }
+                    },
+                    "required": ["field", "content"]
+                }),
+            }
+        }])
+    } else {
+        None
+    };
+
+    let local_data_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
+    let attachments_dir = local_data_dir.join("attachments");
+
+    let mut oai_msgs = Vec::new();
+    for m in messages {
+        if let Some(imgs) = m.images {
+            if imgs.is_empty() {
+                oai_msgs.push(api_client::OpenAIMessage {
                     role: m.role,
                     content: Some(api_client::OpenAIContent::Text(m.content)),
                     tool_calls: None,
                     tool_call_id: None,
+                });
+            } else {
+                let mut parts = vec![api_client::OpenAIPart {
+                    part_type: "text".to_string(),
+                    text: Some(m.content),
+                    image_url: None,
+                }];
+                for img in imgs {
+                    let resolved = pipeline::resolve_image_to_base64(&img, &attachments_dir);
+                    parts.push(api_client::OpenAIPart {
+                        part_type: "image_url".to_string(),
+                        text: None,
+                        image_url: Some(api_client::OpenAIImageUrl { url: resolved }),
+                    });
                 }
-            }).collect();
-            let (text, _) = api_client::generate_google(app_handle, profile.api_key, profile.model_id, oai_msgs, &preset, abort_token, 0, None, None).await?;
-            Ok(text)
-        },
-        "chat_completion" | "openai" => {
-            let oai_msgs: Vec<api_client::OpenAIMessage> = messages.into_iter().map(|m| {
-                api_client::OpenAIMessage {
+                oai_msgs.push(api_client::OpenAIMessage {
                     role: m.role,
-                    content: Some(api_client::OpenAIContent::Text(m.content)),
+                    content: Some(api_client::OpenAIContent::Array(parts)),
                     tool_calls: None,
                     tool_call_id: None,
-                }
-            }).collect();
-
-            let req = api_client::OpenAIRequest {
-                model: profile.model_id,
-                messages: oai_msgs,
-                stream: false,
-                max_tokens: Some(preset.openai_max_tokens),
-                temperature: preset.temperature,
-                top_p: preset.top_p,
-                presence_penalty: preset.presence_penalty,
-                frequency_penalty: preset.frequency_penalty,
-                stop: None,
-                reasoning_effort: None,
-                top_k: if preset.top_k > 0 { Some(preset.top_k) } else { None },
-                min_p: if preset.min_p > 0.0 { Some(preset.min_p) } else { None },
-                top_a: if preset.top_a > 0.0 { Some(preset.top_a) } else { None },
-                repetition_penalty: if preset.repetition_penalty != 1.0 { Some(preset.repetition_penalty) } else { None },
-                tools: None,
-            };
-
-            let (text, _) = api_client::generate_stream(app_handle, profile.base_url, profile.api_key, req, abort_token, 0, None).await?;
-            Ok(text)
-        },
-        _ => Err(format!("Studio Assist not supported for API type: {}", profile.api_type))
+                });
+            }
+        } else {
+            oai_msgs.push(api_client::OpenAIMessage {
+                role: m.role,
+                content: Some(api_client::OpenAIContent::Text(m.content)),
+                tool_calls: None,
+                tool_call_id: None,
+            });
+        }
     }
+
+    if !preset.studio_assistant_prompt.is_empty() {
+        if let Some(msg) = oai_msgs.get_mut(0) {
+            if msg.role == "system" {
+                if let Some(api_client::OpenAIContent::Text(text)) = &mut msg.content {
+                    text.push_str("\n\n=== USER CUSTOM INSTRUCTIONS ===\n");
+                    text.push_str(&preset.studio_assistant_prompt);
+                }
+            }
+        }
+    }
+
+    let mut current_oai_msgs = oai_msgs;
+    let mut all_proposed_changes = std::collections::HashMap::new();
+    let mut final_text = String::new();
+    let mut iterations = 0;
+    const MAX_ITERATIONS: i32 = 10;
+
+    loop {
+        iterations += 1;
+        if iterations > MAX_ITERATIONS {
+            break;
+        }
+
+        let (text, tool_calls_opt) = match profile.api_type.as_str() {
+            "google" => {
+                api_client::generate_google(app_handle.clone(), profile.api_key.clone(), profile.model_id.clone(), current_oai_msgs.clone(), &preset, abort_token.clone(), 0, None, tools.clone()).await?
+            },
+            "chat_completion" | "openai" => {
+                let req = api_client::OpenAIRequest {
+                    model: profile.model_id.clone(),
+                    messages: current_oai_msgs.clone(),
+                    stream: false,
+                    max_tokens: Some(preset.openai_max_tokens),
+                    temperature: preset.temperature,
+                    top_p: preset.top_p,
+                    presence_penalty: preset.presence_penalty,
+                    frequency_penalty: preset.frequency_penalty,
+                    stop: None,
+                    reasoning_effort: None,
+                    top_k: if preset.top_k > 0 { Some(preset.top_k) } else { None },
+                    min_p: if preset.min_p > 0.0 { Some(preset.min_p) } else { None },
+                    top_a: if preset.top_a > 0.0 { Some(preset.top_a) } else { None },
+                    repetition_penalty: if preset.repetition_penalty != 1.0 { Some(preset.repetition_penalty) } else { None },
+                    tools: tools.clone(),
+                };
+                api_client::generate_stream(app_handle.clone(), profile.base_url.clone(), profile.api_key.clone(), req, abort_token.clone(), 0, None).await?
+            },
+            _ => return Err(format!("Studio Assist not supported for API type: {}", profile.api_type))
+        };
+
+        if !text.is_empty() {
+            if !final_text.is_empty() { final_text.push_str("\n\n"); }
+            final_text.push_str(&text);
+        }
+
+        if let Some(calls) = tool_calls_opt {
+            if calls.is_empty() {
+                break;
+            }
+
+            // Append the assistant's message with tool calls
+            current_oai_msgs.push(api_client::OpenAIMessage {
+                role: "assistant".to_string(),
+                content: if text.is_empty() { None } else { Some(api_client::OpenAIContent::Text(text.clone())) },
+                tool_calls: Some(calls.clone()),
+                tool_call_id: None,
+            });
+
+            for call in calls {
+                if call.function.name == "replace" {
+                    if let Ok(args) = serde_json::from_str::<serde_json::Value>(&call.function.arguments) {
+                        if let (Some(field), Some(content)) = (args.get("field").and_then(|v| v.as_str()), args.get("content").and_then(|v| v.as_str())) {
+                            all_proposed_changes.insert(field.to_string(), content.to_string());
+                        }
+                    }
+                    
+                    // Add tool result
+                    current_oai_msgs.push(api_client::OpenAIMessage {
+                        role: "tool".to_string(),
+                        content: Some(api_client::OpenAIContent::Text(r#"{"status": "success", "message": "Changes staged. Please continue the response."}"#.to_string())),
+                        tool_calls: None,
+                        tool_call_id: Some(call.id.clone()),
+                    });
+                }
+            }
+        } else {
+            break;
+        }
+    }
+
+    if final_text.is_empty() && !all_proposed_changes.is_empty() {
+        final_text = "I have applied the requested changes. Please review them.".to_string();
+    }
+
+    Ok(StudioAssistResponse {
+        text: final_text,
+        proposed_changes: all_proposed_changes,
+    })
 }
 
 #[tauri::command]
@@ -491,3 +624,24 @@ pub fn update_chat_memory(chat_id: i64, memory: String, db_state: tauri::State<'
     Ok(())
 }
 
+#[tauri::command]
+pub fn save_studio_chats(app_handle: AppHandle, character_id: String, chats_json: String) -> Result<(), String> {
+    let local_data_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
+    let studio_dir = local_data_dir.join("studio_chats");
+    if !studio_dir.exists() {
+        fs::create_dir_all(&studio_dir).map_err(|e| e.to_string())?;
+    }
+    let file_path = studio_dir.join(format!("{}.json", character_id));
+    fs::write(&file_path, chats_json).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn load_studio_chats(app_handle: AppHandle, character_id: String) -> Result<String, String> {
+    let local_data_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
+    let file_path = local_data_dir.join("studio_chats").join(format!("{}.json", character_id));
+    if !file_path.exists() {
+        return Ok("[]".to_string());
+    }
+    fs::read_to_string(&file_path).map_err(|e| e.to_string())
+}

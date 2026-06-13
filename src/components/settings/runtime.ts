@@ -35,6 +35,7 @@ export const DEFAULT_PRESET_VALUES: Preset = {
   group_nudge_prompt: "",
   assistant_prefill: "",
   assistant_impersonation: "",
+  studio_assistant_prompt: "",
   reasoning_effort: "",
   show_thoughts: true,
   wi_scan_depth: 5,

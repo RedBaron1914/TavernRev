@@ -96,7 +96,7 @@ const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 const reasoningTags = new Set(["think", "thinking", "reasoning"]);
 const pairedTagRegex = /<([a-z][\w:-]*)>([\s\S]*?)(?:<\/\1>|$)/gi;
 
-function renderMessageHtml(content: string) {
+export function renderMessageHtml(content: string) {
     const mathMap = new Map<string, string>();
     let html = converter.makeHtml(
         content.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
@@ -134,7 +134,7 @@ function renderMessageHtml(content: string) {
 
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { appLocalDataDir, join } from "@tauri-apps/api/path";
-import { useTranslation, Trans } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import i18next from 'i18next'
 
 const RenderedAttachment = ({ filename }: { filename: string }) => {
@@ -157,6 +157,7 @@ const RenderedAttachment = ({ filename }: { filename: string }) => {
 };
 
 const MessageContent = React.memo(({ content, isUser, scale, userName, charName, images }: { content: string, isUser: boolean, scale?: number, userName?: string, charName?: string, images?: string[] }) => {
+    const { t } = useTranslation();
     // Replace visual macros
     let finalContent = content;
     if (userName) finalContent = finalContent.replace(/{{user}}/gi, userName);
@@ -201,8 +202,10 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
             )}
             {hasReasoning && (
                 <details className="bg-gray-950/30 rounded-lg border border-white/5 overflow-hidden group/think open:bg-gray-950/50 mb-1">
-                    <summary className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-widest text-gray-500 cursor-pointer hover:bg-white/5 hover:text-gray-300 transition select-none flex items-center gap-2 outline-none list-none"><Trans i18nKey="divClassnamew15H15RoundedfullBgindigo50050Groupopenthinkbgindigo400Groupopenthinkshadow0_0_8px_rgba12914024806TransitionallReasoningProcess"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500/50 group-open/think:bg-indigo-400 group-open/think:shadow-[0_0_8px_rgba(129,140,248,0.6)] transition-all"/>
-                        Reasoning Process</Trans></summary>
+                    <summary className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-widest text-gray-500 cursor-pointer hover:bg-white/5 hover:text-gray-300 transition select-none flex items-center gap-2 outline-none list-none">
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/50 group-open/think:bg-indigo-400 group-open/think:shadow-[0_0_8px_rgba(129,140,248,0.6)] transition-all"/>
+                        {t('reasoningProcess', 'Reasoning Process')}
+                    </summary>
                     <div className="p-3 text-xs text-gray-400 font-mono whitespace-pre-wrap border-t border-white/5 bg-black/20 selection:bg-indigo-500/20 leading-relaxed">
                         {reasoning}
                     </div>

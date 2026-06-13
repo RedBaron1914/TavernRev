@@ -91,6 +91,8 @@ pub struct Preset {
     pub wi_insertion_strategy: String,
     #[serde(default)]
     pub squash_system_messages: bool,
+    #[serde(default)]
+    pub studio_assistant_prompt: String,
     pub prompts: Vec<PromptModule>,
 }
 
@@ -130,6 +132,7 @@ impl Default for Preset {
             wi_include_names: true,
             wi_insertion_strategy: String::new(),
             squash_system_messages: false,
+            studio_assistant_prompt: String::new(),
             prompts: Vec::new(),
         }
     }

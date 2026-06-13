@@ -118,7 +118,7 @@ export function MessageActions({
           title={excluded ? t('includeInPrompt', 'Include in prompt') : t('excludeFromPrompt', 'Exclude from prompt')}
         >
           {excluded ? <Eye size={12} /> : <EyeOff size={12} />}
-          <span className="hidden sm:inline">{excluded ? "Show" : "Hide"}</span>
+          <span className="hidden sm:inline">{excluded ? t('show', 'Show') : t('hide', 'Hide')}</span>
         </button>
         {!isFirst && (
           <button
@@ -165,7 +165,7 @@ export function MessageActions({
         title={excluded ? t('includeInPrompt', 'Include in prompt') : t('excludeFromPrompt', 'Exclude from prompt')}
       >
         {excluded ? <Eye size={12} /> : <EyeOff size={12} />}
-        <span className="hidden sm:inline">{excluded ? "Show" : "Hide"}</span>
+        <span className="hidden sm:inline">{excluded ? t('show', 'Show') : t('hide', 'Hide')}</span>
       </button>
       {!isFirst && (
         <button

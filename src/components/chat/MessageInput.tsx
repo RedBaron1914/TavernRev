@@ -202,7 +202,7 @@ export function MessageInput({
                         size={16}
                         className={showQR ? "text-indigo-400" : "text-gray-500"}
                       />
-                      {showQR ? "Hide" : "Show"} {t('quickReplies', 'Quick Replies')}
+                      {showQR ? t('hide', 'Hide') : t('show', 'Show')} {t('quickReplies', 'Quick Replies')}
                     </button>
                     <button
                       onClick={() => {

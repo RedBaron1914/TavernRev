@@ -1,4 +1,4 @@
-﻿mod database;
+mod database;
 pub mod message_extra;
 pub mod lorebook;
 pub mod prompt_engine;
@@ -224,6 +224,8 @@ pub fn run() {
             generation::summarize_chat,
             generation::studio_assist,
             generation::update_chat_memory,
+            generation::save_studio_chats,
+            generation::load_studio_chats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

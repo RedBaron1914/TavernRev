@@ -102,6 +102,17 @@ export function FormattingTab({
             {t('thisPromptForcesTheAiToWriteANewRandomGreetingBasedOnTheScenarioWhenStartingAChat', 'This prompt forces the AI to write a new, random greeting based on\r\n            the scenario when starting a chat.')}
           </p>
         </div>
+        <div className="space-y-1">
+          <TextAreaField
+            label={t('studioAssistantPrompt', 'Studio Assistant Prompt')}
+            value={formData.studio_assistant_prompt}
+            onChange={(v: any) => handleFieldChange("studio_assistant_prompt", v)}
+            placeholder={t('egWriteInRussian', 'e.g. Always respond in Russian...')}
+          />
+          <p className="text-[10px] text-gray-500 px-1">
+            {t('thisPromptAppliesOnlyToTheAiInTheStudioAssistantPanel', 'This prompt applies only to the AI in the Studio Assistant panel.')}
+          </p>
+        </div>
         <InputField
           label={t('stopStringsCommaSeparated', 'Stop Strings (comma separated)')}
           value={formData.stop_strings}

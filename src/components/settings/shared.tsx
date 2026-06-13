@@ -52,6 +52,7 @@ export type Preset = {
   group_nudge_prompt: string;
   assistant_prefill: string;
   assistant_impersonation: string;
+  studio_assistant_prompt: string;
   reasoning_effort: string;
   show_thoughts: boolean;
   wi_scan_depth: number;

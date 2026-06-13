@@ -92,7 +92,7 @@ export const ChatMemoryModal: React.FC<Props> = ({ chatId, initialMemory, active
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition shadow-lg ${isSummarizing ? "bg-gray-700 text-gray-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/20 active:scale-95"}`}
           >
             {isSummarizing ? <Sparkles size={16} className="animate-pulse" /> : <Sparkles size={16} />}
-            {isSummarizing ? "Summarizing..." : t('autosummarizeChat', 'Auto-Summarize Chat')}
+            {isSummarizing ? t('summarizing', 'Summarizing...') : t('autosummarizeChat', 'Auto-Summarize Chat')}
           </button>
           
           <div className="flex items-center gap-3">

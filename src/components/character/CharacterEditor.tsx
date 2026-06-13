@@ -9,10 +9,30 @@ import { invoke } from "@tauri-apps/api/core";
 import Avatar from "../Avatar";
 import { Character } from "../../types";
 import { useTranslation } from 'react-i18next'
+import { DiffViewer } from "./DiffViewer";
+import { renderMessageHtml } from "../../App";
 
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 
 type EditorSection = "general" | "description" | "personality" | "scenario" | "examples" | "greetings";
+
+interface StudioMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  images?: string[];
+}
+
+interface StudioAssistResponse {
+  text: string;
+  proposed_changes: Record<string, string>;
+}
+
+interface StudioChat {
+  id: string;
+  title: string;
+  date: number;
+  messages: StudioMessage[];
+}
 
 export const CharacterEditor = ({ 
   character,
@@ -30,12 +50,15 @@ export const CharacterEditor = ({
   const [activeSection, setActiveSection] = useState<EditorSection>("general");
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [showAssistant, setShowAssistant] = useState(!isMobile);
-  const [assistantMessages, setAssistantMessages] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([
+  const [assistantMessages, setAssistantMessages] = useState<StudioMessage[]>([
     { role: 'assistant', content: t('helloIAmYourAiStudioAssistantICanHelpYouImproveYourCharacterCardTryAskingMeToMakeTheDescriptionMoreDetailedOrSuggestSomeSnarkyPersonalityTraits', 'Hello! I am your AI Studio Assistant. I can help you improve your character card. Try asking me to \'make the description more detailed\' or \'suggest some snarky personality traits\'.') }
   ]);
   const [assistantInput, setAssistantInput] = useState("");
+  const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [isAssistantThinking, setIsAssistantThinking] = useState(false);
   const [proposedChanges, setProposedChanges] = useState<Record<string, string | null>>({});
+  const [showHistory, setShowHistory] = useState(false);
+  const [savedChats, setSavedChats] = useState<StudioChat[]>([]);
 
   const scrollToBottom = () => {
     const chatContainer = document.getElementById("assistant-chat-history");
@@ -46,22 +69,31 @@ export const CharacterEditor = ({
 
   useEffect(scrollToBottom, [assistantMessages]);
 
+  useEffect(() => {
+    invoke<string>("load_studio_chats", { characterId: String(character.id || character.uuid) })
+      .then(json => setSavedChats(JSON.parse(json)))
+      .catch(console.error);
+  }, [character.id, character.uuid]);
+
   const sendAssistantMessage = async (manualInput?: string) => {
     const input = manualInput || assistantInput;
-    if (!input.trim() || isAssistantThinking) return;
+    if ((!input.trim() && attachedImages.length === 0) || isAssistantThinking) return;
 
-    const newMsgs = [...assistantMessages, { role: 'user' as const, content: input }];
+    const newMsgs: StudioMessage[] = [...assistantMessages, { role: 'user', content: input, images: attachedImages.length > 0 ? attachedImages : undefined }];
     setAssistantMessages(newMsgs);
     setAssistantInput("");
+    setAttachedImages([]);
     setIsAssistantThinking(true);
 
     try {
       const activeProfile = localStorage.getItem("active_profile") || "Default";
       const activePreset = localStorage.getItem("active_preset") || "Default";
       
-      const studioSystemPrompt = `You are the TavernRev AI Character Studio Assistant. Your goal is to help users craft high-quality AI characters.\nWhen suggesting changes to specific character card fields, you MUST use the following XML tags:\n<change field="description">New improved content</change>\n\nSupported fields: name, description, personality, scenario, first_mes, mes_example, creator_notes.\n\nCurrent Character State:\n- Name: ${formData.name}\n- Description: ${formData.description}\n- Personality: ${formData.personality}\n- Scenario: ${formData.scenario}\n- First Message: ${formData.first_mes}\n- Message Examples: ${formData.mes_example}\n- Creator Notes: ${formData.creator_notes}\n\nAlways explain WHAT you are changing and WHY before or after the tags. Be creative, consistent, and adhere to the character's core concept.`;
+      const altGreetingsStr = alts.length > 0 ? `\n- Alternate Greetings:\n${alts.map((alt, i) => `  [#${i+1}] ${alt}`).join('\n')}` : "\n- Alternate Greetings: None";
 
-      const response = await invoke<string>("studio_assist", {
+      const studioSystemPrompt = `You are the TavernRev AI Character Studio Assistant. Your goal is to help users craft high-quality AI characters.\n\nIMPORTANT: If the 'replace' function/tool is available to you, you MUST use it to propose changes and DO NOT use XML tags. If the 'replace' tool is NOT available, you MUST use the following XML tags:\n<change field="description">New improved content</change>\n\nSupported fields: name, description, personality, scenario, first_mes, alternate_greetings, mes_example, creator_notes.\n\nCurrent Character State:\n- Name: ${formData.name}\n- Description: ${formData.description}\n- Personality: ${formData.personality}\n- Scenario: ${formData.scenario}\n- First Message: ${formData.first_mes}${altGreetingsStr}\n- Message Examples: ${formData.mes_example}\n- Creator Notes: ${formData.creator_notes}\n\nAlways explain WHAT you are changing and WHY. Be creative, consistent, and adhere to the character's core concept.`;
+
+      const response = await invoke<StudioAssistResponse>("studio_assist", {
         profileName: activeProfile,
         presetName: activePreset,
         messages: [
@@ -70,15 +102,8 @@ export const CharacterEditor = ({
         ]
       });
 
-      const changeRegex = /<change\s+field="([^"]+)">([\s\S]*?)<\/change>/gi;
-      let match;
-      const newProposed = { ...proposedChanges };
-      while ((match = changeRegex.exec(response)) !== null) {
-        newProposed[match[1]] = match[2].trim();
-      }
-      
-      setProposedChanges(newProposed);
-      setAssistantMessages([...newMsgs, { role: 'assistant', content: response }]);
+      setProposedChanges(prev => ({ ...prev, ...response.proposed_changes }));
+      setAssistantMessages([...newMsgs, { role: 'assistant', content: response.text }]);
     } catch (e) {
       addToast(String(e), "error");
     } finally {
@@ -86,10 +111,58 @@ export const CharacterEditor = ({
     }
   };
 
+  const saveStudioChat = async () => {
+    if (assistantMessages.length <= 1) return;
+    const title = assistantMessages.find(m => m.role === 'user')?.content.slice(0, 30) + '...';
+    const newChat: StudioChat = {
+        id: crypto.randomUUID(),
+        title: title || "New Chat",
+        date: Date.now(),
+        messages: [...assistantMessages]
+    };
+    try {
+        await invoke("save_studio_chats", {
+            characterId: String(character.id || character.uuid),
+            chatsJson: JSON.stringify([newChat, ...savedChats])
+        });
+        setSavedChats([newChat, ...savedChats]);
+        addToast(t('chatSaved', 'Chat saved successfully!'), "success");
+    } catch (e) {
+        addToast("Failed to save chat: " + e, "error");
+    }
+  };
+
+  const loadStudioChat = (chat: StudioChat) => {
+    setAssistantMessages(chat.messages);
+    setShowHistory(false);
+  };
+
+  const deleteStudioChat = async (id: string) => {
+    const newChats = savedChats.filter(c => c.id !== id);
+    try {
+        await invoke("save_studio_chats", {
+            characterId: String(character.id || character.uuid),
+            chatsJson: JSON.stringify(newChats)
+        });
+        setSavedChats(newChats);
+    } catch (e) {
+        addToast("Failed to delete chat: " + e, "error");
+    }
+  };
+
   const applyChange = (field: string) => {
     const content = proposedChanges[field];
     if (content) {
-      handleChange(field as keyof Character, content);
+      if (field === "alternate_greetings") {
+          try {
+              const parsed = JSON.parse(content);
+              setAlts(Array.isArray(parsed) ? parsed : [content]);
+          } catch {
+              setAlts(content.split('\n').map(s => s.trim().replace(/^\[#\d+\]\s*/, '')).filter(Boolean));
+          }
+      } else {
+          handleChange(field as keyof Character, content);
+      }
       setProposedChanges(prev => ({ ...prev, [field]: null }));
       addToast(`Applied changes to ${field}`, "success");
     }
@@ -99,51 +172,7 @@ export const CharacterEditor = ({
     setProposedChanges(prev => ({ ...prev, [field]: null }));
   };
 
-  const DiffViewer = ({ field, original, proposed }: { field: string, original: string, proposed: string }) => {
-    // Simple line-level diff for better UX
-    const oldLines = (original || "").split('\n');
-    const newLines = (proposed || "").split('\n');
-    const diffElements = [];
-
-    let i = 0; let j = 0;
-    while (i < oldLines.length || j < newLines.length) {
-        if (i < oldLines.length && j < newLines.length && oldLines[i] === newLines[j]) {
-            if (oldLines[i].trim()) {
-                diffElements.push(<div key={`eq-${i}-${j}`} className="px-4 py-1 opacity-50 text-gray-400 whitespace-pre-wrap">{oldLines[i]}</div>);
-            }
-            i++; j++;
-        } else {
-            // Find next match to resync (lookahead window)
-            let nextI = i; let nextJ = j; let found = false;
-            for (let lookI = i; lookI < Math.min(oldLines.length, i + 8) && !found; lookI++) {
-                for (let lookJ = j; lookJ < Math.min(newLines.length, j + 8) && !found; lookJ++) {
-                    if (oldLines[lookI] === newLines[lookJ] && oldLines[lookI].trim()) {
-                        nextI = lookI; nextJ = lookJ; found = true;
-                    }
-                }
-            }
-            if (!found) {
-                if (i < oldLines.length) {
-                    if (oldLines[i].trim()) diffElements.push(<div key={`del-${i}`} className="px-4 py-1.5 bg-red-500/10 line-through decoration-red-500/50 text-red-300 whitespace-pre-wrap border-y border-red-500/10 my-0.5">{oldLines[i]}</div>);
-                    i++;
-                }
-                if (j < newLines.length) {
-                    if (newLines[j].trim()) diffElements.push(<div key={`add-${j}`} className="px-4 py-1.5 bg-emerald-500/10 text-emerald-200 whitespace-pre-wrap shadow-[inset_2px_0_0_rgba(16,185,129,0.5)] my-0.5">{newLines[j]}</div>);
-                    j++;
-                }
-            } else {
-                while (i < nextI) {
-                    if (oldLines[i].trim()) diffElements.push(<div key={`del-${i}`} className="px-4 py-1.5 bg-red-500/10 line-through decoration-red-500/50 text-red-300 whitespace-pre-wrap border-y border-red-500/10 my-0.5">{oldLines[i]}</div>);
-                    i++;
-                }
-                while (j < nextJ) {
-                    if (newLines[j].trim()) diffElements.push(<div key={`add-${j}`} className="px-4 py-1.5 bg-emerald-500/10 text-emerald-200 whitespace-pre-wrap shadow-[inset_2px_0_0_rgba(16,185,129,0.5)] my-0.5">{newLines[j]}</div>);
-                    j++;
-                }
-            }
-        }
-    }
-
+  const DiffViewerComponent = ({ field, original, proposed }: { field: string, original: string, proposed: string }) => {
     return (
         <div className="space-y-4 animate-in zoom-in-95 duration-300">
             <div className="flex items-center justify-between">
@@ -155,9 +184,7 @@ export const CharacterEditor = ({
                 </div>
             </div>
             <div className="relative group overflow-hidden rounded-3xl border border-amber-500/30 bg-amber-500/5 p-1">
-                <div className="bg-gray-900 rounded-[22px] overflow-hidden text-sm leading-relaxed py-2">
-                    {diffElements.length > 0 ? diffElements : <div className="p-4 text-gray-500 italic text-center">{t('noVisualTextDifferences', 'No visual text differences.')}</div>}
-                </div>
+                <DiffViewer oldText={original} newText={proposed} />
             </div>
         </div>
     );
@@ -412,7 +439,7 @@ export const CharacterEditor = ({
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">{t('characterName', 'Character Name')}</label>
                                         {proposedChanges.name ? (
-                                            <DiffViewer field="name" original={formData.name} proposed={proposedChanges.name} />
+                                            <DiffViewerComponent field="name" original={formData.name} proposed={proposedChanges.name} />
                                         ) : (
                                             <input
                                                 value={formData.name}
@@ -461,7 +488,7 @@ export const CharacterEditor = ({
                              <div className="space-y-4">
                                 <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">{t('creatorsNotes', 'Creator\'s Notes')}</label>
                                 {proposedChanges.creator_notes ? (
-                                    <DiffViewer field="creator_notes" original={formData.creator_notes} proposed={proposedChanges.creator_notes} />
+                                    <DiffViewerComponent field="creator_notes" original={formData.creator_notes} proposed={proposedChanges.creator_notes} />
                                 ) : (
                                     <textarea
                                         value={formData.creator_notes}
@@ -479,7 +506,7 @@ export const CharacterEditor = ({
                         <div className="space-y-4 h-full flex flex-col">
                             <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">{t('coreDescription', 'Core Description')}</label>
                             {proposedChanges.description ? (
-                                <DiffViewer field="description" original={formData.description} proposed={proposedChanges.description} />
+                                <DiffViewerComponent field="description" original={formData.description} proposed={proposedChanges.description} />
                             ) : (
                                 <textarea
                                     value={formData.description}
@@ -495,7 +522,7 @@ export const CharacterEditor = ({
                         <div className="space-y-4 h-full flex flex-col">
                             <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">{t('personalityTraits', 'Personality Traits')}</label>
                             {proposedChanges.personality ? (
-                                <DiffViewer field="personality" original={formData.personality} proposed={proposedChanges.personality} />
+                                <DiffViewerComponent field="personality" original={formData.personality} proposed={proposedChanges.personality} />
                             ) : (
                                 <textarea
                                     value={formData.personality}
@@ -511,7 +538,7 @@ export const CharacterEditor = ({
                         <div className="space-y-4 h-full flex flex-col">
                             <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">{t('currentScenario', 'Current Scenario')}</label>
                             {proposedChanges.scenario ? (
-                                <DiffViewer field="scenario" original={formData.scenario} proposed={proposedChanges.scenario} />
+                                <DiffViewerComponent field="scenario" original={formData.scenario} proposed={proposedChanges.scenario} />
                             ) : (
                                 <textarea
                                     value={formData.scenario}
@@ -530,7 +557,7 @@ export const CharacterEditor = ({
                                 <span className="text-[10px] text-gray-500 font-bold bg-white/5 px-2 py-0.5 rounded">{t('useLtstartgtBetweenBlocks', 'Use &lt;START&gt; between blocks')}</span>
                             </div>
                             {proposedChanges.mes_example ? (
-                                <DiffViewer field="mes_example" original={formData.mes_example} proposed={proposedChanges.mes_example} />
+                                <DiffViewerComponent field="mes_example" original={formData.mes_example} proposed={proposedChanges.mes_example} />
                             ) : (
                                 <textarea
                                     value={formData.mes_example}
@@ -547,7 +574,7 @@ export const CharacterEditor = ({
                             <div className="space-y-4">
                                 <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 text-shadow-sm">{t('mainGreeting', 'Main Greeting')}</label>
                                 {proposedChanges.first_mes ? (
-                                    <DiffViewer field="first_mes" original={formData.first_mes} proposed={proposedChanges.first_mes} />
+                                    <DiffViewerComponent field="first_mes" original={formData.first_mes} proposed={proposedChanges.first_mes} />
                                 ) : (
                                     <textarea
                                         value={formData.first_mes}
@@ -566,31 +593,46 @@ export const CharacterEditor = ({
                                         <Plus size={14}/> {t('addVariant', 'Add Variant')}
                                     </button>
                                 </div>
-                                <div className="grid grid-cols-1 gap-4">
-                                    {alts.map((alt, i) => (
-                                        <div key={i} className="group relative">
-                                            <textarea 
-                                                value={alt} 
-                                                onChange={e => {
-                                                    const n = [...alts];
-                                                    n[i] = e.target.value;
-                                                    setAlts(n);
-                                                }}
-                                                rows={3}
-                                                className="w-full bg-gray-900/60 border border-white/10 rounded-2xl px-5 py-4 pr-12 text-sm text-gray-300 focus:outline-none focus:border-indigo-500 transition-all custom-scrollbar resize-none"
-                                                placeholder={t('alternateGreetingVal', 'Alternate Greeting #{{val}}', { val: i+2 })}
-                                            />
-                                            <button onClick={() => setAlts(alts.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 p-2 bg-gray-800/80 hover:bg-red-900/40 text-gray-500 hover:text-red-400 rounded-lg transition md:opacity-0 group-hover:opacity-100 shadow-lg">
-                                                <Trash2 size={14}/>
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {alts.length === 0 && (
-                                        <div className="text-center py-10 bg-gray-900/20 border-2 border-dashed border-white/5 rounded-3xl text-gray-600 text-xs font-medium">
-                                            {t('noAlternateGreetingsDefined', 'No alternate greetings defined.')}
-                                        </div>
-                                    )}
-                                </div>
+                                {proposedChanges.alternate_greetings ? (
+                                    <DiffViewerComponent 
+                                        field="alternate_greetings" 
+                                        original={alts.length > 0 ? alts.map((a, i) => `[#${i+1}] ${a}`).join("\n\n") : ""} 
+                                        proposed={(() => {
+                                            try {
+                                                const parsed = JSON.parse(proposedChanges.alternate_greetings!);
+                                                return Array.isArray(parsed) ? parsed.map((a: string, i: number) => `[#${i+1}] ${a}`).join("\n\n") : proposedChanges.alternate_greetings!;
+                                            } catch {
+                                                return proposedChanges.alternate_greetings!;
+                                            }
+                                        })()} 
+                                    />
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-4">
+                                        {alts.map((alt, i) => (
+                                            <div key={i} className="group relative">
+                                                <textarea 
+                                                    value={alt} 
+                                                    onChange={e => {
+                                                        const n = [...alts];
+                                                        n[i] = e.target.value;
+                                                        setAlts(n);
+                                                    }}
+                                                    rows={3}
+                                                    className="w-full bg-gray-900/60 border border-white/10 rounded-2xl px-5 py-4 pr-12 text-sm text-gray-300 focus:outline-none focus:border-indigo-500 transition-all custom-scrollbar resize-none"
+                                                    placeholder={t('alternateGreetingVal', 'Alternate Greeting #{{val}}', { val: i+2 })}
+                                                />
+                                                <button onClick={() => setAlts(alts.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 p-2 bg-gray-800/80 hover:bg-red-900/40 text-gray-500 hover:text-red-400 rounded-lg transition md:opacity-0 group-hover:opacity-100 shadow-lg">
+                                                    <Trash2 size={14}/>
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {alts.length === 0 && (
+                                            <div className="text-center py-10 bg-gray-900/20 border-2 border-dashed border-white/5 rounded-3xl text-gray-600 text-xs font-medium">
+                                                {t('noAlternateGreetingsDefined', 'No alternate greetings defined.')}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -599,7 +641,7 @@ export const CharacterEditor = ({
         </main>
 
         {/* RIGHT ASSISTANT PANEL */}
-        <aside className={`${isMobile ? `fixed inset-y-16 right-0 z-40 w-full bg-gray-950 transform transition-transform duration-300 ${showAssistant ? 'translate-x-0' : 'translate-x-[100%]'}` : `${showAssistant ? 'w-96' : 'hidden'} border-l border-white/5 bg-gray-900/30`} flex flex-col z-10 shadow-2xl transition-all duration-300`}>
+        <aside className={`${isMobile ? `fixed top-[calc(4rem+env(safe-area-inset-top))] bottom-[env(safe-area-inset-bottom)] right-0 z-40 w-full bg-gray-950 transform transition-transform duration-300 ${showAssistant ? 'translate-x-0' : 'translate-x-[100%]'}` : `${showAssistant ? 'w-96' : 'hidden'} border-l border-white/5 bg-gray-900/30`} flex flex-col z-10 shadow-2xl transition-all duration-300`}>
             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-gray-800/20">
                 <div className="flex items-center gap-3">
                     <Sparkles size={18} className="text-amber-400 animate-pulse" />
@@ -607,14 +649,40 @@ export const CharacterEditor = ({
                         {t('studioAssistant', 'Studio Assistant')} <span className="text-[10px] text-amber-500/50 ml-1">(BETA)</span>
                     </span>
                 </div>
-                <div className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-bold text-indigo-400 uppercase">{t('liveContext', 'Live Context')}</div>
+                <button onClick={() => setShowHistory(!showHistory)} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-[10px] font-bold text-gray-400 transition cursor-pointer">
+                    <History size={12} /> {showHistory ? t('backToChat', 'Back to Chat') : t('history', 'History')}
+                </button>
             </div>
             
-            {/* Assistant Chat History */}
-            <div 
-                id="assistant-chat-history"
-                className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-950/20"
-            >
+            {showHistory ? (
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-gray-950/20">
+                    <button onClick={saveStudioChat} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg">
+                        <Save size={14} /> {t('saveCurrentChat', 'Save Current Chat')}
+                    </button>
+                    <div className="space-y-2 mt-4">
+                        {savedChats.length === 0 ? (
+                            <div className="text-center py-10 text-gray-500 text-xs italic">{t('noSavedChats', 'No saved chats.')}</div>
+                        ) : (
+                            savedChats.map(chat => (
+                                <div key={chat.id} className="p-3 bg-gray-900 border border-white/5 rounded-xl cursor-pointer hover:bg-gray-800 transition group relative">
+                                    <div onClick={() => loadStudioChat(chat)}>
+                                        <div className="text-xs font-bold text-gray-300 pr-6">{chat.title}</div>
+                                        <div className="text-[10px] text-gray-500 mt-1">{new Date(chat.date).toLocaleString()}</div>
+                                    </div>
+                                    <button onClick={(e) => { e.stopPropagation(); deleteStudioChat(chat.id); }} className="absolute top-2 right-2 p-1.5 text-red-400 md:opacity-0 group-hover:opacity-100 hover:bg-red-500/20 rounded-lg transition">
+                                        <Trash2 size={12} />
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <>
+                <div 
+                    id="assistant-chat-history"
+                    className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-950/20"
+                >
                 {assistantMessages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
                         <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-xs leading-relaxed shadow-sm ${
@@ -622,7 +690,17 @@ export const CharacterEditor = ({
                             ? 'bg-indigo-600 text-white rounded-tr-none' 
                             : 'bg-gray-800 text-gray-200 border border-white/5 rounded-tl-none'
                         }`}>
-                            {msg.content}
+                            {msg.images && msg.images.length > 0 && (
+                                <div className="flex gap-2 mb-2 overflow-x-auto pb-1 no-scrollbar">
+                                    {msg.images.map((img, j) => (
+                                        <img key={j} src={img} alt="attached" className="h-16 rounded-md object-cover border border-white/10" />
+                                    ))}
+                                </div>
+                            )}
+                            <div 
+                                className="prose prose-sm max-w-none break-words overflow-x-auto prose-invert [&_p]:mb-2 last:[&_p]:mb-0 leading-relaxed"
+                                dangerouslySetInnerHTML={{ __html: renderMessageHtml(msg.content) }}
+                            />
                         </div>
                     </div>
                 ))}
@@ -635,35 +713,68 @@ export const CharacterEditor = ({
                         </div>
                     </div>
                 )}
-            </div>
-
-            {/* Quick Action Bar */}
-            <div className="px-4 py-3 bg-black/20 border-t border-white/5">
-                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                    <button 
-                        onClick={() => sendAssistantMessage("Improve the character description to be more vivid and immersive.")}
-                        className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
-                    >
-                        {t('improveDesc', '? Improve Desc')}
-                    </button>
-                    <button 
-                        onClick={() => sendAssistantMessage("Analyze my personality block and suggest 3 more distinct traits.")}
-                        className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
-                    >
-                        {t('suggestTraits', '? Suggest Traits')}
-                    </button>
-                    <button 
-                        onClick={() => sendAssistantMessage("Write a catchy first message for this character based on the current scenario.")}
-                        className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
-                    >
-                        {t('genGreeting', '? Gen Greeting')}
-                    </button>
                 </div>
-            </div>
+
+                {/* Quick Action Bar */}
+                <div className="px-4 py-3 bg-black/20 border-t border-white/5">
+                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                        <button 
+                            onClick={() => sendAssistantMessage("Improve the character description to be more vivid and immersive.")}
+                            className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
+                        >
+                            {t('improveDesc', '? Improve Desc')}
+                        </button>
+                        <button 
+                            onClick={() => sendAssistantMessage("Analyze my personality block and suggest 3 more distinct traits.")}
+                            className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
+                        >
+                            {t('suggestTraits', '? Suggest Traits')}
+                        </button>
+                        <button 
+                            onClick={() => sendAssistantMessage("Write a catchy first message for this character based on the current scenario.")}
+                            className="whitespace-nowrap px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-[10px] font-bold text-gray-300 transition border border-white/5"
+                        >
+                            {t('genGreeting', '? Gen Greeting')}
+                        </button>
+                    </div>
+                </div>
 
             {/* Assistant Input */}
-            <div className="p-4 bg-gray-900/50 border-t border-white/10">
-                <div className="relative">
+            <div className="p-4 bg-gray-900/50 border-t border-white/10 space-y-2">
+                {attachedImages.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                        {attachedImages.map((img, i) => (
+                            <div key={i} className="relative group shrink-0">
+                                <img src={img} alt="attachment" className="h-12 rounded-lg border border-white/20 object-cover" />
+                                <button onClick={() => setAttachedImages(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 md:opacity-0 group-hover:opacity-100 transition scale-75 shadow-sm">
+                                    <X size={12} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <div className="relative flex items-center gap-2">
+                    <label className="shrink-0 p-2 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl cursor-pointer transition">
+                        <Image size={16} />
+                        <input 
+                            type="file" 
+                            accept="image/*" 
+                            multiple
+                            className="hidden" 
+                            onChange={(e) => {
+                                if (e.target.files) {
+                                    Array.from(e.target.files).forEach(file => {
+                                        const reader = new FileReader();
+                                        reader.onload = (ev) => {
+                                            if (ev.target?.result) setAttachedImages(prev => [...prev, ev.target!.result as string]);
+                                        };
+                                        reader.readAsDataURL(file);
+                                    });
+                                }
+                                e.target.value = '';
+                            }} 
+                        />
+                    </label>
                     <textarea 
                         value={assistantInput}
                         onChange={(e) => setAssistantInput(e.target.value)}
@@ -674,17 +785,19 @@ export const CharacterEditor = ({
                             }
                         }}
                         placeholder={t('askTheAssistant', 'Ask the Assistant...')}
-                        className="w-full bg-gray-950 border border-white/10 rounded-2xl pl-4 pr-12 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 transition-all resize-none h-20 custom-scrollbar"
+                        className="w-full bg-gray-950 border border-white/10 rounded-2xl pl-4 pr-12 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 transition-all resize-none h-12 custom-scrollbar"
                     />
                     <button 
                         onClick={() => sendAssistantMessage()}
-                        disabled={isAssistantThinking || !assistantInput.trim()}
-                        className="absolute bottom-3 right-3 p-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition shadow-lg"
+                        disabled={isAssistantThinking || (!assistantInput.trim() && attachedImages.length === 0)}
+                        className="absolute bottom-1 right-1 p-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition shadow-lg"
                     >
                         <Sparkles size={16} />
                     </button>
                 </div>
             </div>
+            </>
+            )}
         </aside>
 
       </div>
