@@ -169,6 +169,7 @@ pub fn run() {
             commands::process_input,
             commands::read_image_base64,
             commands::upload_avatar,
+            commands::upload_attachment,
             // Presets
             commands::list_presets,
             commands::load_preset,
