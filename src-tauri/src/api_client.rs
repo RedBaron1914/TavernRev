@@ -98,6 +98,8 @@ pub struct Preset {
     #[serde(default)]
     pub sd_use_tool: bool,
     #[serde(default)]
+    pub sd_edit_prompts: bool,
+    #[serde(default)]
     pub sd_model: String,
     #[serde(default = "default_sd_width")]
     pub sd_width: i32,
@@ -157,6 +159,7 @@ impl Default for Preset {
             studio_assistant_prompt: String::new(),
             sd_horde_api_key: "0000000000".to_string(),
             sd_use_tool: false,
+            sd_edit_prompts: false,
             sd_model: "stable_diffusion".to_string(),
             sd_width: 512,
             sd_height: 512,

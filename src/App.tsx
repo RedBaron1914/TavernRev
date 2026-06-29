@@ -374,6 +374,7 @@ function App() {
       }
   };
   // UI State
+  const [isToolImageGen, setIsToolImageGen] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [chatMemory, setChatMemory] = useState("");
@@ -764,6 +765,11 @@ const refreshCharacters = async () => {
 
   const handleConfirmImageGen = async (finalTags: string) => {
       setImageGenPrompt(null);
+      if (isToolImageGen) {
+          setIsToolImageGen(false);
+          await invoke("confirm_image_prompt", { prompt: finalTags });
+          return;
+      }
       try {
           setIsGeneratingImage(true);
           const imgPath = await invoke<string>("generate_image_horde_stateless", {
@@ -776,6 +782,14 @@ const refreshCharacters = async () => {
           addToast("Generation failed: " + e.toString(), "error");
       } finally {
           setIsGeneratingImage(false);
+      }
+  };
+
+  const handleCancelImageGen = async () => {
+      setImageGenPrompt(null);
+      if (isToolImageGen) {
+          setIsToolImageGen(false);
+          await invoke("cancel_image_prompt");
       }
   };
 
@@ -1685,6 +1699,11 @@ const refreshCharacters = async () => {
         setPopupContent(e.payload);
     });
 
+    const unlistenPromptImage = listen<string>("prompt-image-generation", (e) => {
+        setImageGenPrompt(e.payload);
+        setIsToolImageGen(true);
+    });
+
     return () => {
       unlistenBackendLog.then((f) => f());
       unlistenSpeaker.then((f) => f());
@@ -1695,6 +1714,7 @@ const refreshCharacters = async () => {
       unlistenBg.then((f) => f());
       unlistenStyle.then((f) => f());
       unlistenPopup.then((f) => f());
+      unlistenPromptImage.then((f) => f());
     };
   }, [fetchMessages]);
 
@@ -2255,7 +2275,7 @@ const refreshCharacters = async () => {
               </div>
               <div className="p-4 border-t border-white/10 flex justify-end gap-2">
                 <button
-                  onClick={() => setImageGenPrompt(null)}
+                  onClick={handleCancelImageGen}
                   className="px-4 py-2 text-sm text-gray-400 hover:text-white"
                 >
                   {t('cancel', 'Cancel')}

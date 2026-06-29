@@ -72,6 +72,7 @@ export type Preset = {
   user_avatar_prompt: string;
   sd_horde_api_key: string;
   sd_use_tool: boolean;
+  sd_edit_prompts: boolean;
   sd_model: string;
   sd_width: number;
   sd_height: number;

@@ -55,6 +55,7 @@ export const DEFAULT_PRESET_VALUES: Preset = {
   user_avatar_prompt: i18next.t('thisIsUsersAppearance', 'This is {{user}}\'s appearance.'),
   sd_horde_api_key: "0000000000",
   sd_use_tool: false,
+  sd_edit_prompts: false,
   sd_model: "stable_diffusion",
   sd_width: 512,
   sd_height: 512,

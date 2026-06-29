@@ -20,6 +20,7 @@ pub mod image_gen;
 pub struct GenerationState(pub Mutex<Option<Arc<AtomicBool>>>);
 pub struct StartupError(pub Mutex<Option<String>>);
 pub struct LastPrompt(pub Mutex<String>);
+pub struct ImageGenPromptState(pub Mutex<Option<tokio::sync::oneshot::Sender<String>>>);
 
 use database::{init_db, DbState};
 use std::fs;
@@ -97,6 +98,7 @@ pub fn run() {
 
             app.manage(GenerationState(Mutex::new(None)));
             app.manage(LastPrompt(Mutex::new(String::new())));
+            app.manage(ImageGenPromptState(Mutex::new(None)));
             app.manage(startup_error);
             Ok(())
         })
@@ -204,6 +206,8 @@ pub fn run() {
             commands::process_macros_debug,
             commands::generate_image_horde,
             commands::generate_image_horde_stateless,
+            generation::confirm_image_prompt,
+            generation::cancel_image_prompt,
             generation::generate_reply,
             generation::regenerate_reply,
             generation::continue_reply,

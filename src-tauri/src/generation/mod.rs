@@ -693,7 +693,25 @@ pub async fn generate_text_stateless(
         repetition_penalty: if preset.repetition_penalty != 1.0 { Some(preset.repetition_penalty) } else { None },
         tools: None,
     };
-
     let (text, _) = api_client::generate_stream(app_handle.clone(), profile.base_url, profile.api_key, req, abort_token, 0, None).await?;
     Ok(text)
+}
+
+#[tauri::command]
+pub async fn confirm_image_prompt(
+    state: tauri::State<'_, crate::ImageGenPromptState>,
+    prompt: String,
+) -> Result<(), String> {
+    if let Some(tx) = state.0.lock().unwrap().take() {
+        let _ = tx.send(prompt);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn cancel_image_prompt(
+    state: tauri::State<'_, crate::ImageGenPromptState>,
+) -> Result<(), String> {
+    state.0.lock().unwrap().take();
+    Ok(())
 }

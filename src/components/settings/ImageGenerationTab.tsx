@@ -38,6 +38,17 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
               onChange={handleFieldChange}
               helpText="Allow the AI to automatically request images during chat."
             />
+            {formData.sd_use_tool && (
+              <div className="pl-6 border-l-2 border-indigo-500/20">
+                <Toggle
+                  label="Edit prompts before generation"
+                  field="sd_edit_prompts"
+                  value={formData.sd_edit_prompts}
+                  onChange={handleFieldChange}
+                  helpText="Show a popup to edit the LLM's prompt before actually generating the image."
+                />
+              </div>
+            )}
             <InputField
               label="AI Horde API Key"
               field="sd_horde_api_key"

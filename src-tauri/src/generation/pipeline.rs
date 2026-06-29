@@ -632,25 +632,41 @@ pub async fn execute_api_loop(
                     if let Ok(args) = serde_json::from_str::<serde_json::Value>(&tc.function.arguments) {
                         let prompt = args.get("prompt").and_then(|v| v.as_str()).unwrap_or("").to_string();
                         if !prompt.is_empty() {
-                            let _ = app_handle.emit("backend-log", format!("[AI] Generating image with tags: {}", prompt));
-                            match crate::image_gen::generate_image_horde(
-                                app_handle.clone(),
-                                ctx.preset.sd_horde_api_key.clone(),
-                                prompt,
-                                ctx.preset.sd_model.clone(),
-                                ctx.preset.sd_width,
-                                ctx.preset.sd_height,
-                                ctx.preset.sd_steps,
-                                ctx.preset.sd_sampler.clone(),
-                                ctx.preset.sd_cfg_scale
-                            ).await {
-                                Ok(img_path) => {
-                                    result_string = format!(r#"{{"status": "success", "image_path": "{}"}}"#, img_path);
-                                    let _ = app_handle.emit("backend-log", format!("[AI] Generated image: {}", img_path));
-                                },
-                                Err(e) => {
-                                    result_string = format!(r#"{{"status": "error", "message": "{}"}}"#, e);
-                                    let _ = app_handle.emit("backend-log", format!("[AI] Image generation failed: {}", e));
+                            let mut final_prompt = prompt.clone();
+                            if ctx.preset.sd_edit_prompts {
+                                let (tx, rx) = tokio::sync::oneshot::channel();
+                                *app_handle.state::<crate::ImageGenPromptState>().0.lock().unwrap() = Some(tx);
+                                let _ = app_handle.emit("prompt-image-generation", prompt.clone());
+                                if let Ok(edited_prompt) = rx.await {
+                                    final_prompt = edited_prompt;
+                                } else {
+                                    final_prompt = String::new(); // Cancelled
+                                }
+                            }
+
+                            if final_prompt.is_empty() {
+                                result_string = format!(r#"{{"status": "error", "message": "User cancelled image generation"}}"#);
+                            } else {
+                                let _ = app_handle.emit("backend-log", format!("[AI] Generating image with tags: {}", final_prompt));
+                                match crate::image_gen::generate_image_horde(
+                                    app_handle.clone(),
+                                    ctx.preset.sd_horde_api_key.clone(),
+                                    final_prompt,
+                                    ctx.preset.sd_model.clone(),
+                                    ctx.preset.sd_width,
+                                    ctx.preset.sd_height,
+                                    ctx.preset.sd_steps,
+                                    ctx.preset.sd_sampler.clone(),
+                                    ctx.preset.sd_cfg_scale
+                                ).await {
+                                    Ok(img_path) => {
+                                        result_string = format!(r#"{{"status": "success", "image_path": "{}"}}"#, img_path);
+                                        let _ = app_handle.emit("backend-log", format!("[AI] Generated image: {}", img_path));
+                                    },
+                                    Err(e) => {
+                                        result_string = format!(r#"{{"status": "error", "message": "{}"}}"#, e);
+                                        let _ = app_handle.emit("backend-log", format!("[AI] Image generation failed: {}", e));
+                                    }
                                 }
                             }
                         } else {
