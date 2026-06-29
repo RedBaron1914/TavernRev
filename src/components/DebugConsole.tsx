@@ -18,8 +18,20 @@ export const DebugConsole = ({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    return logger.subscribe(setLogs);
-  }, []);
+    const unsub = logger.subscribe(setLogs);
+    let unlisten: (() => void) | undefined;
+    if (standalone) {
+        import("@tauri-apps/api/event").then(({ listen }) => {
+            listen<LogEntry>("frontend-log", (event) => {
+                logger.pushEntry(event.payload);
+            }).then(f => unlisten = f);
+        });
+    }
+    return () => {
+        unsub();
+        if (unlisten) unlisten();
+    };
+  }, [standalone]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;

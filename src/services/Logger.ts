@@ -74,6 +74,19 @@ class LoggerService {
     if (this.logs.length > 2000) this.logs.shift(); // Limit history
     
     this.notify();
+
+    const isConsole = new URLSearchParams(window.location.search).get("view") === "console";
+    if (!isConsole) {
+        import("@tauri-apps/api/event").then(({ emit }) => {
+            emit("frontend-log", entry).catch(() => {});
+        });
+    }
+  }
+
+  public pushEntry(entry: LogEntry) {
+      this.logs.push(entry);
+      if (this.logs.length > 2000) this.logs.shift();
+      this.notify();
   }
 
   subscribe(cb: (logs: LogEntry[]) => void) {
@@ -84,8 +97,14 @@ class LoggerService {
     };
   }
 
+  private notifyTimer: any = null;
+
   private notify() {
-    this.listeners.forEach(cb => cb(this.logs));
+    if (this.notifyTimer) return;
+    this.notifyTimer = setTimeout(() => {
+        this.notifyTimer = null;
+        this.listeners.forEach(cb => cb([...this.logs]));
+    }, 50);
   }
   
   clear() {
