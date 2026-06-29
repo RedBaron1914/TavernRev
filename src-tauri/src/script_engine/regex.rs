@@ -2,9 +2,9 @@ use fancy_regex::Regex;
 use crate::script_engine::Evaluator;
 use crate::database::RegexScript;
 
-fn normalize_regex_pattern(pattern: &str) -> String {
+fn normalize_regex_pattern(pattern: &str) -> (String, bool) {
     if !pattern.starts_with('/') || pattern.len() < 2 {
-        return pattern.to_string();
+        return (pattern.to_string(), true);
     }
 
     let mut escaped = false;
@@ -23,32 +23,74 @@ fn normalize_regex_pattern(pattern: &str) -> String {
 
         if ch == '/' {
             closing_index = Some(idx);
+            // In a valid JS regex literal, the closing slash is the last unescaped slash before flags
         }
     }
 
     let Some(closing_index) = closing_index else {
-        return pattern.to_string();
+        return (pattern.to_string(), true);
     };
 
     let body = &pattern[1..closing_index];
     let flags = &pattern[closing_index + 1..];
     let mut prefix = String::new();
+    let mut is_global = false;
 
-    if flags.contains('i') {
-        prefix.push('i');
-    }
-    if flags.contains('m') {
-        prefix.push('m');
-    }
-    if flags.contains('s') {
-        prefix.push('s');
-    }
+    if flags.contains('i') { prefix.push('i'); }
+    if flags.contains('m') { prefix.push('m'); }
+    if flags.contains('s') { prefix.push('s'); }
+    if flags.contains('g') { is_global = true; }
 
-    if prefix.is_empty() {
+    let normalized = if prefix.is_empty() {
         body.to_string()
     } else {
         format!("(?{}){}", prefix, body)
+    };
+
+    (normalized, is_global)
+}
+
+fn apply_js_replacement(content: &str, replacement: &str, caps: &fancy_regex::Captures) -> String {
+    let mut res = String::new();
+    let mut chars = replacement.chars().peekable();
+    let m = caps.get(0).unwrap();
+    
+    while let Some(c) = chars.next() {
+        if c == '$' {
+            if let Some(&next) = chars.peek() {
+                match next {
+                    '$' => { res.push('$'); chars.next(); },
+                    '&' => { res.push_str(m.as_str()); chars.next(); },
+                    '`' => { res.push_str(&content[..m.start()]); chars.next(); },
+                    '\'' => { res.push_str(&content[m.end()..]); chars.next(); },
+                    '0'..='9' => {
+                        chars.next();
+                        let mut num_str = next.to_string();
+                        if let Some(&next_next) = chars.peek() {
+                            if next_next.is_ascii_digit() {
+                                num_str.push(next_next);
+                                chars.next();
+                            }
+                        }
+                        if let Ok(group_idx) = num_str.parse::<usize>() {
+                            if let Some(group) = caps.get(group_idx) {
+                                res.push_str(group.as_str());
+                            }
+                        } else {
+                            res.push('$');
+                            res.push_str(&num_str);
+                        }
+                    },
+                    _ => { res.push('$'); }
+                }
+            } else {
+                res.push('$');
+            }
+        } else {
+            res.push(c);
+        }
     }
+    res
 }
 
 pub async fn process_regex_scripts(content: &str, placement: &str, scripts: &[RegexScript], evaluator: &mut Evaluator) -> String {
@@ -62,18 +104,40 @@ pub async fn process_regex_scripts(content: &str, placement: &str, scripts: &[Re
         }
 
         // Apply Regex
-        let normalized_pattern = normalize_regex_pattern(&script.regex);
+        let (normalized_pattern, is_global) = normalize_regex_pattern(&script.regex);
         if let Ok(re) = Regex::new(&normalized_pattern) {
-            // Regex replacement (supports $1, $2 for captures)
-            let replaced_cow = re.replace_all(&final_content, &script.replacement);
-            let replaced = replaced_cow.to_string();
+            let mut result = String::new();
+            let mut last_end = 0;
+            let mut changed = false;
+            let mut empty_match_preventer = None;
             
-            // If the content changed or script runs anyway, verify macros
-            if replaced != final_content {
-                println!("DEBUG: Regex Applied: '{}' -> '{}' (Placement: {}). Result: '{}'", script.regex, script.replacement, script.placement, replaced);
-                // Run macros on the replaced string
-                // Example: regex="attack", replacement="{{setvar::hp::{{sub::{{getvar::hp}}::10}}}}You attack!"
-                final_content = evaluator.evaluate(&replaced).await;
+            for cap_res in re.captures_iter(&final_content) {
+                if let Ok(caps) = cap_res {
+                    let m = caps.get(0).unwrap();
+                    
+                    // Prevent infinite loops on empty matches
+                    if m.start() == m.end() {
+                        if Some(m.start()) == empty_match_preventer {
+                            continue;
+                        }
+                        empty_match_preventer = Some(m.start());
+                    }
+                    
+                    result.push_str(&final_content[last_end..m.start()]);
+                    result.push_str(&apply_js_replacement(&final_content, &script.replacement, &caps));
+                    last_end = m.end();
+                    changed = true;
+                    
+                    if !is_global {
+                        break;
+                    }
+                }
+            }
+            
+            if changed {
+                result.push_str(&final_content[last_end..]);
+                println!("DEBUG: Regex Applied: '{}' -> '{}' (Placement: {}). Result: '{}'", script.regex, script.replacement, script.placement, result);
+                final_content = evaluator.evaluate(&result).await;
             }
         }
     }
@@ -141,8 +205,53 @@ mod tests {
 
     #[test]
     fn test_normalize_js_regex_literal() {
-        assert_eq!(normalize_regex_pattern("/apple/g"), "apple");
-        assert_eq!(normalize_regex_pattern("/apple/is"), "(?is)apple");
-        assert_eq!(normalize_regex_pattern("apple"), "apple");
+        assert_eq!(normalize_regex_pattern("/apple/g"), ("apple".to_string(), true));
+        assert_eq!(normalize_regex_pattern("/apple/is"), ("(?is)apple".to_string(), false));
+        assert_eq!(normalize_regex_pattern("apple"), ("apple".to_string(), true));
+    }
+
+    #[tokio::test]
+    async fn test_regex_js_compatibility() {
+        let mut eval = setup_eval().await;
+
+        let scripts = vec![
+            // Test non-global (replace first only)
+            RegexScript {
+                id: 1,
+                script_name: "NonGlobal".to_string(),
+                regex: "/apple/".to_string(), // No 'g' flag
+                replacement: "orange".to_string(),
+                placement: "both".to_string(),
+                run_on_markdown: false,
+            },
+            // Test full match ($&) and suffix ($')
+            RegexScript {
+                id: 2,
+                script_name: "JS Replacements".to_string(),
+                regex: "/banana/g".to_string(),
+                replacement: "<$&> $'!".to_string(),
+                placement: "both".to_string(),
+                run_on_markdown: false,
+            },
+            // Test group backreferences ($1)
+            RegexScript {
+                id: 3,
+                script_name: "Groups".to_string(),
+                regex: "/(super) (man)/g".to_string(),
+                replacement: "$2 $1".to_string(),
+                placement: "both".to_string(),
+                run_on_markdown: false,
+            }
+        ];
+
+        let mut res = process_regex_scripts("apple and apple", "user", &scripts[0..1], &mut eval).await;
+        assert_eq!(res, "orange and apple"); // Only first replaced
+
+        res = process_regex_scripts("eating banana today", "user", &scripts[1..2], &mut eval).await;
+        // matched "banana", $' is " today". So replacement is "<banana>  today!"
+        assert_eq!(res, "eating <banana>  today! today");
+
+        res = process_regex_scripts("super man", "user", &scripts[2..3], &mut eval).await;
+        assert_eq!(res, "man super");
     }
 }

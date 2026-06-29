@@ -1110,9 +1110,10 @@ mod tests {
     #[test]
     fn test_get_available_tools() {
         let tools = get_available_tools();
-        assert_eq!(tools.len(), 1);
+        assert_eq!(tools.len(), 2);
         assert_eq!(tools[0].tool_type, "function");
         assert_eq!(tools[0].function.name, "get_system_time");
+        assert_eq!(tools[1].function.name, "generate_image");
     }
 
     #[test]
