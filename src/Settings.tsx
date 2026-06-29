@@ -1100,6 +1100,34 @@ export default function Settings({
         localStorage.setItem("active_preset", fileName);
         setFormData(normalized);
         addToast(`Imported ${fileName} successfully!`, "success");
+
+        if (parsed.extensions?.regex_scripts && Array.isArray(parsed.extensions.regex_scripts) && parsed.extensions.regex_scripts.length > 0) {
+            if (confirm(`This preset contains ${parsed.extensions.regex_scripts.length} embedded RegEx scripts. Do you want to import them into your global Regex list?`)) {
+                const scriptsToImport = parsed.extensions.regex_scripts.map((rs: any) => {
+                    let placement = "both";
+                    const p = Array.isArray(rs.placement) ? rs.placement : [];
+                    const hasUser = p.includes(0);
+                    const hasAi = p.includes(1) || p.includes(2);
+                    if (hasUser && !hasAi) placement = "user";
+                    else if (hasAi && !hasUser) placement = "ai";
+
+                    return {
+                        id: 0,
+                        script_name: rs.scriptName || "Imported Regex",
+                        regex: rs.findRegex || "",
+                        replacement: rs.replaceString || "",
+                        placement: placement,
+                        run_on_markdown: !!rs.markdownOnly,
+                    };
+                });
+                try {
+                    await invoke("import_regex_scripts", { scripts: scriptsToImport });
+                    addToast(`Imported ${scriptsToImport.length} RegEx scripts!`, "success");
+                } catch (regexErr: any) {
+                    addToast(`Failed to import RegEx scripts: ${regexErr}`, "error");
+                }
+            }
+        }
       } catch (err: any) {
         console.error("Failed to import preset:", err);
         addToast(`Error importing preset: ${err?.message || JSON.stringify(err)}`, "error");
