@@ -755,7 +755,13 @@ const refreshCharacters = async () => {
             messages: recentMessages,
         });
 
-        setImageGenPrompt(generatedTags.trim());
+        const tags = generatedTags.trim();
+        const presetObj = await invoke<any>("get_preset", { presetName: activePresetFile || "Default" });
+        if (presetObj && presetObj.sd_edit_prompts) {
+            setImageGenPrompt(tags);
+        } else {
+            await handleConfirmImageGen(tags);
+        }
     } catch (e: any) {
         addToast("Failed to generate image prompt: " + e.toString(), "error");
     } finally {
@@ -777,7 +783,20 @@ const refreshCharacters = async () => {
               prompt: finalTags
           });
           addToast(t('imageGeneratedSuccessfully', 'Image generated successfully!'), "success");
-          setAttachedImages(prev => [...prev, imgPath]);
+          if (activeChatId) {
+              await invoke("save_message", {
+                  chatId: activeChatId,
+                  role: "system",
+                  content: "🖼️ " + t('imageGenerated', 'Image Generated'),
+                  images: [imgPath],
+              });
+              const updatedMessages = await invoke<Message[]>("get_messages", {
+                  chatId: activeChatId,
+              });
+              setMessages(updatedMessages);
+          } else {
+              setAttachedImages(prev => [...prev, imgPath]);
+          }
       } catch(e: any) {
           addToast("Generation failed: " + e.toString(), "error");
       } finally {

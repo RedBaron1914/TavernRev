@@ -111,7 +111,7 @@ pub fn import_character_card(app_handle: AppHandle, data: Vec<u8>, file_name: St
     // 4. Update Struct & Save DB
     character.avatar = new_filename;
     
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let char_id = database::create_character(&conn, &character).map_err(|e| e.to_string())?;
 
     // 5. Extract Embedded Lorebook
@@ -161,56 +161,56 @@ use database::Group;
 
 #[tauri::command]
 pub fn create_group(name: String, avatar: String, scenario: String, db_state: tauri::State<DbState>) -> Result<i64, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::create_group(&conn, &name, &avatar, &scenario).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_groups(db_state: tauri::State<DbState>) -> Result<Vec<Group>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_groups(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_group(id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::delete_group(&conn, id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn update_group(id: i64, name: String, avatar: String, scenario: String, activation_strategy: i64, generation_mode: i64, allow_self_responses: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::update_group(&conn, id, &name, &avatar, &scenario, activation_strategy, generation_mode, allow_self_responses).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_group_members(group_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<Character>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_group_members(&conn, group_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn add_group_member(group_id: i64, character_id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::add_group_member(&conn, group_id, character_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn remove_group_member(group_id: i64, character_id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::remove_group_member(&conn, group_id, character_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn toggle_group_member_mute(group_id: i64, character_id: i64, is_muted: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::toggle_group_member_mute(&conn, group_id, character_id, is_muted).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_characters(db_state: tauri::State<DbState>) -> Result<Vec<Character>, String> {
     println!("CMD: get_characters called");
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     match database::get_characters(&conn) {
         Ok(chars) => {
             println!("CMD: get_characters returning {} characters", chars.len());
@@ -226,7 +226,7 @@ pub fn get_characters(db_state: tauri::State<DbState>) -> Result<Vec<Character>,
 #[tauri::command]
 pub fn create_character(name: String, avatar: String, description: String, db_state: tauri::State<DbState>) -> Result<i64, String> {
     println!("CMD: create_character called with name='{}'", name);
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let char = Character {
         id: 0,
         name,
@@ -259,20 +259,20 @@ pub fn create_character(name: String, avatar: String, description: String, db_st
 
 #[tauri::command]
 pub fn create_character_full(card: Character, db_state: tauri::State<DbState>) -> Result<i64, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::create_character(&conn, &card).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn update_character(card: Character, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::update_character(&conn, &card).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_character(id: i64, delete_lore: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     
     if delete_lore {
         if let Ok(mut stmt) = conn.prepare("SELECT book_id FROM character_lorebooks WHERE character_id = ?1") {
@@ -291,7 +291,7 @@ pub fn delete_character(id: i64, delete_lore: bool, db_state: tauri::State<DbSta
 
 #[tauri::command]
 pub fn export_character_json(id: i64, db_state: tauri::State<DbState>) -> Result<String, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let char = database::get_character_by_id(&conn, id).map_err(|e| e.to_string())?;
     
     let tags: Vec<String> = serde_json::from_str(&char.tags).unwrap_or_default();
@@ -320,13 +320,13 @@ pub fn export_character_json(id: i64, db_state: tauri::State<DbState>) -> Result
 
 #[tauri::command]
 pub fn export_chat_jsonl(chat_id: i64, db_state: tauri::State<DbState>) -> Result<String, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::export_chat_jsonl(&conn, chat_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn import_chat_jsonl(character_id: i64, data: String, db_state: tauri::State<DbState>) -> Result<i64, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::import_chat_jsonl_data(&conn, character_id, &data, None)
 }
 
@@ -342,77 +342,77 @@ pub fn save_export_file(app_handle: AppHandle, filename: String, content: String
 
 #[tauri::command]
 pub fn get_user_personas(db_state: tauri::State<DbState>) -> Result<Vec<UserPersona>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_user_personas(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn create_user_persona(name: String, avatar: String, description: String, db_state: tauri::State<DbState>) -> Result<i64, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::create_user_persona(&conn, &name, &avatar, &description).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn update_user_persona(persona: UserPersona, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::update_user_persona(&conn, &persona).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_user_persona(id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::delete_user_persona(&conn, id).map(|_| ()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn set_default_persona(id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::set_default_persona(&conn, id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn update_chat_persona(chat_id: i64, persona_id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::update_chat_persona(&conn, chat_id, persona_id).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn create_chat(character_id: i64, group_id: Option<i64>, name: String, db_state: tauri::State<DbState>) -> Result<i64, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::create_chat(&conn, character_id, group_id, &name).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn rename_chat(id: i64, name: String, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::rename_chat(&conn, id, &name).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn get_chats(character_id: i64, group_id: Option<i64>, db_state: tauri::State<DbState>) -> Result<Vec<Chat>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_chats(&conn, character_id, group_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_chat(id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::delete_chat(&conn, id).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn get_messages(chat_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<Message>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_messages(&conn, chat_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_messages_paged(chat_id: i64, limit: i64, offset: i64, db_state: tauri::State<DbState>) -> Result<Vec<Message>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_messages_paged(&conn, chat_id, limit, offset).map_err(|e| e.to_string())
 }
 
@@ -421,7 +421,7 @@ pub async fn save_message(chat_id: i64, role: String, content: String, images: O
     println!("DEBUG: save_message role='{}' input: '{}'", role, content);
     // 1. Fetch data with lock
     let (regex_scripts, mut vars, globals, char_name, user_name) = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let regex = database::get_regex_scripts(&conn).unwrap_or_default();
         let v = database::get_chat_variables(&conn, chat_id).unwrap_or_default();
         let g = database::get_global_variables(&conn).unwrap_or_default();
@@ -454,7 +454,7 @@ pub async fn save_message(chat_id: i64, role: String, content: String, images: O
             vars = evaluator.get_vars();
             let new_globals = evaluator.get_globals();
             
-            let conn = db_state.0.lock().unwrap();
+            let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             for (k, v) in new_globals {
                 let _ = database::set_global_variable(&conn, &k, &v);
             }
@@ -469,7 +469,7 @@ pub async fn save_message(chat_id: i64, role: String, content: String, images: O
 
     // 3. Save results with lock
     println!("DEBUG: save_message processed: '{}'", processed_content);
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     if !vars.is_empty() {
         for (k, v) in vars {
             let _ = database::set_chat_variable(&conn, chat_id, &k, &v);
@@ -480,7 +480,7 @@ pub async fn save_message(chat_id: i64, role: String, content: String, images: O
 
 #[tauri::command]
 pub fn edit_message(id: i64, content: String, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::edit_message(&conn, id, &content).map_err(|e| e.to_string())
 }
 
@@ -491,7 +491,7 @@ pub fn set_message_prompt_excluded(
     reason: Option<String>,
     db_state: tauri::State<DbState>,
 ) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::set_message_prompt_excluded(&conn, id, excluded, reason.as_deref())
         .map_err(|e| e.to_string())
 }
@@ -503,7 +503,7 @@ pub fn auto_exclude_context_overflow(
     exclude_percent: Option<f64>,
     db_state: tauri::State<DbState>,
 ) -> Result<usize, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let percent = exclude_percent.unwrap_or(50.0).clamp(1.0, 100.0);
     MessageExtra::auto_exclude_context_overflow(&conn, chat_id, percent)
         .map_err(|e| e.to_string())
@@ -514,7 +514,7 @@ pub fn get_chat_message_stats(
     chat_id: i64,
     db_state: tauri::State<DbState>,
 ) -> Result<(usize, usize), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     MessageExtra::get_chat_message_stats(&conn, chat_id)
         .map_err(|e| e.to_string())
 }
@@ -527,7 +527,7 @@ pub fn get_context_stats(
     db_state: tauri::State<DbState>,
 ) -> Result<serde_json::Value, String> {
     use tiktoken_rs::cl100k_base;
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
 
     let (total, excluded) = MessageExtra::get_chat_message_stats(&conn, chat_id)
         .map_err(|e| e.to_string())?;
@@ -569,7 +569,7 @@ pub fn get_context_stats(
 
 #[tauri::command]
 pub fn get_auto_trim_enabled(chat_id: i64, db_state: tauri::State<DbState>) -> Result<bool, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let enabled: bool = conn
         .query_row(
             "SELECT COALESCE(auto_trim_enabled, 1) FROM chats WHERE id = ?1",
@@ -582,7 +582,7 @@ pub fn get_auto_trim_enabled(chat_id: i64, db_state: tauri::State<DbState>) -> R
 
 #[tauri::command]
 pub fn set_auto_trim_enabled(chat_id: i64, enabled: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     conn.execute(
         "UPDATE chats SET auto_trim_enabled = ?1 WHERE id = ?2",
         rusqlite::params![enabled as i32, chat_id],
@@ -593,7 +593,7 @@ pub fn set_auto_trim_enabled(chat_id: i64, enabled: bool, db_state: tauri::State
 
 #[tauri::command]
 pub fn delete_message(id: i64, mode: String, chat_id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     match mode.as_str() {
         "swipe" => database::delete_swipe(&conn, id).map_err(|e| e.to_string()),
         "message" => { database::delete_message(&conn, id).map_err(|e| e.to_string())?; Ok(()) },
@@ -604,13 +604,13 @@ pub fn delete_message(id: i64, mode: String, chat_id: i64, db_state: tauri::Stat
 
 #[tauri::command]
 pub fn branch_chat(chat_id: i64, from_msg_id: i64, new_name: String, db_state: tauri::State<DbState>) -> Result<i64, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::branch_chat(&conn, chat_id, from_msg_id, &new_name).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_chat_stats(chat_id: i64, db_state: tauri::State<DbState>) -> Result<serde_json::Value, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let messages = database::get_messages(&conn, chat_id).map_err(|e| e.to_string())?;
     
     let bpe = tiktoken_rs::cl100k_base().map_err(|e| e.to_string())?;
@@ -665,7 +665,7 @@ pub fn list_presets(app_handle: AppHandle) -> Result<Vec<String>, String> {
             if path.is_file() {
                 if let Some(ext) = path.extension() {
                     if ext == "json" {
-                        presets.push(path.file_name().unwrap().to_str().unwrap().to_string());
+                        presets.push(path.file_name().unwrap_or_default().to_string_lossy().into_owned());
                     }
                 }
             }
@@ -679,6 +679,14 @@ pub fn load_preset(app_handle: AppHandle, file_name: String) -> Result<String, S
     let presets_dir = get_presets_dir(&app_handle);
     let file_path = presets_dir.join(file_name);
     fs::read_to_string(file_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_preset(app_handle: AppHandle, preset_name: String) -> Result<serde_json::Value, String> {
+    let presets_dir = get_presets_dir(&app_handle);
+    let file_path = presets_dir.join(&preset_name);
+    let content = fs::read_to_string(&file_path).map_err(|e| format!("File read error: {}", e))?;
+    serde_json::from_str(&content).map_err(|e| format!("get_preset JSON parse error: {}. Content starts with: {}", e, &content.chars().take(50).collect::<String>()))
 }
 
 #[tauri::command]
@@ -714,7 +722,7 @@ pub fn list_connection_profiles(app_handle: AppHandle) -> Result<Vec<String>, St
             let entry = entry.map_err(|e| e.to_string())?;
             let path = entry.path();
             if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
-                profiles.push(path.file_name().unwrap().to_str().unwrap().to_string());
+                profiles.push(path.file_name().unwrap_or_default().to_string_lossy().into_owned());
             }
         }
     }
@@ -747,44 +755,44 @@ pub fn delete_connection_profile(app_handle: AppHandle, file_name: String) -> Re
 
 #[tauri::command]
 pub fn get_lorebooks(db_state: tauri::State<DbState>) -> Result<Vec<database::Lorebook>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_lorebooks(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn create_lorebook(name: String, db_state: tauri::State<DbState>) -> Result<i64, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::create_lorebook(&conn, &name).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_lorebook(id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::delete_lorebook(&conn, id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_lore_entries(book_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<database::LoreEntry>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_lore_entries(&conn, book_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn create_lore_entry(book_id: i64, keys: String, content: String, db_state: tauri::State<DbState>) -> Result<i64, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     // Default values for new manual entry
     database::create_lore_entry(&conn, book_id, &keys, &content, true, false, 100, 100, "before_char", 4).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn update_lore_entry(id: i64, keys: String, content: String, enabled: bool, constant: bool, priority: i64, probability: i64, position: String, depth: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::update_lore_entry(&conn, id, &keys, &content, enabled, constant, priority, probability, &position, depth).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_lore_entry(id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::delete_lore_entry(&conn, id).map_err(|e| e.to_string())
 }
 
@@ -812,7 +820,7 @@ struct V3Book {
 pub fn import_lorebook(json_data: String, db_state: tauri::State<DbState>) -> Result<i64, String> {
     let book: V3Book = serde_json::from_str(&json_data).map_err(|e| format!("Invalid JSON: {}", e))?;
     
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     
     let name = book.name.unwrap_or("Imported Lorebook".to_string());
     let book_id = database::create_lorebook(&conn, &name).map_err(|e| e.to_string())?;
@@ -835,67 +843,67 @@ pub fn import_lorebook(json_data: String, db_state: tauri::State<DbState>) -> Re
 
 #[tauri::command]
 pub fn get_chat_lorebooks(chat_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<i64>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_chat_lorebook_ids(&conn, chat_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_chat_lorebook_links(chat_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<database::LorebookLink>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_chat_lorebook_links(&conn, chat_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn toggle_chat_lorebook(chat_id: i64, book_id: i64, active: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::toggle_chat_lorebook(&conn, chat_id, book_id, active).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn set_chat_lorebook_enabled(chat_id: i64, book_id: i64, enabled: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::set_chat_lorebook_enabled(&conn, chat_id, book_id, enabled).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_character_lorebooks(character_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<i64>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_character_lorebook_ids(&conn, character_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_character_lorebook_links(character_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<database::LorebookLink>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_character_lorebook_links(&conn, character_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn toggle_character_lorebook(character_id: i64, book_id: i64, active: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::toggle_character_lorebook(&conn, character_id, book_id, active).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn set_character_lorebook_enabled(character_id: i64, book_id: i64, enabled: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::set_character_lorebook_enabled(&conn, character_id, book_id, enabled).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn toggle_global_lorebook(book_id: i64, active: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::toggle_global_lorebook(&conn, book_id, active).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn set_global_lorebook_enabled(book_id: i64, enabled: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::set_global_lorebook_enabled(&conn, book_id, enabled).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn set_lorebook_excluded_from_global(book_id: i64, excluded: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::set_lorebook_excluded_from_global(&conn, book_id, excluded).map_err(|e| e.to_string())
 }
 
@@ -1012,7 +1020,7 @@ pub async fn process_macros_command(text: String, character: Character, user_nam
 pub async fn process_macros_debug(text: String, character_id: i64, db_state: tauri::State<'_, DbState>) -> Result<String, String> {
     // 1. Fetch Data (Lock & Drop)
     let char_data = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let character = database::get_character_by_id(&conn, character_id).map_err(|e| e.to_string())?;
 
         CharacterData {
@@ -1093,7 +1101,7 @@ pub fn get_modules_token_counts(
 ) -> Result<std::collections::HashMap<String, usize>, String> {
     let bpe = get_bpe()?;
     
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     
     // Get Data
     let char_data = database::get_character_by_id(&conn, character_id).unwrap_or_default();
@@ -1182,7 +1190,7 @@ pub async fn process_input(app_handle: AppHandle, chat_id: i64, input: String, d
 
     // 1. Fetch Context Data (Lock & Drop)
     let (char_name, user_name, vars, globals) = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         
         let mut cn = "Character".to_string();
         let un = "You".to_string();
@@ -1207,7 +1215,7 @@ pub async fn process_input(app_handle: AppHandle, chat_id: i64, input: String, d
 
     // 3. Apply Side Effects (Lock)
     {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         for op in result.db_ops {
             match op {
                 script_engine::commands::DbOp::SaveMessage { role, content } => {
@@ -1264,60 +1272,62 @@ pub async fn process_input(app_handle: AppHandle, chat_id: i64, input: String, d
 }
 
 #[tauri::command]
-pub fn create_regex_script(name: String, regex: String, replacement: String, placement: String, db_state: tauri::State<DbState>) -> Result<i64, String> {
-    let conn = db_state.0.lock().unwrap();
-    database::create_regex_script(&conn, &name, &regex, &replacement, &placement, true).map_err(|e| e.to_string())
+pub fn create_regex_script(name: String, regex: String, replacement: String, placement: String, run_on_markdown: Option<bool>, disabled: Option<bool>, db_state: tauri::State<DbState>) -> Result<i64, String> {
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let r_md = run_on_markdown.unwrap_or(true);
+    let r_dis = disabled.unwrap_or(false);
+    database::create_regex_script(&conn, &name, &regex, &replacement, &placement, r_md, r_dis).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn update_regex_script(script: database::RegexScript, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::update_regex_script(&conn, &script).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_regex_script(id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::delete_regex_script(&conn, id).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn get_regex_scripts(db_state: tauri::State<DbState>) -> Result<Vec<database::RegexScript>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_regex_scripts(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn create_quick_reply(label: String, content: String, icon: String, is_global: bool, db_state: tauri::State<DbState>) -> Result<i64, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::create_quick_reply(&conn, &label, &content, &icon, is_global).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn update_quick_reply(id: i64, label: String, content: String, icon: String, is_global: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::update_quick_reply(&conn, id, &label, &content, &icon, is_global).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_quick_replies(db_state: tauri::State<DbState>) -> Result<Vec<database::QuickReply>, String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::get_quick_replies(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_quick_reply(id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::delete_quick_reply(&conn, id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn import_regex_scripts(scripts: Vec<database::RegexScript>, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     for script in scripts {
-        database::create_regex_script(&conn, &script.script_name, &script.regex, &script.replacement, &script.placement, script.run_on_markdown).map_err(|e| e.to_string())?;
+        database::create_regex_script(&conn, &script.script_name, &script.regex, &script.replacement, &script.placement, script.run_on_markdown, script.disabled).map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -1384,7 +1394,7 @@ pub async fn connect_dropbox(app_handle: tauri::AppHandle, db_state: tauri::Stat
             
             // Save token
             {
-                let conn = db_state.0.lock().unwrap();
+                let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                 let _ = database::set_global_variable(&conn, "dropbox_token", &token_data.access_token);
                 if let Some(rt) = token_data.refresh_token {
                     let _ = database::set_global_variable(&conn, "dropbox_refresh_token", &rt);
@@ -1409,14 +1419,14 @@ pub async fn connect_dropbox(app_handle: tauri::AppHandle, db_state: tauri::Stat
 
 #[tauri::command]
 pub fn get_dropbox_status(db_state: tauri::State<DbState>) -> bool {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let vars = database::get_global_variables(&conn).unwrap_or_default();
     vars.contains_key("dropbox_token")
 }
 
 #[tauri::command]
 pub fn logout_dropbox(db_state: tauri::State<DbState>) {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let _ = database::delete_global_variable(&conn, "dropbox_token");
 }
 
@@ -1447,7 +1457,7 @@ pub async fn connect_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State
             
             // Save token
             {
-                let conn = db_state.0.lock().unwrap();
+                let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                 let _ = database::set_global_variable(&conn, "gdrive_token", &token_data.access_token);
                 if let Some(rt) = token_data.refresh_token {
                     let _ = database::set_global_variable(&conn, "gdrive_refresh_token", &rt);
@@ -1472,14 +1482,14 @@ pub async fn connect_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State
 
 #[tauri::command]
 pub fn get_gdrive_status(db_state: tauri::State<DbState>) -> bool {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let vars = database::get_global_variables(&conn).unwrap_or_default();
     vars.contains_key("gdrive_token")
 }
 
 #[tauri::command]
 pub fn logout_gdrive(db_state: tauri::State<DbState>) {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let _ = database::delete_global_variable(&conn, "gdrive_token");
 }
 
@@ -1499,7 +1509,7 @@ fn iso_to_timestamp(iso: &str) -> i64 {
 
 async fn get_valid_token(db_state: &tauri::State<'_, DbState>) -> Result<String, String> {
     let (access_token, refresh_token) = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let vars = database::get_global_variables(&conn).unwrap_or_default();
         let at = vars.get("dropbox_token").cloned().ok_or("Not logged in to Dropbox")?;
         let rt = vars.get("dropbox_refresh_token").cloned();
@@ -1532,7 +1542,7 @@ async fn get_valid_token(db_state: &tauri::State<'_, DbState>) -> Result<String,
         println!("SYNC: Token expired. Attempting refresh...");
         match crate::sync_manager::refresh_access_token(&rt).await {
             Ok(new_token_data) => {
-                let conn = db_state.0.lock().unwrap();
+                let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                 let _ = database::set_global_variable(&conn, "dropbox_token", &new_token_data.access_token);
                 // Dropbox might return a new refresh token, update it if so
                 if let Some(new_rt) = new_token_data.refresh_token {
@@ -1553,7 +1563,7 @@ async fn get_valid_token(db_state: &tauri::State<'_, DbState>) -> Result<String,
 
 async fn get_valid_gdrive_token(db_state: &tauri::State<'_, DbState>) -> Result<String, String> {
     let (access_token, refresh_token) = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let vars = database::get_global_variables(&conn).unwrap_or_default();
         let at = vars.get("gdrive_token").cloned().ok_or("Not logged in to Google Drive")?;
         let rt = vars.get("gdrive_refresh_token").cloned();
@@ -1576,7 +1586,7 @@ async fn get_valid_gdrive_token(db_state: &tauri::State<'_, DbState>) -> Result<
         println!("SYNC: GDrive Token expired. Attempting refresh...");
         match crate::google_drive_manager::refresh_access_token(&rt).await {
             Ok(new_token_data) => {
-                let conn = db_state.0.lock().unwrap();
+                let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                 let _ = database::set_global_variable(&conn, "gdrive_token", &new_token_data.access_token);
                 if let Some(new_rt) = new_token_data.refresh_token {
                     let _ = database::set_global_variable(&conn, "gdrive_refresh_token", &new_rt);
@@ -1645,7 +1655,7 @@ async fn push_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
 
     // --- User Personas ---
     let personas = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         database::get_user_personas(&conn).map_err(|e| e.to_string())?
     };
 
@@ -1671,7 +1681,7 @@ async fn push_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
 
     // --- Characters ---
     let chars = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         database::get_characters(&conn).map_err(|e| e.to_string())?
     };
 
@@ -1709,7 +1719,7 @@ async fn push_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
 
     // --- Groups ---
     let groups = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         database::export_cloud_groups(&conn).unwrap_or_default()
     };
 
@@ -1745,7 +1755,7 @@ async fn push_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
 
     // --- Chats ---
     let chat_rows: Vec<(i64, String, String)> = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let mut stmt = conn.prepare("SELECT id, uuid, updated_at FROM chats").map_err(|e| e.to_string())?;
         let rows = stmt.query_map([], |row| Ok((
             row.get::<_, i64>(0)?, 
@@ -1774,7 +1784,7 @@ async fn push_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
         let _ = app_handle.emit("sync-progress", format!("Pushing Chats ({}/{})", i + 1, total_chats));
         // Re-acquire lock to export single chat
         let jsonl = {
-            let conn = db_state.0.lock().unwrap();
+            let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             database::export_chat_jsonl(&conn, id).map_err(|e| e.to_string())?
         };
         
@@ -1820,7 +1830,7 @@ async fn pull_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
             if let Ok(bytes) = crate::google_drive_manager::download_file(&token, &file.id).await {
                 if let Ok(persona) = serde_json::from_slice::<database::UserPersona>(&bytes) {
                     {
-                        let conn = db_state.0.lock().unwrap();
+                        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                         let existing = database::get_user_personas(&conn).unwrap_or_default();
                         if let Some(existing_p) = existing.iter().find(|p| p.name == persona.name) {
                             let mut updated = persona.clone();
@@ -1862,7 +1872,7 @@ async fn pull_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
             let mut local_updated_at = String::new();
             let uuid = std::path::Path::new(&name).file_stem().and_then(|s| s.to_str()).unwrap_or("");
             {
-                let conn = db_state.0.lock().unwrap();
+                let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                 if let Ok(Some(id)) = database::find_character_by_uuid(&conn, uuid) {
                     if let Ok(mut stmt) = conn.prepare("SELECT updated_at FROM characters WHERE id = ?1") {
                         if let Ok(updated) = stmt.query_row(rusqlite::params![id], |row| row.get::<_, String>(0)) {
@@ -1882,7 +1892,7 @@ async fn pull_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
             let char: database::Character = serde_json::from_slice(&bytes).map_err(|e| format!("Decode error for {}: {}", name, e))?;
             
             {
-                let conn = db_state.0.lock().unwrap();
+                let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                 let existing_id = database::find_character_by_uuid(&conn, &char.uuid).map_err(|e| e.to_string())?;
                 
                 if let Some(id) = existing_id {
@@ -1925,7 +1935,7 @@ async fn pull_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
             let mut local_updated_at = String::new();
             let uuid = std::path::Path::new(&name).file_stem().and_then(|s| s.to_str()).unwrap_or("");
             {
-                let conn = db_state.0.lock().unwrap();
+                let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                 if let Ok(updated) = conn.query_row("SELECT updated_at FROM groups WHERE uuid = ?1", rusqlite::params![uuid], |row| row.get::<_, String>(0)) {
                     local_updated_at = db_time_to_iso(&updated);
                 }
@@ -1939,7 +1949,7 @@ async fn pull_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
             if let Ok(bytes) = crate::google_drive_manager::download_file(&token, &file.id).await {
                 if let Ok(group_data) = serde_json::from_slice::<database::CloudGroup>(&bytes) {
                     {
-                        let conn = db_state.0.lock().unwrap();
+                        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                         let _ = database::import_cloud_group(&conn, &group_data);
                     }
 
@@ -1976,7 +1986,7 @@ async fn pull_gdrive(app_handle: tauri::AppHandle, db_state: tauri::State<'_, Db
             if uuid.is_empty() { continue; }
 
             {
-                let conn = db_state.0.lock().unwrap();
+                let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                 if let Ok(Some(id)) = database::find_chat_by_uuid(&conn, uuid) {
                     if let Ok(mut stmt) = conn.prepare("SELECT updated_at FROM chats WHERE id = ?1") {
                         if let Ok(updated) = stmt.query_row(rusqlite::params![id], |row| row.get::<_, String>(0)) {
@@ -2539,6 +2549,7 @@ pub async fn generate_image_horde(
 ) -> Result<String, String> {
     crate::image_gen::generate_image_horde(
         app_handle, api_key, prompt, model, width, height, steps, sampler, cfg_scale,
+        true, true, false, true, false, String::new(),
     ).await
 }
 
@@ -2548,10 +2559,13 @@ pub async fn generate_image_horde_stateless(
     preset_name: String,
     prompt: String,
 ) -> Result<String, String> {
+    println!("DEBUG: generate_image_horde_stateless called! preset={}, prompt={}", preset_name, prompt);
     let presets_dir = crate::commands::get_presets_dir(&app_handle);
     let preset_path = presets_dir.join(&preset_name);
-    let preset_content = std::fs::read_to_string(preset_path).map_err(|e| e.to_string())?;
-    let preset: crate::api_client::Preset = serde_json::from_str(&preset_content).map_err(|e| e.to_string())?;
+    let preset_content = std::fs::read_to_string(&preset_path)
+        .map_err(|e| format!("File read error for {:?}: {}", preset_path, e))?;
+    let preset: crate::api_client::Preset = serde_json::from_str(&preset_content)
+        .map_err(|e| format!("Preset JSON parse error: {}. Content starts with: {}", e, &preset_content.chars().take(50).collect::<String>()))?;
 
     crate::image_gen::generate_image_horde(
         app_handle,
@@ -2563,5 +2577,38 @@ pub async fn generate_image_horde_stateless(
         preset.sd_steps,
         preset.sd_sampler,
         preset.sd_cfg_scale,
+        preset.sd_allow_nsfw,
+        preset.sd_sanitize_prompts,
+        preset.sd_restore_faces,
+        preset.sd_karras,
+        preset.sd_hires_fix,
+        preset.sd_seed,
     ).await
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct HordeModelInfo {
+    pub name: String,
+    pub count: f32,
+    pub queued: f32,
+    pub eta: f32,
+}
+
+#[tauri::command]
+pub async fn get_horde_models() -> Result<Vec<HordeModelInfo>, String> {
+    let client = reqwest::Client::new();
+    let res = client
+        .get("https://stablehorde.net/api/v2/status/models")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !res.status().is_success() {
+        return Err("Failed to fetch models from AI Horde".to_string());
+    }
+
+    let mut models: Vec<HordeModelInfo> = res.json().await.map_err(|e| e.to_string())?;
+    models.sort_by(|a, b| a.name.cmp(&b.name));
+    
+    Ok(models)
 }

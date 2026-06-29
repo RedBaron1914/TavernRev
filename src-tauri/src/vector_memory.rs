@@ -103,7 +103,7 @@ pub fn init_model(app_handle: Option<&tauri::AppHandle>, model_name: &str) -> Re
     
     let model = TextEmbedding::try_new(options).map_err(|e| format!("Failed to load model: {}", e))?;
     
-    *get_model().lock().unwrap() = Some(model);
+    *get_model().lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(model);
     println!("VectorMemory: Model initialized successfully.");
     Ok(())
 }
@@ -126,7 +126,7 @@ pub fn init_custom_model(folder_path: &str) -> Result<(), String> {
     let model = TextEmbedding::try_new_from_user_defined(user_model, InitOptionsUserDefined::default())
         .map_err(|e| format!("Failed to initialize custom model: {}", e))?;
     
-    *get_model().lock().unwrap() = Some(model);
+    *get_model().lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(model);
     println!("VectorMemory: Custom model initialized successfully.");
     Ok(())
 }
@@ -141,7 +141,7 @@ pub async fn embed_texts(texts: Vec<&str>, config: &RagConfig) -> Result<Vec<Vec
             texts_owned
         ).await
     } else {
-        let mut lock = get_model().lock().unwrap();
+        let mut lock = get_model().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let model = lock.as_mut().ok_or("Local embedding model is not initialized. Check RagSettingsTab.")?;
 
         let embeddings = model.embed(texts, None).map_err(|e| format!("Local embedding failed: {}", e))?;
@@ -196,7 +196,7 @@ pub async fn build_chat_index(
     config: &RagConfig,
 ) -> Result<usize, String> {
     let messages = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         crate::database::get_messages(&conn, chat_id).map_err(|e| e.to_string())?
     };
 
@@ -232,7 +232,7 @@ pub async fn build_chat_index(
     let embeddings = embed_texts(texts, config).await?;
     
     // Save to DB (re-acquire lock)
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     // Clear old memory for this chat
     crate::database::delete_memory_vectors(&conn, chat_id).map_err(|e| e.to_string())?;
 
@@ -255,7 +255,7 @@ pub async fn query_chat_memory(
     
     // 2. Fetch all vectors for chat (Lock DB briefly)
     let vectors = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         crate::database::get_chat_vectors(&conn, chat_id).map_err(|e| e.to_string())?
     };
     
@@ -290,7 +290,7 @@ pub async fn build_lorebook_index(
     config: &RagConfig,
 ) -> Result<usize, String> {
     let entries = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         crate::database::get_active_lore_entries(&conn, char_id, chat_id).map_err(|e| e.to_string())?
     };
 
@@ -304,7 +304,7 @@ pub async fn build_lorebook_index(
     for entry in entries {
         // Clear old memory for this entry
         {
-            let conn = db_state.0.lock().unwrap();
+            let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             crate::database::delete_lore_vectors(&conn, entry.id).map_err(|e| e.to_string())?;
         }
 
@@ -334,7 +334,7 @@ pub async fn build_lorebook_index(
     let texts: Vec<&str> = chunks.iter().map(|s| s.as_str()).collect();
     let embeddings = embed_texts(texts, config).await?;
 
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     for (idx, (text, emb)) in chunks.into_iter().zip(embeddings.into_iter()).enumerate() {
         let e_id = entry_ids[idx];
         let c_idx = chunk_indices[idx];
@@ -356,7 +356,7 @@ pub async fn query_lorebook_memory(
 
     // 2. Fetch all vectors for active lore entries
     let vectors = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let entries = crate::database::get_active_lore_entries(&conn, char_id, chat_id).map_err(|e| e.to_string())?;
         let entry_ids: Vec<i64> = entries.into_iter().map(|e| e.id).collect();
         crate::database::get_lore_vectors(&conn, &entry_ids).map_err(|e| e.to_string())?
@@ -480,7 +480,7 @@ mod tests {
         
         let db_state = crate::database::DbState(Mutex::new(conn));
         
-        let conn_ref = db_state.0.lock().unwrap();
+        let conn_ref = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         crate::database::save_message(&conn_ref, 1, "user", "I love eating green apples.", None).unwrap();
         crate::database::save_message(&conn_ref, 1, "char", "The secret password to the vault is 'TavernRulez42'.", None).unwrap();
         crate::database::save_message(&conn_ref, 1, "user", "It is raining outside today.", None).unwrap();

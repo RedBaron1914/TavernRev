@@ -99,7 +99,21 @@ pub struct Preset {
     pub sd_use_tool: bool,
     #[serde(default)]
     pub sd_edit_prompts: bool,
+    #[serde(default = "default_sd_provider")]
+    pub sd_provider: String,
+    #[serde(default = "default_true")]
+    pub sd_allow_nsfw: bool,
+    #[serde(default = "default_true")]
+    pub sd_sanitize_prompts: bool,
     #[serde(default)]
+    pub sd_restore_faces: bool,
+    #[serde(default = "default_true")]
+    pub sd_karras: bool,
+    #[serde(default)]
+    pub sd_hires_fix: bool,
+    #[serde(default)]
+    pub sd_seed: String,
+    #[serde(default = "default_sd_model")]
     pub sd_model: String,
     #[serde(default = "default_sd_width")]
     pub sd_width: i32,
@@ -119,6 +133,8 @@ fn default_sd_height() -> i32 { 512 }
 fn default_sd_steps() -> i32 { 20 }
 fn default_sd_sampler() -> String { "k_euler_a".to_string() }
 fn default_sd_cfg() -> f32 { 7.0 }
+fn default_sd_provider() -> String { "horde".to_string() }
+fn default_sd_model() -> String { "stable_diffusion".to_string() }
 
 impl Default for Preset {
     fn default() -> Self {
@@ -160,13 +176,20 @@ impl Default for Preset {
             sd_horde_api_key: "0000000000".to_string(),
             sd_use_tool: false,
             sd_edit_prompts: false,
-            sd_model: "stable_diffusion".to_string(),
-            sd_width: 512,
-            sd_height: 512,
-            sd_steps: 20,
-            sd_sampler: "k_euler_a".to_string(),
-            sd_cfg_scale: 7.0,
-            prompts: Vec::new(),
+            sd_provider: default_sd_provider(),
+            sd_allow_nsfw: true,
+            sd_sanitize_prompts: true,
+            sd_restore_faces: false,
+            sd_karras: true,
+            sd_hires_fix: false,
+            sd_seed: String::new(),
+            sd_model: default_sd_model(),
+            sd_width: default_sd_width(),
+            sd_height: default_sd_height(),
+            sd_steps: default_sd_steps(),
+            sd_sampler: default_sd_sampler(),
+            sd_cfg_scale: default_sd_cfg(),
+            prompts: vec![],
         }
     }
 }

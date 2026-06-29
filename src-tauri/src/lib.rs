@@ -92,7 +92,7 @@ pub fn run() {
                     let err_msg = format!("CRITICAL: Database initialization failed.\nError: {}\n\nTry clearing app data or reinstalling.", e);
                     log::error!("{}", err_msg);
                     eprintln!("{}", err_msg);
-                    *startup_error.0.lock().unwrap() = Some(err_msg);
+                    *startup_error.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(err_msg);
                 }
             }
 
@@ -173,6 +173,7 @@ pub fn run() {
             // Presets
             commands::list_presets,
             commands::load_preset,
+            commands::get_preset,
             commands::save_preset,
             commands::delete_preset,
             // Connections
@@ -207,6 +208,7 @@ pub fn run() {
             commands::process_macros_debug,
             commands::generate_image_horde,
             commands::generate_image_horde_stateless,
+            commands::get_horde_models,
             generation::confirm_image_prompt,
             generation::cancel_image_prompt,
             generation::generate_reply,
@@ -234,6 +236,7 @@ pub fn run() {
             generation::update_chat_memory,
             generation::save_studio_chats,
             generation::load_studio_chats,
+            generation::generate_text_stateless,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

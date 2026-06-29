@@ -498,7 +498,7 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS regex_scripts (
             id INTEGER PRIMARY KEY, script_name TEXT NOT NULL, regex TEXT NOT NULL,
-            replacement TEXT DEFAULT '', placement TEXT DEFAULT 'both', run_on_markdown BOOLEAN DEFAULT 1
+            replacement TEXT DEFAULT '', placement TEXT DEFAULT 'both', run_on_markdown BOOLEAN DEFAULT 1, disabled BOOLEAN DEFAULT 0
         )", [],
     )?;
 
@@ -515,6 +515,10 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
         [],
     )?;
 
+    if !column_exists(&conn, "regex_scripts", "disabled")? {
+        conn.execute("ALTER TABLE regex_scripts ADD COLUMN disabled BOOLEAN DEFAULT 0", [])?;
+    }
+    
     // --- CORE MIGRATIONS (For Upgrades from v0.7.0) ---
     if !column_exists(&conn, "characters", "uuid")? {
         conn.execute("ALTER TABLE characters ADD COLUMN uuid TEXT", [])?;
@@ -1392,7 +1396,7 @@ pub fn export_chat_jsonl(conn: &Connection, chat_id: i64) -> Result<String, rusq
         "chat_metadata": {}
     });
 
-    let mut output = serde_json::to_string(&header).unwrap();
+    let mut output = serde_json::to_string(&header).unwrap_or_else(|_| "{}".to_string());
     output.push('\n');
 
     // 2. Get Messages
@@ -1408,7 +1412,7 @@ pub fn export_chat_jsonl(conn: &Connection, chat_id: i64) -> Result<String, rusq
             "swipe_id": msg.swipe_id,
             "extra": serde_json::from_str::<serde_json::Value>(&msg.extra).unwrap_or_default()
         });
-        output.push_str(&serde_json::to_string(&entry).unwrap());
+        output.push_str(&serde_json::to_string(&entry).unwrap_or_else(|_| "{}".to_string()));
         output.push('\n');
     }
 
@@ -1731,7 +1735,7 @@ pub fn edit_message(conn: &Connection, id: i64, new_content: &str) -> Result<()>
         s
     };
 
-    let new_swipes_json = serde_json::to_string(&swipes).unwrap();
+    let new_swipes_json = serde_json::to_string(&swipes).unwrap_or_else(|_| "[]".to_string());
 
     conn.execute(
         "UPDATE messages SET content = ?1, swipes = ?2 WHERE id = ?3",
@@ -1797,7 +1801,7 @@ pub fn delete_swipe(conn: &Connection, id: i64) -> Result<()> {
             swipe_id
         };
         let new_content = &swipes[new_index];
-        let new_swipes_json = serde_json::to_string(&swipes).unwrap();
+        let new_swipes_json = serde_json::to_string(&swipes).unwrap_or_else(|_| "[]".to_string());
 
         conn.execute(
             "UPDATE messages SET content = ?1, swipes = ?2, swipe_id = ?3 WHERE id = ?4",
@@ -1866,6 +1870,8 @@ pub struct RegexScript {
     pub replacement: String,
     pub placement: String,
     pub run_on_markdown: bool,
+    #[serde(default)]
+    pub disabled: bool,
 }
 
 pub fn create_regex_script(
@@ -1875,17 +1881,18 @@ pub fn create_regex_script(
     replacement: &str,
     placement: &str,
     run_on_markdown: bool,
+    disabled: bool,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO regex_scripts (script_name, regex, replacement, placement, run_on_markdown) VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![name, regex, replacement, placement, run_on_markdown]
+        "INSERT INTO regex_scripts (script_name, regex, replacement, placement, run_on_markdown, disabled) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![name, regex, replacement, placement, run_on_markdown, disabled]
     )?;
     Ok(conn.last_insert_rowid())
 }
 
 pub fn get_regex_scripts(conn: &Connection) -> Result<Vec<RegexScript>> {
     let mut stmt = conn.prepare(
-        "SELECT id, script_name, regex, replacement, placement, run_on_markdown FROM regex_scripts",
+        "SELECT id, script_name, regex, replacement, placement, run_on_markdown, disabled FROM regex_scripts",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok(RegexScript {
@@ -1895,6 +1902,7 @@ pub fn get_regex_scripts(conn: &Connection) -> Result<Vec<RegexScript>> {
             replacement: row.get(3).unwrap_or_default(),
             placement: row.get(4).unwrap_or("both".to_string()),
             run_on_markdown: row.get(5).unwrap_or(true),
+            disabled: row.get(6).unwrap_or(false),
         })
     })?;
     let mut scripts = Vec::new();
@@ -1906,8 +1914,8 @@ pub fn get_regex_scripts(conn: &Connection) -> Result<Vec<RegexScript>> {
 
 pub fn update_regex_script(conn: &Connection, script: &RegexScript) -> Result<()> {
     conn.execute(
-        "UPDATE regex_scripts SET script_name = ?1, regex = ?2, replacement = ?3, placement = ?4, run_on_markdown = ?5 WHERE id = ?6",
-        params![script.script_name, script.regex, script.replacement, script.placement, script.run_on_markdown, script.id]
+        "UPDATE regex_scripts SET script_name = ?1, regex = ?2, replacement = ?3, placement = ?4, run_on_markdown = ?5, disabled = ?6 WHERE id = ?7",
+        params![script.script_name, script.regex, script.replacement, script.placement, script.run_on_markdown, script.disabled, script.id]
     )?;
     Ok(())
 }

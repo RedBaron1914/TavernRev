@@ -88,7 +88,7 @@ pub fn load_context(
     let profile: api_client::ConnectionProfile = serde_json::from_str(&profile_content).map_err(|e| format!("Invalid profile JSON: {}", e))?;
     let preset: api_client::Preset = serde_json::from_str(&preset_content).map_err(|e| format!("Invalid preset JSON: {}", e))?;
 
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     
     let mut real_char_id = character_id;
     let mut real_char_name = String::new();
@@ -317,7 +317,7 @@ pub async fn prepare_prompt(
 
     // --- 3. Chat Memory (Summarization) as Module ---
     let chat_memory = if ctx.chat_id > 0 {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         conn.query_row("SELECT memory FROM chats WHERE id = ?1", rusqlite::params![ctx.chat_id], |row| row.get::<_, Option<String>>(0)).unwrap_or_default().unwrap_or_default()
     } else { String::new() };
 
@@ -356,7 +356,7 @@ pub async fn prepare_prompt(
 
     // --- 4. Lorebook & Prompt Assembly ---
     let mut lore_entries_db = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         database::get_active_lore_entries(&conn, ctx.real_char_id, ctx.chat_id).unwrap_or_default()
     };
 
@@ -471,7 +471,7 @@ pub async fn prepare_prompt(
     }
 
     if !updated_vars.is_empty() {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         for (k, v) in updated_vars {
             let _ = database::set_chat_variable(&conn, ctx.chat_id, &k, &v);
         }
@@ -496,7 +496,7 @@ pub async fn prepare_prompt(
     let final_messages: Vec<api_client::OpenAIMessage> = messages.iter().map(|m| {
         let content = if ctx.preset.request_images {
             if let Some(images) = &m.images {
-                if images.is_empty() {
+                if images.is_empty() || m.role == "system" {
                     api_client::OpenAIContent::Text(m.content.clone())
                 } else {
                     let mut parts = vec![api_client::OpenAIPart { part_type: "text".to_string(), text: Some(m.content.clone()), image_url: None }];
@@ -635,7 +635,7 @@ pub async fn execute_api_loop(
                             let mut final_prompt = prompt.clone();
                             if ctx.preset.sd_edit_prompts {
                                 let (tx, rx) = tokio::sync::oneshot::channel();
-                                *app_handle.state::<crate::ImageGenPromptState>().0.lock().unwrap() = Some(tx);
+                                *app_handle.state::<crate::ImageGenPromptState>().0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(tx);
                                 let _ = app_handle.emit("prompt-image-generation", prompt.clone());
                                 if let Ok(edited_prompt) = rx.await {
                                     final_prompt = edited_prompt;
@@ -657,7 +657,13 @@ pub async fn execute_api_loop(
                                     ctx.preset.sd_height,
                                     ctx.preset.sd_steps,
                                     ctx.preset.sd_sampler.clone(),
-                                    ctx.preset.sd_cfg_scale
+                                    ctx.preset.sd_cfg_scale,
+                                    ctx.preset.sd_allow_nsfw,
+                                    ctx.preset.sd_sanitize_prompts,
+                                    ctx.preset.sd_restore_faces,
+                                    ctx.preset.sd_karras,
+                                    ctx.preset.sd_hires_fix,
+                                    ctx.preset.sd_seed.clone(),
                                 ).await {
                                     Ok(img_path) => {
                                         result_string = format!(r#"{{"status": "success", "image_path": "{}"}}"#, img_path);
@@ -706,7 +712,7 @@ pub async fn finalize_response(
     db_state: &tauri::State<'_, DbState>,
 ) -> Result<String, String> {
     let regex_scripts = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         database::get_regex_scripts(&conn).unwrap_or_default()
     };
     
@@ -720,7 +726,7 @@ pub async fn finalize_response(
     let new_globals = evaluator.get_globals();
     
     if !new_vars.is_empty() || !new_globals.is_empty() {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         for (k, v) in new_vars {
             let _ = database::set_chat_variable(&conn, ctx.chat_id, &k, &v);
         }
@@ -730,7 +736,7 @@ pub async fn finalize_response(
     }
 
     if !ctx.trimmed_db_ids.is_empty() && ctx.auto_trim_enabled {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         for &id in &ctx.trimmed_db_ids {
             let _ = crate::message_extra::MessageExtra::update(&conn, id, |extra| {
                 if !extra.exclude_from_prompt {

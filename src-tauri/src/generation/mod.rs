@@ -84,7 +84,7 @@ pub async fn generate_reply(
     let (reply, sender_id, sender_name) = reply_result?;
 
     {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         database::save_message_ext(&conn, chat_id, "char", &reply, None, Some(sender_id), Some(&sender_name)).map_err(|e| e.to_string())?;
     }
 
@@ -113,7 +113,7 @@ pub async fn regenerate_reply(
     }
 
     let original_sender_id = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         conn.query_row("SELECT sender_id FROM messages WHERE id = ?1", rusqlite::params![message_id], |row| row.get::<_, Option<i64>>(0)).unwrap_or(None)
     };
 
@@ -126,7 +126,7 @@ pub async fn regenerate_reply(
     let (reply, sender_id, sender_name) = reply_result?;
 
     {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let mut stmt = conn.prepare("SELECT swipes FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
         let swipes_str: String = stmt.query_row(rusqlite::params![message_id], |row| row.get(0)).map_err(|e| e.to_string())?;
         let mut swipes: Vec<String> = serde_json::from_str(&swipes_str).unwrap_or_default();
@@ -147,7 +147,7 @@ pub async fn regenerate_reply(
 
 #[tauri::command]
 pub fn swipe_message(message_id: i64, swipe_index: usize, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut stmt = conn.prepare("SELECT swipes FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
     let swipes_str: String = stmt.query_row(rusqlite::params![message_id], |row| row.get(0)).map_err(|e| e.to_string())?;
     let swipes: Vec<String> = serde_json::from_str(&swipes_str).unwrap_or_default();
@@ -164,7 +164,7 @@ pub fn swipe_message(message_id: i64, swipe_index: usize, db_state: tauri::State
 
 #[tauri::command]
 pub fn sync_message_swipes(id: i64, swipes: Vec<String>, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::update_message_swipes(&conn, id, &swipes).map_err(|e| e.to_string())
 }
 
@@ -192,7 +192,7 @@ pub async fn continue_reply(
     let preset: api_client::Preset = serde_json::from_str(&preset_content).map_err(|e| e.to_string())?;
     
     let original_sender_id = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         conn.query_row(
             "SELECT sender_id FROM messages WHERE id = ?1", 
             rusqlite::params![message_id], 
@@ -215,7 +215,7 @@ pub async fn continue_reply(
     let (reply, sender_id, sender_name) = reply_result?;
 
     {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let mut stmt = conn.prepare("SELECT content, swipes, swipe_id FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
         let (mut content, swipes_str, swipe_id): (String, String, usize) = stmt.query_row(rusqlite::params![message_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))).map_err(|e| e.to_string())?;
 
@@ -253,7 +253,7 @@ pub async fn continue_reply(
 
 #[tauri::command]
 pub fn revert_message_tail(message_id: i64, text_to_strip: String, db_state: tauri::State<DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut stmt = conn.prepare("SELECT content, swipes, swipe_id FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
     let (mut content, swipes_str, swipe_id): (String, String, usize) = stmt.query_row(rusqlite::params![message_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))).map_err(|e| e.to_string())?;
 
@@ -327,7 +327,7 @@ pub async fn summarize_chat(chat_id: i64, profile_name: String, preset_name: Str
     let abort_token = Arc::new(AtomicBool::new(false));
     
     let chat_log = {
-        let conn = db_state.0.lock().unwrap();
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let db_msgs = database::get_messages(&conn, chat_id).map_err(|e| e.to_string())?;
         let start_idx = db_msgs.len().saturating_sub(40);
         let recent_msgs = &db_msgs[start_idx..];
@@ -619,7 +619,7 @@ pub async fn studio_assist(
 
 #[tauri::command]
 pub fn update_chat_memory(chat_id: i64, memory: String, db_state: tauri::State<'_, DbState>) -> Result<(), String> {
-    let conn = db_state.0.lock().unwrap();
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     database::update_chat_memory(&conn, chat_id, &memory).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -702,7 +702,7 @@ pub async fn confirm_image_prompt(
     state: tauri::State<'_, crate::ImageGenPromptState>,
     prompt: String,
 ) -> Result<(), String> {
-    if let Some(tx) = state.0.lock().unwrap().take() {
+    if let Some(tx) = state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).take() {
         let _ = tx.send(prompt);
     }
     Ok(())
@@ -712,6 +712,6 @@ pub async fn confirm_image_prompt(
 pub async fn cancel_image_prompt(
     state: tauri::State<'_, crate::ImageGenPromptState>,
 ) -> Result<(), String> {
-    state.0.lock().unwrap().take();
+    state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).take();
     Ok(())
 }
