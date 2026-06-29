@@ -1,4 +1,4 @@
-﻿use tauri::{AppHandle, Manager, Emitter};
+use tauri::{AppHandle, Manager, Emitter};
 use std::sync::{Arc, atomic::AtomicBool};
 use std::fs;
 use std::collections::HashMap;
@@ -547,7 +547,7 @@ pub async fn execute_api_loop(
 ) -> Result<String, String> {
     let mut response_text = String::new();
     let mut loop_count = 0;
-    let use_tools = ctx.profile.post_processing.ends_with("_tools") || ctx.profile.post_processing == "tools";
+    let use_tools = ctx.profile.post_processing.ends_with("_tools") || ctx.profile.post_processing == "tools" || ctx.preset.sd_use_tool;
     
     let final_response = loop {
         if loop_count > 5 { break response_text; }
@@ -628,6 +628,37 @@ pub async fn execute_api_loop(
                 if tc.function.name == "get_system_time" {
                     result_string = format!("Current Local Time is {}", chrono::Local::now().to_rfc2822());
                     println!("Executed Tool get_system_time: {}", result_string);
+                } else if tc.function.name == "generate_image" {
+                    if let Ok(args) = serde_json::from_str::<serde_json::Value>(&tc.function.arguments) {
+                        let prompt = args.get("prompt").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        if !prompt.is_empty() {
+                            let _ = app_handle.emit("backend-log", format!("[AI] Generating image with tags: {}", prompt));
+                            match crate::image_gen::generate_image_horde(
+                                app_handle.clone(),
+                                ctx.preset.sd_horde_api_key.clone(),
+                                prompt,
+                                ctx.preset.sd_model.clone(),
+                                ctx.preset.sd_width,
+                                ctx.preset.sd_height,
+                                ctx.preset.sd_steps,
+                                ctx.preset.sd_sampler.clone(),
+                                ctx.preset.sd_cfg_scale
+                            ).await {
+                                Ok(img_path) => {
+                                    result_string = format!(r#"{{"status": "success", "image_path": "{}"}}"#, img_path);
+                                    let _ = app_handle.emit("backend-log", format!("[AI] Generated image: {}", img_path));
+                                },
+                                Err(e) => {
+                                    result_string = format!(r#"{{"status": "error", "message": "{}"}}"#, e);
+                                    let _ = app_handle.emit("backend-log", format!("[AI] Image generation failed: {}", e));
+                                }
+                            }
+                        } else {
+                            result_string = r#"{"status": "error", "message": "Missing prompt"}"#.to_string();
+                        }
+                    } else {
+                        result_string = r#"{"status": "error", "message": "Invalid arguments"}"#.to_string();
+                    }
                 } else {
                     result_string = "Error: Tool execution failed or tool not found.".to_string();
                 }

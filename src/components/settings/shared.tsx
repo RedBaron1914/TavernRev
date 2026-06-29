@@ -70,6 +70,14 @@ export type Preset = {
   send_user_avatar: boolean;
   char_avatar_prompt: string;
   user_avatar_prompt: string;
+  sd_horde_api_key: string;
+  sd_use_tool: boolean;
+  sd_model: string;
+  sd_width: number;
+  sd_height: number;
+  sd_steps: number;
+  sd_sampler: string;
+  sd_cfg_scale: number;
 };
 
 export type ApiType =

@@ -138,7 +138,13 @@ export function MessageActions({
   }
 
   return (
-    <div className="absolute -top-3 right-0 md:opacity-0 group-hover:opacity-100 opacity-100 flex gap-1 bg-gray-900/80 rounded-lg p-0.5 border border-white/10 backdrop-blur transition-opacity">
+    <div className={`absolute -top-3 right-0 flex gap-1 bg-gray-900/80 rounded-lg p-0.5 border border-white/10 backdrop-blur transition-opacity ${
+      isMobile
+        ? activeMessageId === message.id
+          ? "opacity-100 z-10"
+          : "opacity-0 pointer-events-none"
+        : "opacity-0 group-hover:opacity-100 z-10"
+    }`}>
       <button
         onClick={() => onBranch(message.id)}
         className="flex items-center gap-1 p-1 text-gray-400 hover:text-white text-[10px]"

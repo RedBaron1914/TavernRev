@@ -1,4 +1,4 @@
-﻿use tauri::{AppHandle, Manager, Emitter};
+use tauri::{AppHandle, Manager, Emitter};
 use std::fs;
 use std::path::PathBuf;
 use crate::database::{self, DbState, Character, Chat, Message, UserPersona};
@@ -2525,4 +2525,43 @@ pub async fn query_chat_memory(chat_id: i64, query_text: String, config: vector_
     vector_memory::query_chat_memory(&*db_state, chat_id, &query_text, &config).await
 }
 
+#[tauri::command]
+pub async fn generate_image_horde(
+    app_handle: AppHandle,
+    api_key: String,
+    prompt: String,
+    model: String,
+    width: i32,
+    height: i32,
+    steps: i32,
+    sampler: String,
+    cfg_scale: f32,
+) -> Result<String, String> {
+    crate::image_gen::generate_image_horde(
+        app_handle, api_key, prompt, model, width, height, steps, sampler, cfg_scale,
+    ).await
+}
 
+#[tauri::command]
+pub async fn generate_image_horde_stateless(
+    app_handle: AppHandle,
+    preset_name: String,
+    prompt: String,
+) -> Result<String, String> {
+    let presets_dir = crate::commands::get_presets_dir(&app_handle);
+    let preset_path = presets_dir.join(&preset_name);
+    let preset_content = std::fs::read_to_string(preset_path).map_err(|e| e.to_string())?;
+    let preset: crate::api_client::Preset = serde_json::from_str(&preset_content).map_err(|e| e.to_string())?;
+
+    crate::image_gen::generate_image_horde(
+        app_handle,
+        preset.sd_horde_api_key,
+        prompt,
+        preset.sd_model,
+        preset.sd_width,
+        preset.sd_height,
+        preset.sd_steps,
+        preset.sd_sampler,
+        preset.sd_cfg_scale,
+    ).await
+}

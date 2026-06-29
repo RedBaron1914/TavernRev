@@ -93,8 +93,30 @@ pub struct Preset {
     pub squash_system_messages: bool,
     #[serde(default)]
     pub studio_assistant_prompt: String,
+    #[serde(default)]
+    pub sd_horde_api_key: String,
+    #[serde(default)]
+    pub sd_use_tool: bool,
+    #[serde(default)]
+    pub sd_model: String,
+    #[serde(default = "default_sd_width")]
+    pub sd_width: i32,
+    #[serde(default = "default_sd_height")]
+    pub sd_height: i32,
+    #[serde(default = "default_sd_steps")]
+    pub sd_steps: i32,
+    #[serde(default = "default_sd_sampler")]
+    pub sd_sampler: String,
+    #[serde(default = "default_sd_cfg")]
+    pub sd_cfg_scale: f32,
     pub prompts: Vec<PromptModule>,
 }
+
+fn default_sd_width() -> i32 { 512 }
+fn default_sd_height() -> i32 { 512 }
+fn default_sd_steps() -> i32 { 20 }
+fn default_sd_sampler() -> String { "k_euler_a".to_string() }
+fn default_sd_cfg() -> f32 { 7.0 }
 
 impl Default for Preset {
     fn default() -> Self {
@@ -133,6 +155,14 @@ impl Default for Preset {
             wi_insertion_strategy: String::new(),
             squash_system_messages: false,
             studio_assistant_prompt: String::new(),
+            sd_horde_api_key: "0000000000".to_string(),
+            sd_use_tool: false,
+            sd_model: "stable_diffusion".to_string(),
+            sd_width: 512,
+            sd_height: 512,
+            sd_steps: 20,
+            sd_sampler: "k_euler_a".to_string(),
+            sd_cfg_scale: 7.0,
             prompts: Vec::new(),
         }
     }
@@ -161,6 +191,23 @@ pub fn get_available_tools() -> Vec<OpenAITool> {
                 parameters: serde_json::json!({
                     "type": "object",
                     "properties": {}
+                }),
+            }
+        },
+        OpenAITool {
+            tool_type: "function".to_string(),
+            function: OpenAIFunctionDef {
+                name: "generate_image".to_string(),
+                description: "Generates an image of the character or current scenario based on the provided prompt tags. Use this when the user explicitly asks for a picture/photo, or when the current narrative context strongly suggests generating a visual representation. The prompt MUST be a comma-separated list of visual tags (e.g. '1girl, red hair, blue eyes, smiling, forest background').".to_string(),
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "A comma-separated list of visual tags describing the image to generate."
+                        }
+                    },
+                    "required": ["prompt"]
                 }),
             }
         }

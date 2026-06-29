@@ -53,6 +53,14 @@ export const DEFAULT_PRESET_VALUES: Preset = {
   send_user_avatar: false,
   char_avatar_prompt: i18next.t('thisIsYourAppearance', 'This is your appearance.'),
   user_avatar_prompt: i18next.t('thisIsUsersAppearance', 'This is {{user}}\'s appearance.'),
+  sd_horde_api_key: "0000000000",
+  sd_use_tool: false,
+  sd_model: "stable_diffusion",
+  sd_width: 512,
+  sd_height: 512,
+  sd_steps: 20,
+  sd_sampler: "k_euler_a",
+  sd_cfg_scale: 7.0,
 };
 
 const ST_DEFAULT_ORDER = [
@@ -86,6 +94,10 @@ const PRESET_NUMERIC_FIELDS = new Set<keyof Preset>([
   "wi_max_recursion",
   "wi_token_budget",
   "wi_context_percent",
+  "sd_width",
+  "sd_height",
+  "sd_steps",
+  "sd_cfg_scale",
 ]);
 
 export const loadUiSettingsFromStorage = () => ({

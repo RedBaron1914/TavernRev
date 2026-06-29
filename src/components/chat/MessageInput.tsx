@@ -61,6 +61,7 @@ interface MessageInputProps {
   chatMemory: string;
   handleImpersonate: () => void;
   handleExportChat: () => void;
+  handleGenerateImage: (mode: string) => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleImageSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   inputValue: string;
@@ -87,6 +88,7 @@ export function MessageInput({
   chatMemory,
   handleImpersonate,
   handleExportChat,
+  handleGenerateImage,
   fileInputRef,
   handleImageSelect,
   inputValue,
@@ -212,6 +214,26 @@ export function MessageInput({
                       className="w-full text-left px-4 py-3 text-sm hover:bg-indigo-600/20 flex gap-3 items-center text-gray-200 transition"
                     >
                       <Image size={16} /> {t('attachImage', 'Attach Image')}
+                    </button>
+                    {/* Image Generation Options */}
+                    <div className="border-t border-white/10 my-1"></div>
+                    <button
+                      onClick={() => { handleGenerateImage("character"); setShowInputMenu(false); }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-600/20 flex gap-3 items-center text-gray-300 transition"
+                    >
+                      <Image size={14} className="opacity-70" /> {t('genCharacter', 'Gen: Character')}
+                    </button>
+                    <button
+                      onClick={() => { handleGenerateImage("scenario"); setShowInputMenu(false); }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-600/20 flex gap-3 items-center text-gray-300 transition"
+                    >
+                      <Image size={14} className="opacity-70" /> {t('genScenario', 'Gen: Scenario')}
+                    </button>
+                    <button
+                      onClick={() => { handleGenerateImage("background"); setShowInputMenu(false); }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-600/20 flex gap-3 items-center text-gray-300 transition"
+                    >
+                      <Image size={14} className="opacity-70" /> {t('genBackground', 'Gen: Background')}
                     </button>
                   </div>
                 </div>

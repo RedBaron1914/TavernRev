@@ -15,6 +15,7 @@ pub mod sync_manager;
 pub mod google_drive_manager;
 pub mod routing;
 pub mod vector_memory;
+pub mod image_gen;
 
 pub struct GenerationState(pub Mutex<Option<Arc<AtomicBool>>>);
 pub struct StartupError(pub Mutex<Option<String>>);
@@ -201,6 +202,8 @@ pub fn run() {
             commands::assemble_prompt_command,
             commands::process_macros_command,
             commands::process_macros_debug,
+            commands::generate_image_horde,
+            commands::generate_image_horde_stateless,
             generation::generate_reply,
             generation::regenerate_reply,
             generation::continue_reply,

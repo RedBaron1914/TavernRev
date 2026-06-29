@@ -10,6 +10,7 @@ import {
   X,
   FilePlus,
   Plus,
+  Image,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -62,7 +63,12 @@ const converter = new showdown.Converter({
           filter: (text: string) => {
               // 1. HR Styling
               text = text.replace(/^---$/gm, '<hr class="my-6 border-white/10" />');
-              // 2. Dialogue Highlighting (Teal-300) - safe vs markdown links and HTML attributes
+              
+              // 2. Custom bold and italic replace
+              text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+              text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<i>$1</i>');
+
+              // 3. Dialogue Highlighting (Teal-300) - safe vs markdown links and HTML attributes
               text = text.replace(/\]\("[^"]+"\)|=\s*"[^"]+"|("([^"]+)")/g, (match, fullDialogue, dialogueInner) => {
                   if (fullDialogue) {
                       return i18next.t('spanClasstextteal300dialogueinnerspan', '<span class="text-teal-300">"{{dialogueInner}}"</span>', { dialogueInner });
@@ -243,6 +249,8 @@ function App() {
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [showQR, setShowQR] = useState(false);
+  const [imageGenPrompt, setImageGenPrompt] = useState<string | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   
   // Auto-Retry Settings
   const [retryEnabled, setRetryEnabled] = useState(localStorage.getItem("retry_enabled") === "true");
@@ -714,6 +722,61 @@ const refreshCharacters = async () => {
           return true;
       }
       return false;
+  };
+
+  const handleGenerateImage = async (mode: string) => {
+    if (activeChatId === null || isGeneratingImage) return;
+    
+    let promptTemplate = "";
+    if (mode === "character") {
+        promptTemplate = "Provide an exhaustive comma-separated list of tags describing the appearance of the character in great detail. Start with 'full body portrait'.";
+    } else if (mode === "scenario") {
+        promptTemplate = "Provide a detailed description of the current scenario in the form of a comma-delimited list of keywords and phrases.";
+    } else if (mode === "background") {
+        promptTemplate = "Provide a detailed description of the character's surroundings in the form of a comma-delimited list of keywords and phrases. The list must include all of the following items in this order: location, time of day, weather, lighting, and any other relevant details. Do not include descriptions of characters and non-visual qualities such as names, personality, movements, scents, mental traits, or anything which could not be seen in a still photograph.";
+    }
+    
+    try {
+        setIsGeneratingImage(true);
+        const recentMessages = messages.slice(-5).map(m => ({
+            role: m.role,
+            content: m.content,
+        }));
+        
+        recentMessages.push({
+            role: "system",
+            content: `Ignore previous instructions. ${promptTemplate} Do not reply as the character, and do not attempt to continue the story. Provide ONLY the comma-separated tags.`
+        });
+
+        const generatedTags = await invoke<string>("generate_text_stateless", {
+            profileName: activeProfileName || "Default",
+            presetName: activePresetFile || "Default",
+            messages: recentMessages,
+        });
+
+        setImageGenPrompt(generatedTags.trim());
+    } catch (e: any) {
+        addToast("Failed to generate image prompt: " + e.toString(), "error");
+    } finally {
+        setIsGeneratingImage(false);
+    }
+  };
+
+  const handleConfirmImageGen = async (finalTags: string) => {
+      setImageGenPrompt(null);
+      try {
+          setIsGeneratingImage(true);
+          const imgPath = await invoke<string>("generate_image_horde_stateless", {
+              presetName: activePresetFile || "Default",
+              prompt: finalTags
+          });
+          addToast(t('imageGeneratedSuccessfully', 'Image generated successfully!'), "success");
+          setAttachedImages(prev => [...prev, imgPath]);
+      } catch(e: any) {
+          addToast("Generation failed: " + e.toString(), "error");
+      } finally {
+          setIsGeneratingImage(false);
+      }
   };
 
   const handleSendMessage = async (manualContent?: string) => {
@@ -2127,7 +2190,7 @@ const refreshCharacters = async () => {
           <div ref={messagesEndRef} />
         </div>
 
-        <MessageInput quickReplies={quickReplies} showQR={showQR} setShowQR={setShowQR} attachedImages={attachedImages} setAttachedImages={setAttachedImages} showInputMenu={showInputMenu} setShowInputMenu={setShowInputMenu} setShowMemoryModal={setShowMemoryModal} chatMemory={chatMemory} handleImpersonate={handleImpersonate} handleExportChat={handleExportChat} fileInputRef={fileInputRef} handleImageSelect={handleImageSelect} inputValue={inputValue} setInputValue={setInputValue} handlePaste={handlePaste} handleSendMessage={handleSendMessage} handleStop={handleStop} isGenerating={isGenerating} isRetrying={isRetrying} activeChatId={activeChatId} activePersonaName={activePersona?.name || "You"} isMobile={isMobile} />
+        <MessageInput quickReplies={quickReplies} showQR={showQR} setShowQR={setShowQR} attachedImages={attachedImages} setAttachedImages={setAttachedImages} showInputMenu={showInputMenu} setShowInputMenu={setShowInputMenu} setShowMemoryModal={setShowMemoryModal} chatMemory={chatMemory} handleImpersonate={handleImpersonate} handleExportChat={handleExportChat} handleGenerateImage={handleGenerateImage} fileInputRef={fileInputRef} handleImageSelect={handleImageSelect} inputValue={inputValue} setInputValue={setInputValue} handlePaste={handlePaste} handleSendMessage={handleSendMessage} handleStop={handleStop} isGenerating={isGenerating} isRetrying={isRetrying} activeChatId={activeChatId} activePersonaName={activePersona?.name || "You"} isMobile={isMobile} />
 
         {/* MODALS */}
         {isEditingGroup && activeGroup && (
@@ -2169,6 +2232,40 @@ const refreshCharacters = async () => {
                   className="px-4 py-2 text-sm text-gray-400 hover:text-white"
                 >
                   {t('cancel', 'Cancel')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Image Generation Prompt Editor Modal */}
+        {imageGenPrompt !== null && (
+          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-lg flex flex-col shadow-2xl">
+              <div className="p-4 border-b border-white/10 shrink-0">
+                <h2 className="text-lg font-bold text-white">{t('editPromptsBeforeGeneration', 'Edit Prompts Before Generation')}</h2>
+                <p className="text-xs text-gray-400 mt-1">{t('reviewTheSdTags', 'Review the tags generated by the LLM. You can edit them before sending to the SD API.')}</p>
+              </div>
+              <div className="p-4">
+                <textarea
+                  value={imageGenPrompt}
+                  onChange={(e) => setImageGenPrompt(e.target.value)}
+                  className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-sm text-white focus:border-indigo-500 outline-none resize-none min-h-[120px]"
+                />
+              </div>
+              <div className="p-4 border-t border-white/10 flex justify-end gap-2">
+                <button
+                  onClick={() => setImageGenPrompt(null)}
+                  className="px-4 py-2 text-sm text-gray-400 hover:text-white"
+                >
+                  {t('cancel', 'Cancel')}
+                </button>
+                <button
+                  onClick={() => handleConfirmImageGen(imageGenPrompt)}
+                  className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition flex items-center gap-2"
+                >
+                  {isGeneratingImage ? <RefreshCw size={14} className="animate-spin" /> : <Image size={14} />}
+                  {t('generate', 'Generate')}
                 </button>
               </div>
             </div>

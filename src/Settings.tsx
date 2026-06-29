@@ -41,6 +41,8 @@ import { WorldInfoTab } from "./components/settings/WorldInfoTab";
 import { SyncTab } from "./components/settings/SyncTab";
 import { AdvancedTab } from "./components/settings/AdvancedTab";
 import { ExtensionsTab } from "./components/settings/ExtensionsTab";
+import { ImageGenerationTab } from "./components/settings/ImageGenerationTab";
+import { Image as ImageIcon } from "lucide-react";
 import { DebugConsole } from "./components/DebugConsole";
 import {
   DEFAULT_PRESET_VALUES,
@@ -638,6 +640,7 @@ const TABS = [
   { id: "qr", labelKey: "quickReplies", label: "Quick Replies", icon: Zap },
   { id: "sync", labelKey: "cloudSync", label: "Cloud Sync", icon: Cloud },
   { id: "advanced", labelKey: "advanced", label: "Advanced", icon: SettingsIcon },
+  { id: "imagegen", labelKey: "imageGeneration", label: "Image Generation", icon: ImageIcon },
   { id: "extensions", labelKey: "pluginsExtensions", label: "Plugins & Extensions", icon: Puzzle },
 ];
 
@@ -1733,6 +1736,21 @@ export default function Settings({
               chatStyle={chatStyle}
               setChatStyle={setChatStyle}
               characterId={characterId}
+            />
+          )}
+
+          {/* --- EXTENSIONS TAB --- */}
+          {activeTab === "extensions" && (
+            <ExtensionsTab
+              addToast={addToast}
+            />
+          )}
+
+          {/* --- IMAGE GENERATION TAB --- */}
+          {activeTab === "imagegen" && (
+            <ImageGenerationTab
+              formData={formData}
+              handleFieldChange={handleFieldChange}
             />
           )}
 
