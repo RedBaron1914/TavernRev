@@ -1792,9 +1792,7 @@ export default function Settings({
             <AdvancedTab addToast={addToast} setShowConsole={setShowConsole} />
           )}
 
-          {activeTab === "extensions" && (
-            <ExtensionsTab addToast={addToast} />
-          )}
+
         </div>
       </main>
       
