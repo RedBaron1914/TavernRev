@@ -142,6 +142,7 @@ type ImportedRegexScript = {
   replaceString?: string;
   placement?: string | number[];
   markdownOnly?: boolean;
+  disabled?: boolean;
 };
 
 const normalizeImportedRegexPlacement = (placement: ImportedRegexScript["placement"]): string => {
@@ -179,12 +180,25 @@ const normalizeImportedRegexScript = (script: ImportedRegexScript, fallbackId: n
     replacement: script.replacement ?? script.replaceString ?? "",
     placement: normalizeImportedRegexPlacement(script.placement),
     run_on_markdown: script.markdownOnly ?? true,
+    disabled: script.disabled ?? false,
   };
 };
 
 const parseImportedRegexScripts = (content: string, startId: number): RegexScript[] => {
   const parsed = JSON.parse(content);
-  const rawScripts = Array.isArray(parsed) ? parsed : [parsed];
+  let rawScripts: any[] = [];
+  
+  if (Array.isArray(parsed)) {
+    rawScripts = parsed;
+  } else if (parsed.regex_scripts && Array.isArray(parsed.regex_scripts)) {
+    rawScripts = parsed.regex_scripts;
+  } else if (parsed.data?.extensions?.regex_scripts && Array.isArray(parsed.data.extensions.regex_scripts)) {
+    rawScripts = parsed.data.extensions.regex_scripts;
+  } else if (parsed.extensions?.regex_scripts && Array.isArray(parsed.extensions.regex_scripts)) {
+    rawScripts = parsed.extensions.regex_scripts;
+  } else {
+    rawScripts = [parsed];
+  }
 
   return rawScripts
     .map((script, index) => normalizeImportedRegexScript(script, startId + index))
@@ -958,6 +972,13 @@ export default function Settings({
       }
   };
 
+  const handleToggleScriptStatus = async (script: RegexScript) => {
+      try {
+          await invoke("update_regex_script", { script: { ...script, disabled: !script.disabled } });
+          await fetchRegexScripts();
+      } catch(e) { addToast("Error: " + e, "error"); }
+  };
+
   const handleCreateQR = async () => {
       try {
           await invoke("create_quick_reply", { label: t('newQr', 'New QR'), content: "/echo Hello", icon: "⚡", isGlobal: true });
@@ -1118,6 +1139,7 @@ export default function Settings({
                         replacement: rs.replaceString || "",
                         placement: placement,
                         run_on_markdown: !!rs.markdownOnly,
+                        disabled: !!rs.disabled,
                     };
                 });
                 try {
@@ -1446,6 +1468,21 @@ export default function Settings({
                                   <option value="ai">{t('aiOutput', 'AI Output')}</option>
                               </select>
                           </div>
+                          <div className="space-y-1">
+                              <label className="text-xs font-bold text-gray-500 uppercase">{t('status', 'Status')}</label>
+                              <div className="flex items-center gap-2 mt-2">
+                                  <input 
+                                      type="checkbox" 
+                                      id="scriptDisabled"
+                                      className="w-4 h-4 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 bg-gray-800"
+                                      checked={!editingScript.disabled}
+                                      onChange={(e) => setEditingScript({...editingScript, disabled: !e.target.checked})}
+                                  />
+                                  <label htmlFor="scriptDisabled" className="text-sm text-gray-300 select-none cursor-pointer">
+                                      {t('scriptEnabled', 'Enabled')}
+                                  </label>
+                              </div>
+                          </div>
                       </div>
                   </div>
                   <div className="p-6 border-t border-white/5 flex justify-end gap-3 shrink-0">
@@ -1729,6 +1766,7 @@ export default function Settings({
               handleCreateScript={handleCreateScript}
               setEditingScript={setEditingScript}
               handleDeleteScript={handleDeleteScript}
+              handleToggleScriptStatus={handleToggleScriptStatus}
             />
           )}
 
@@ -1779,6 +1817,7 @@ export default function Settings({
             <ImageGenerationTab
               formData={formData}
               handleFieldChange={handleFieldChange}
+              addToast={addToast}
             />
           )}
 

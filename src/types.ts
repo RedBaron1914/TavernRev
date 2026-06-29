@@ -30,9 +30,10 @@ export type UserPersona = {
         script_name: string;
         regex: string;
         replacement: string;
-            placement: string;
-            run_on_markdown: boolean;
-        };
+        placement: string;
+        run_on_markdown: boolean;
+        disabled?: boolean;
+    };
         
         export type QuickReply = {
             id: number;

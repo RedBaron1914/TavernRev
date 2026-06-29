@@ -97,6 +97,10 @@ pub async fn process_regex_scripts(content: &str, placement: &str, scripts: &[Re
     let mut final_content = content.to_string();
 
     for script in scripts {
+        if script.disabled {
+            continue;
+        }
+
         // Check placement (user/ai/both)
         let script_placement = script.placement.to_lowercase();
         if script_placement != "both" && script_placement != placement {

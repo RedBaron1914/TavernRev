@@ -73,6 +73,13 @@ export type Preset = {
   sd_horde_api_key: string;
   sd_use_tool: boolean;
   sd_edit_prompts: boolean;
+  sd_provider: string;
+  sd_allow_nsfw: boolean;
+  sd_sanitize_prompts: boolean;
+  sd_restore_faces: boolean;
+  sd_karras: boolean;
+  sd_hires_fix: boolean;
+  sd_seed: string;
   sd_model: string;
   sd_width: number;
   sd_height: number;
@@ -137,6 +144,29 @@ export const CHAT_SOURCES = [
   { value: "claude", labelKey: "claudeAnthropic", label: "Claude (Anthropic)" },
   { value: "deepseek", labelKey: "deepseek", label: "DeepSeek" },
   { value: "grok", labelKey: "grokXai", label: "Grok (xAI)" },
+];
+
+export const SD_PROVIDERS = [
+  { value: "horde", labelKey: "sdHorde", label: "Stable Horde" },
+  { value: "novel", labelKey: "sdNovel", label: "NovelAI Diffusion (Not Implemented)" },
+  { value: "auto", labelKey: "sdAuto", label: "Stable Diffusion WebUI (Not Implemented)" },
+];
+
+export const SD_SAMPLERS = [
+  { value: "k_euler_a", label: "Euler a" },
+  { value: "k_euler", label: "Euler" },
+  { value: "k_lms", label: "LMS" },
+  { value: "k_heun", label: "Heun" },
+  { value: "k_dpm_2", label: "DPM2" },
+  { value: "k_dpm_2_a", label: "DPM2 a" },
+  { value: "k_dpmpp_2s_a", label: "DPM++ 2S a" },
+  { value: "k_dpmpp_2m", label: "DPM++ 2M" },
+  { value: "k_dpmpp_sde", label: "DPM++ SDE" },
+  { value: "k_dpm_fast", label: "DPM fast" },
+  { value: "k_dpm_adaptive", label: "DPM adaptive" },
+  { value: "lms", label: "LMS (Original)" },
+  { value: "ddim", label: "DDIM" },
+  { value: "dpmsolver", label: "DPM Solver" },
 ];
 
 export const POST_PROCESSING_OPTIONS = [
@@ -212,13 +242,13 @@ export const Slider = ({
 
 export const Toggle = ({ label, field, value, onChange, helpText }: any) => (
   <div className="flex justify-between items-center p-3 bg-gray-900/40 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-    <div className="flex flex-col">
-      <label className="text-sm text-gray-300 font-medium">{label}</label>
-      {helpText && <p className="text-[10px] text-gray-500">{helpText}</p>}
+    <div className="flex flex-col flex-1 pr-4">
+      <label className="text-sm text-gray-300 font-medium leading-snug">{label}</label>
+      {helpText && <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">{helpText}</p>}
     </div>
     <button
       onClick={() => onChange(field, !value)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${value ? "bg-indigo-600" : "bg-gray-700"}`}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${value ? "bg-indigo-600" : "bg-gray-700"}`}
     >
       <span
         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? "translate-x-6" : "translate-x-1"}`}

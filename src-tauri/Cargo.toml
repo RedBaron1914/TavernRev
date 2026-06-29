@@ -49,6 +49,7 @@ android_logger = "0.13"
 
 [workspace]
 resolver = "2"
+members = ["scratch_test"]
 
 [profile.release]
 panic = "abort"

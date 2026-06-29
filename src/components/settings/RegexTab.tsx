@@ -1,6 +1,6 @@
-import { Download, Save, Plus, Trash2 } from "lucide-react";
+import { Download, Save, Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import { RegexScript } from "../../types";
-import { useTranslation, Trans } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 
 interface RegexTabProps {
   regexScripts: RegexScript[];
@@ -9,6 +9,7 @@ interface RegexTabProps {
   handleCreateScript: () => void;
   setEditingScript: (script: RegexScript | null) => void;
   handleDeleteScript: (id: number) => void;
+  handleToggleScriptStatus: (script: RegexScript) => void;
 }
 
 export function RegexTab({
@@ -18,6 +19,7 @@ export function RegexTab({
   handleCreateScript,
   setEditingScript,
   handleDeleteScript,
+  handleToggleScriptStatus,
 }: RegexTabProps) {
   const { t } = useTranslation()
   return (
@@ -31,14 +33,16 @@ export function RegexTab({
         </div>
         <div className="flex gap-2">
           <label className="bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition cursor-pointer">
-            <Download size={16} /><Trans i18nKey="importRegexInputTypefileAcceptjsonMultipleOnchangehandleimportregexClassnamehidden">Import Regex
+            <Download size={16} />
+            {t('importRegex', 'Import Regex')}
             <input
               type="file"
               accept=".json"
               multiple
               onChange={handleImportRegex}
               className="hidden"
-            /></Trans></label>
+            />
+          </label>
           <button
             onClick={handleExportRegex}
             className="bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"
@@ -58,7 +62,7 @@ export function RegexTab({
         {regexScripts.map((script) => (
           <div
             key={script.id}
-            className="bg-gray-900 border border-white/5 rounded-xl p-4 flex items-center justify-between group hover:border-white/10 transition cursor-pointer"
+            className={`bg-gray-900 border border-white/5 rounded-xl p-4 flex items-center justify-between group hover:border-white/10 transition cursor-pointer ${script.disabled ? 'opacity-50 grayscale' : ''}`}
             onClick={() => setEditingScript(script)}
           >
             <div className="flex-1 min-w-0">
@@ -83,6 +87,16 @@ export function RegexTab({
               </code>
             </div>
             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleScriptStatus(script);
+                }}
+                className="p-2 text-gray-500 hover:text-indigo-400 transition bg-gray-800 rounded-lg"
+                title={script.disabled ? "Enable script" : "Disable script"}
+              >
+                {script.disabled ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
