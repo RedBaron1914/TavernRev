@@ -80,20 +80,11 @@ export function BookList({
                   <PinOff size={14} />
                 </button>
               )}
-              {!linkType && (
-                <>
-                  <button onClick={() => onPin(book.id, book.name)}
-                    className="p-1.5 text-gray-600 hover:text-indigo-400 rounded transition" title={t('linkToCharacter', 'Link to character')}>
-                    <Pin size={14} />
-                  </button>
-                  {book.excluded_from_global && (
-                    <button onClick={() => onReturnToGlobal(book.id)}
-                      className="p-1.5 text-amber-400 hover:text-emerald-400 rounded transition" title={t('returnToGlobalPool', 'Return to global pool')}>
-                      <RotateCcw size={14} />
-                    </button>
-                  )}
-                </>
-              )}
+              
+              <button onClick={() => onPin(book.id, book.name)}
+                className="p-1.5 text-gray-600 hover:text-indigo-400 rounded transition" title={t('linkToCharacter', 'Link lorebook')}>
+                <Pin size={14} />
+              </button>
               {(linkType === "card" || linkType === "chat") && book.excluded_from_global && (
                 <button onClick={() => onReturnToGlobal(book.id)}
                   className="p-1.5 text-amber-400 hover:text-emerald-400 rounded transition" title={t('returnToGlobalPool', 'Return to global pool')}>

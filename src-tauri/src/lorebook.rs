@@ -35,7 +35,7 @@ pub struct LorebookLink {
 
 pub fn create_lorebook(conn: &Connection, name: &str) -> Result<i64> {
     conn.execute(
-        "INSERT INTO lorebooks (name, description, is_global) VALUES (?1, '', 0)",
+        "INSERT INTO lorebooks (name, description, is_global) VALUES (?1, '', 1)",
         params![name],
     )?;
     Ok(conn.last_insert_rowid())

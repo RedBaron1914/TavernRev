@@ -146,6 +146,7 @@ pub fn import_character_card(app_handle: AppHandle, data: Vec<u8>, file_name: St
                             
                             let _ = database::create_lore_entry(&conn, book_id, &keys, &content, enabled, constant, priority, probability, &position, depth);
                         }
+                        let _ = database::set_lorebook_excluded_from_global(&conn, book_id, true);
                         let _ = database::link_character_lorebook(&conn, char_id, book_id);
                      }
                 }

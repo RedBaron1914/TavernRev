@@ -473,7 +473,7 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS lorebooks (
-            id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT, is_global BOOLEAN DEFAULT 0
+            id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT, is_global BOOLEAN DEFAULT 1
         )", [],
     )?;
 
@@ -756,7 +756,12 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
         [],
     );
     let _ = conn.execute(
-        "ALTER TABLE lorebooks ADD COLUMN is_global BOOLEAN DEFAULT 0",
+        "ALTER TABLE lorebooks ADD COLUMN is_global BOOLEAN DEFAULT 1",
+        [],
+    );
+    // Fix existing books that were incorrectly created with is_global = 0
+    let _ = conn.execute(
+        "UPDATE lorebooks SET is_global = 1 WHERE is_global = 0",
         [],
     );
     let _ = conn.execute(
