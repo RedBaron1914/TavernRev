@@ -95,6 +95,24 @@ pub struct Preset {
     pub studio_assistant_prompt: String,
     #[serde(default)]
     pub sd_horde_api_key: String,
+    #[serde(default = "default_sd_auto_url")]
+    pub sd_auto_url: String,
+    #[serde(default)]
+    pub sd_auto_auth: String,
+    #[serde(default = "default_sd_auto_vae")]
+    pub sd_auto_vae: String,
+    #[serde(default = "default_sd_auto_scheduler")]
+    pub sd_auto_scheduler: String,
+    #[serde(default = "default_sd_auto_upscaler")]
+    pub sd_auto_upscaler: String,
+    #[serde(default)]
+    pub sd_auto_hires_steps: i32,
+    #[serde(default = "default_sd_auto_clip_skip")]
+    pub sd_auto_clip_skip: i32,
+    #[serde(default = "default_sd_auto_denoising")]
+    pub sd_auto_denoising: f32,
+    #[serde(default = "default_sd_auto_upscale_by")]
+    pub sd_auto_upscale_by: f32,
     #[serde(default)]
     pub sd_use_tool: bool,
     #[serde(default)]
@@ -135,6 +153,13 @@ fn default_sd_sampler() -> String { "k_euler_a".to_string() }
 fn default_sd_cfg() -> f32 { 7.0 }
 fn default_sd_provider() -> String { "horde".to_string() }
 fn default_sd_model() -> String { "stable_diffusion".to_string() }
+fn default_sd_auto_url() -> String { "http://127.0.0.1:7860".to_string() }
+fn default_sd_auto_vae() -> String { "Automatic".to_string() }
+fn default_sd_auto_scheduler() -> String { "Automatic".to_string() }
+fn default_sd_auto_upscaler() -> String { "Latent".to_string() }
+fn default_sd_auto_clip_skip() -> i32 { 1 }
+fn default_sd_auto_denoising() -> f32 { 0.7 }
+fn default_sd_auto_upscale_by() -> f32 { 2.0 }
 
 impl Default for Preset {
     fn default() -> Self {
@@ -174,6 +199,15 @@ impl Default for Preset {
             squash_system_messages: false,
             studio_assistant_prompt: String::new(),
             sd_horde_api_key: "0000000000".to_string(),
+            sd_auto_url: "http://127.0.0.1:7860".to_string(),
+            sd_auto_auth: String::new(),
+            sd_auto_vae: "Automatic".to_string(),
+            sd_auto_scheduler: "Automatic".to_string(),
+            sd_auto_upscaler: "Latent".to_string(),
+            sd_auto_hires_steps: 0,
+            sd_auto_clip_skip: 1,
+            sd_auto_denoising: 0.7,
+            sd_auto_upscale_by: 2.0,
             sd_use_tool: false,
             sd_edit_prompts: false,
             sd_provider: default_sd_provider(),

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Puzzle, Upload, Trash2, RefreshCw } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { useTranslation, Trans } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 
 interface ExtensionsTabProps {
   addToast: (msg: string, type?: "success" | "error" | "info") => void;

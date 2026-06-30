@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { logger, LogEntry, LogCategory } from "../services/Logger";
 import { Copy, Trash2, X, Terminal, Brain, ShieldAlert, Database, RefreshCw } from "lucide-react";
-import { useTranslation, Trans } from 'react-i18next'
+import { useTranslation } from 'react-i18next';
 
 export const DebugConsole = ({
   onClose,

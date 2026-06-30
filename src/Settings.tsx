@@ -617,7 +617,7 @@ Damage: {{setvar::hp::{{sub::{{hp}}::15}}}}New HP: {{hp}}`);
   
   // --- MAIN SETTINGS COMPONENT ---
 import { RagSettingsTab } from "./components/RagSettingsTab";
-import { useTranslation, Trans } from 'react-i18next'
+import { useTranslation } from 'react-i18next';
 
 
 type SettingsProps = {
@@ -1828,7 +1828,7 @@ export default function Settings({
               chatId={chatId}
               characterId={characterId}
               addToast={addToast}
-              activePresetFile={activePresetFile}
+              activePresetFile={activePresetFile || undefined}
             />
           )}
 

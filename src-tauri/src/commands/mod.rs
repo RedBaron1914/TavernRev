@@ -2555,12 +2555,12 @@ pub async fn generate_image_horde(
 }
 
 #[tauri::command]
-pub async fn generate_image_horde_stateless(
+pub async fn generate_image_stateless(
     app_handle: AppHandle,
     preset_name: String,
     prompt: String,
 ) -> Result<String, String> {
-    println!("DEBUG: generate_image_horde_stateless called! preset={}, prompt={}", preset_name, prompt);
+    println!("DEBUG: generate_image_stateless called! preset={}, prompt={}", preset_name, prompt);
     let presets_dir = crate::commands::get_presets_dir(&app_handle);
     let preset_path = presets_dir.join(&preset_name);
     let preset_content = std::fs::read_to_string(&preset_path)
@@ -2568,23 +2568,44 @@ pub async fn generate_image_horde_stateless(
     let preset: crate::api_client::Preset = serde_json::from_str(&preset_content)
         .map_err(|e| format!("Preset JSON parse error: {}. Content starts with: {}", e, &preset_content.chars().take(50).collect::<String>()))?;
 
-    crate::image_gen::generate_image_horde(
-        app_handle,
-        preset.sd_horde_api_key,
-        prompt,
-        preset.sd_model,
-        preset.sd_width,
-        preset.sd_height,
-        preset.sd_steps,
-        preset.sd_sampler,
-        preset.sd_cfg_scale,
-        preset.sd_allow_nsfw,
-        preset.sd_sanitize_prompts,
-        preset.sd_restore_faces,
-        preset.sd_karras,
-        preset.sd_hires_fix,
-        preset.sd_seed,
-    ).await
+    if preset.sd_provider == "auto" {
+        crate::image_gen::generate_image_auto(
+            app_handle,
+            preset.sd_auto_url,
+            preset.sd_auto_auth,
+            prompt,
+            preset.sd_width,
+            preset.sd_height,
+            preset.sd_steps,
+            preset.sd_sampler,
+            preset.sd_cfg_scale,
+            preset.sd_auto_scheduler,
+            preset.sd_auto_vae,
+            preset.sd_auto_upscaler,
+            preset.sd_auto_hires_steps,
+            preset.sd_auto_clip_skip,
+            preset.sd_auto_denoising,
+            preset.sd_auto_upscale_by,
+        ).await
+    } else {
+        crate::image_gen::generate_image_horde(
+            app_handle,
+            preset.sd_horde_api_key,
+            prompt,
+            preset.sd_model,
+            preset.sd_width,
+            preset.sd_height,
+            preset.sd_steps,
+            preset.sd_sampler,
+            preset.sd_cfg_scale,
+            preset.sd_allow_nsfw,
+            preset.sd_sanitize_prompts,
+            preset.sd_restore_faces,
+            preset.sd_karras,
+            preset.sd_hires_fix,
+            preset.sd_seed,
+        ).await
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -2612,4 +2633,118 @@ pub async fn get_horde_models() -> Result<Vec<HordeModelInfo>, String> {
     models.sort_by(|a, b| a.name.cmp(&b.name));
     
     Ok(models)
+}
+
+// --- A1111 Fetch Endpoints ---
+
+async fn a1111_get(url: &str, auth: &str) -> Result<serde_json::Value, String> {
+    let client = reqwest::Client::new();
+    let mut request = client.get(url);
+    if !auth.is_empty() {
+        let parts: Vec<&str> = auth.splitn(2, ':').collect();
+        if parts.len() == 2 {
+            request = request.basic_auth(parts[0], Some(parts[1]));
+        }
+    }
+    let res = request.send().await.map_err(|e| format!("Request failed: {}", e))?;
+    if !res.status().is_success() {
+        let err_text = res.text().await.unwrap_or_default();
+        return Err(format!("A1111 API Error: {}", err_text));
+    }
+    res.json().await.map_err(|e| format!("JSON Parse Error: {}", e))
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct A1111ModelInfo {
+    pub title: String,
+    pub model_name: String,
+}
+
+#[tauri::command]
+pub async fn get_a1111_models(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> {
+    let endpoint = format!("{}/sdapi/v1/sd-models", url.trim_end_matches('/'));
+    let val = a1111_get(&endpoint, &auth).await?;
+    let models: Vec<A1111ModelInfo> = serde_json::from_value(val).map_err(|e| e.to_string())?;
+    Ok(models)
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct A1111SamplerInfo {
+    pub name: String,
+}
+
+#[tauri::command]
+pub async fn get_a1111_samplers(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> { // Reusing struct layout
+    let endpoint = format!("{}/sdapi/v1/samplers", url.trim_end_matches('/'));
+    let val = a1111_get(&endpoint, &auth).await?;
+    let mut samplers: Vec<A1111ModelInfo> = Vec::new();
+    if let Some(arr) = val.as_array() {
+        for s in arr {
+            if let Some(name) = s.get("name").and_then(|n| n.as_str()) {
+                samplers.push(A1111ModelInfo { title: name.to_string(), model_name: name.to_string() });
+            }
+        }
+    }
+    Ok(samplers)
+}
+
+#[tauri::command]
+pub async fn get_a1111_vaes(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> {
+    let endpoint = format!("{}/sdapi/v1/sd-vae", url.trim_end_matches('/'));
+    let val = a1111_get(&endpoint, &auth).await?;
+    let mut vaes: Vec<A1111ModelInfo> = vec![A1111ModelInfo { title: "Automatic".to_string(), model_name: "Automatic".to_string() }, A1111ModelInfo { title: "None".to_string(), model_name: "None".to_string() }];
+    if let Some(arr) = val.as_array() {
+        for v in arr {
+            if let Some(name) = v.get("model_name").and_then(|n| n.as_str()) {
+                vaes.push(A1111ModelInfo { title: name.to_string(), model_name: name.to_string() });
+            }
+        }
+    }
+    Ok(vaes)
+}
+
+#[tauri::command]
+pub async fn get_a1111_upscalers(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> {
+    let endpoint = format!("{}/sdapi/v1/upscalers", url.trim_end_matches('/'));
+    let val = a1111_get(&endpoint, &auth).await?;
+    let mut upscalers: Vec<A1111ModelInfo> = Vec::new();
+    if let Some(arr) = val.as_array() {
+        for u in arr {
+            if let Some(name) = u.get("name").and_then(|n| n.as_str()) {
+                upscalers.push(A1111ModelInfo { title: name.to_string(), model_name: name.to_string() });
+            }
+        }
+    }
+    Ok(upscalers)
+}
+
+#[tauri::command]
+pub async fn get_a1111_schedulers(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> {
+    let endpoint = format!("{}/sdapi/v1/schedulers", url.trim_end_matches('/'));
+    let mut schedulers: Vec<A1111ModelInfo> = vec![
+        A1111ModelInfo { title: "Automatic".to_string(), model_name: "Automatic".to_string() },
+        A1111ModelInfo { title: "Uniform".to_string(), model_name: "Uniform".to_string() },
+        A1111ModelInfo { title: "Karras".to_string(), model_name: "Karras".to_string() },
+        A1111ModelInfo { title: "Exponential".to_string(), model_name: "Exponential".to_string() },
+        A1111ModelInfo { title: "Polyexponential".to_string(), model_name: "Polyexponential".to_string() },
+        A1111ModelInfo { title: "SGM Uniform".to_string(), model_name: "SGM Uniform".to_string() },
+        A1111ModelInfo { title: "KL Optimal".to_string(), model_name: "KL Optimal".to_string() },
+        A1111ModelInfo { title: "Align Your Steps".to_string(), model_name: "Align Your Steps".to_string() },
+        A1111ModelInfo { title: "Simple".to_string(), model_name: "Simple".to_string() },
+        A1111ModelInfo { title: "Normal".to_string(), model_name: "Normal".to_string() },
+    ];
+    
+    // Attempt to fetch if endpoint exists, otherwise fallback to static list
+    if let Ok(val) = a1111_get(&endpoint, &auth).await {
+        if let Some(arr) = val.as_array() {
+            schedulers.clear();
+            for s in arr {
+                if let Some(name) = s.get("name").and_then(|n| n.as_str()) {
+                    schedulers.push(A1111ModelInfo { title: name.to_string(), model_name: name.to_string() });
+                }
+            }
+        }
+    }
+    
+    Ok(schedulers)
 }

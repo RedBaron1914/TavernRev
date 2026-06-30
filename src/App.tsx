@@ -778,7 +778,7 @@ const refreshCharacters = async () => {
       }
       try {
           setIsGeneratingImage(true);
-          const imgPath = await invoke<string>("generate_image_horde_stateless", {
+          const imgPath = await invoke<string>("generate_image_stateless", {
               presetName: activePresetFile || "Default",
               prompt: finalTags
           });

@@ -18,6 +18,10 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
   const { t } = useTranslation('common');
   const [fetchingModels, setFetchingModels] = useState(false);
   const [availableModels, setAvailableModels] = useState<{value: string, label: string}[]>([{ value: "stable_diffusion", label: "stable_diffusion" }]);
+  const [a1111Samplers, setA1111Samplers] = useState<{value: string, label: string}[]>([]);
+  const [a1111Vaes, setA1111Vaes] = useState<{value: string, label: string}[]>([]);
+  const [a1111Upscalers, setA1111Upscalers] = useState<{value: string, label: string}[]>([]);
+  const [a1111Schedulers, setA1111Schedulers] = useState<{value: string, label: string}[]>([]);
 
   type HordeModelInfo = {
     name: string;
@@ -42,6 +46,43 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
       }
     } catch (e: any) {
       addToast(`Failed to fetch models: ${e}`, "error");
+    } finally {
+      setFetchingModels(false);
+    }
+  };
+
+  type A1111ModelInfo = {
+    title: string;
+    model_name: string;
+  };
+
+  const handleFetchA1111Data = async () => {
+    if (!formData.sd_auto_url) {
+      addToast("Please enter A1111 URL first", "error");
+      return;
+    }
+    try {
+      setFetchingModels(true);
+      const url = formData.sd_auto_url;
+      const auth = formData.sd_auto_auth || "";
+      
+      const [models, samplers, vaes, upscalers, schedulers] = await Promise.all([
+        invoke<A1111ModelInfo[]>("get_a1111_models", { url, auth }),
+        invoke<A1111ModelInfo[]>("get_a1111_samplers", { url, auth }),
+        invoke<A1111ModelInfo[]>("get_a1111_vaes", { url, auth }),
+        invoke<A1111ModelInfo[]>("get_a1111_upscalers", { url, auth }),
+        invoke<A1111ModelInfo[]>("get_a1111_schedulers", { url, auth })
+      ]);
+
+      if (models.length) setAvailableModels(models.map(m => ({ value: m.title, label: m.model_name })));
+      if (samplers.length) setA1111Samplers(samplers.map(m => ({ value: m.title, label: m.model_name })));
+      if (vaes.length) setA1111Vaes(vaes.map(m => ({ value: m.title, label: m.model_name })));
+      if (upscalers.length) setA1111Upscalers(upscalers.map(m => ({ value: m.title, label: m.model_name })));
+      if (schedulers.length) setA1111Schedulers(schedulers.map(m => ({ value: m.title, label: m.model_name })));
+
+      addToast("Fetched A1111 data successfully", "success");
+    } catch (e: any) {
+      addToast(`Failed to fetch A1111 data: ${e}`, "error");
     } finally {
       setFetchingModels(false);
     }
@@ -97,6 +138,40 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
                 type="password"
               />
             )}
+
+            {formData.sd_provider === "auto" && (
+              <div className="space-y-2">
+                <InputField
+                  label={t('a1111Url', 'A1111 WebUI URL')}
+                  field="sd_auto_url"
+                  value={formData.sd_auto_url}
+                  onChange={(v: string) => handleFieldChange("sd_auto_url", v)}
+                  placeholder="http://127.0.0.1:7860"
+                  type="text"
+                />
+                <InputField
+                  label={t('a1111Auth', 'A1111 Basic Auth (Optional)')}
+                  field="sd_auto_auth"
+                  value={formData.sd_auto_auth}
+                  onChange={(v: string) => handleFieldChange("sd_auto_auth", v)}
+                  placeholder="username:password"
+                  type="password"
+                />
+                <div className="flex justify-between items-center">
+                  <p className="text-[11px] text-gray-400">
+                    {t('a1111ApiHint', 'Ensure you start your A1111 WebUI with the --api commandline argument.')}
+                  </p>
+                  <button
+                    onClick={handleFetchA1111Data}
+                    disabled={fetchingModels}
+                    className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 rounded text-xs transition flex items-center gap-1.5"
+                  >
+                    <RefreshCw size={12} className={fetchingModels ? "animate-spin" : ""} />
+                    {t('refreshData', 'Refresh Data')}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-white/5 pt-4">
@@ -110,12 +185,11 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
                     options={availableModels.length > 1 ? availableModels : [{ value: formData.sd_model, label: formData.sd_model || "stable_diffusion" }]}
                   />
                 ) : (
-                  <InputField
+                  <SelectField
                     label={t('model', 'Model')}
-                    field="sd_model"
                     value={formData.sd_model}
                     onChange={(v: string) => handleFieldChange("sd_model", v)}
-                    placeholder="stable_diffusion"
+                    options={availableModels.length > 1 ? availableModels : [{ value: formData.sd_model, label: formData.sd_model || "Select a model" }]}
                   />
                 )}
               </div>
@@ -134,12 +208,21 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pt-4 border-t border-white/5">
-            <SelectField
-              label={t('sampler', 'Sampler')}
-              value={formData.sd_sampler}
-              onChange={(v: string) => handleFieldChange("sd_sampler", v)}
-              options={SD_SAMPLERS}
-            />
+            {formData.sd_provider === "auto" ? (
+              <SelectField
+                label={t('sampler', 'Sampler')}
+                value={formData.sd_sampler}
+                onChange={(v: string) => handleFieldChange("sd_sampler", v)}
+                options={a1111Samplers.length > 0 ? a1111Samplers : [{ value: formData.sd_sampler || "Euler a", label: formData.sd_sampler || "Euler a" }]}
+              />
+            ) : (
+              <SelectField
+                label={t('sampler', 'Sampler')}
+                value={formData.sd_sampler}
+                onChange={(v: string) => handleFieldChange("sd_sampler", v)}
+                options={SD_SAMPLERS}
+              />
+            )}
             <InputField
               label={t('seed', 'Seed (Optional)')}
               field="sd_seed"
@@ -220,6 +303,69 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
               onChange={handleFieldChange}
             />
           </div>
+
+          {formData.sd_provider === "auto" && (
+            <div className="pt-4 border-t border-white/5 space-y-6">
+              <h4 className="text-sm font-semibold text-white/80">{t('a1111AdvancedSettings', 'Advanced A1111 Settings')}</h4>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <SelectField
+                  label={t('vae', 'VAE')}
+                  value={formData.sd_auto_vae}
+                  onChange={(v: string) => handleFieldChange("sd_auto_vae", v)}
+                  options={a1111Vaes.length > 0 ? a1111Vaes : [{ value: formData.sd_auto_vae || "Automatic", label: formData.sd_auto_vae || "Automatic" }]}
+                />
+                <SelectField
+                  label={t('scheduler', 'Scheduler')}
+                  value={formData.sd_auto_scheduler}
+                  onChange={(v: string) => handleFieldChange("sd_auto_scheduler", v)}
+                  options={a1111Schedulers.length > 0 ? a1111Schedulers : [{ value: formData.sd_auto_scheduler || "Automatic", label: formData.sd_auto_scheduler || "Automatic" }]}
+                />
+                <SelectField
+                  label={t('upscaler', 'Upscaler')}
+                  value={formData.sd_auto_upscaler}
+                  onChange={(v: string) => handleFieldChange("sd_auto_upscaler", v)}
+                  options={a1111Upscalers.length > 0 ? a1111Upscalers : [{ value: formData.sd_auto_upscaler || "Latent", label: formData.sd_auto_upscaler || "Latent" }]}
+                />
+                <InputField
+                  label={t('hiresSteps', 'Hires Steps (0 = same as base)')}
+                  field="sd_auto_hires_steps"
+                  value={formData.sd_auto_hires_steps?.toString() || "0"}
+                  onChange={(v: string) => handleFieldChange("sd_auto_hires_steps", parseInt(v) || 0)}
+                  placeholder="0"
+                  type="number"
+                />
+              </div>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <Slider
+                  label={t('clipSkip', 'Clip Skip')}
+                  field="sd_auto_clip_skip"
+                  value={formData.sd_auto_clip_skip || 1}
+                  min={1}
+                  max={12}
+                  step={1}
+                  onChange={handleFieldChange}
+                />
+                <Slider
+                  label={t('denoisingStrength', 'Denoising Strength')}
+                  field="sd_auto_denoising"
+                  value={formData.sd_auto_denoising || 0.7}
+                  min={0.0}
+                  max={1.0}
+                  step={0.01}
+                  onChange={handleFieldChange}
+                />
+                <Slider
+                  label={t('upscaleBy', 'Upscale By (Hires Fix)')}
+                  field="sd_auto_upscale_by"
+                  value={formData.sd_auto_upscale_by || 2.0}
+                  min={1.0}
+                  max={4.0}
+                  step={0.05}
+                  onChange={handleFieldChange}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

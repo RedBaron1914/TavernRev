@@ -236,3 +236,124 @@ pub async fn generate_image_horde(
 
     Err("No image returned from Horde".to_string())
 }
+
+#[derive(Serialize)]
+pub struct AutoGenerateRequest {
+    pub prompt: String,
+    pub negative_prompt: String,
+    pub seed: i64,
+    pub steps: i32,
+    pub cfg_scale: f32,
+    pub width: i32,
+    pub height: i32,
+    pub sampler_name: String,
+    pub scheduler: String,
+    pub enable_hr: bool,
+    pub hr_scale: f32,
+    pub hr_upscaler: String,
+    pub hr_second_pass_steps: i32,
+    pub denoising_strength: f32,
+    pub override_settings: serde_json::Value,
+    pub override_settings_restore_afterwards: bool,
+}
+
+#[derive(Deserialize)]
+pub struct AutoGenerateResponse {
+    pub images: Option<Vec<String>>,
+}
+
+pub async fn generate_image_auto(
+    app_handle: tauri::AppHandle,
+    api_url: String,
+    auth: String,
+    prompt: String,
+    width: i32,
+    height: i32,
+    steps: i32,
+    sampler: String,
+    cfg_scale: f32,
+    scheduler: String,
+    vae: String,
+    upscaler: String,
+    hires_steps: i32,
+    clip_skip: i32,
+    denoising: f32,
+    upscale_by: f32,
+) -> Result<String, String> {
+    let client = Client::new();
+    
+    // Process negative prompt
+    let mut actual_prompt = prompt.clone();
+    let mut negative_prompt = String::new();
+    if let Some(idx) = prompt.find("###") {
+        actual_prompt = prompt[..idx].trim().to_string();
+        negative_prompt = prompt[idx + 3..].trim().to_string();
+    }
+
+    let req = AutoGenerateRequest {
+        prompt: actual_prompt,
+        negative_prompt,
+        seed: -1,
+        steps,
+        cfg_scale,
+        width,
+        height,
+        sampler_name: sampler,
+        scheduler,
+        enable_hr: upscale_by > 1.0,
+        hr_scale: upscale_by,
+        hr_upscaler: upscaler,
+        hr_second_pass_steps: hires_steps,
+        denoising_strength: denoising,
+        override_settings: serde_json::json!({
+            "sd_vae": vae,
+            "CLIP_stop_at_last_layers": clip_skip
+        }),
+        override_settings_restore_afterwards: true,
+    };
+
+    let url = format!("{}/sdapi/v1/txt2img", api_url.trim_end_matches('/'));
+    
+    let mut request_builder = client.post(&url).json(&req);
+    if !auth.is_empty() {
+        let parts: Vec<&str> = auth.splitn(2, ':').collect();
+        if parts.len() == 2 {
+            request_builder = request_builder.basic_auth(parts[0], Some(parts[1]));
+        }
+    }
+    
+    let res = request_builder
+        .send()
+        .await
+        .map_err(|e| format!("A1111 Request Failed: {}", e))?;
+
+    if !res.status().is_success() {
+        let err_text = res.text().await.unwrap_or_default();
+        return Err(format!("A1111 API Error: {}", err_text));
+    }
+
+    let gen_res: AutoGenerateResponse = res.json().await.map_err(|e| format!("A1111 json parse error: {}", e))?;
+    
+    if let Some(images) = gen_res.images {
+        if let Some(first_img_b64) = images.first() {
+            let decoded = general_purpose::STANDARD.decode(first_img_b64).map_err(|e| e.to_string())?;
+            
+            let filename = format!("img_{}.png", Uuid::new_v4());
+            
+            let app_dir = app_handle.path().app_local_data_dir().map_err(|e| e.to_string())?;
+            let attachments_dir = app_dir.join("attachments");
+            if !attachments_dir.exists() {
+                fs::create_dir_all(&attachments_dir).map_err(|e| e.to_string())?;
+            }
+            
+            let file_path = attachments_dir.join(&filename);
+            fs::write(&file_path, decoded).map_err(|e| e.to_string())?;
+            
+            println!("Saved A1111 image to {:?}", file_path);
+            
+            return Ok(filename);
+        }
+    }
+
+    Err("No image returned from A1111".to_string())
+}

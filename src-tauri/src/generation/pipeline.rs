@@ -648,23 +648,45 @@ pub async fn execute_api_loop(
                                 result_string = format!(r#"{{"status": "error", "message": "User cancelled image generation"}}"#);
                             } else {
                                 let _ = app_handle.emit("backend-log", format!("[AI] Generating image with tags: {}", final_prompt));
-                                match crate::image_gen::generate_image_horde(
-                                    app_handle.clone(),
-                                    ctx.preset.sd_horde_api_key.clone(),
-                                    final_prompt,
-                                    ctx.preset.sd_model.clone(),
-                                    ctx.preset.sd_width,
-                                    ctx.preset.sd_height,
-                                    ctx.preset.sd_steps,
-                                    ctx.preset.sd_sampler.clone(),
-                                    ctx.preset.sd_cfg_scale,
-                                    ctx.preset.sd_allow_nsfw,
-                                    ctx.preset.sd_sanitize_prompts,
-                                    ctx.preset.sd_restore_faces,
-                                    ctx.preset.sd_karras,
-                                    ctx.preset.sd_hires_fix,
-                                    ctx.preset.sd_seed.clone(),
-                                ).await {
+                                let generation_result = if ctx.preset.sd_provider == "auto" {
+                                    crate::image_gen::generate_image_auto(
+                                        app_handle.clone(),
+                                        ctx.preset.sd_auto_url.clone(),
+                                        ctx.preset.sd_auto_auth.clone(),
+                                        final_prompt,
+                                        ctx.preset.sd_width,
+                                        ctx.preset.sd_height,
+                                        ctx.preset.sd_steps,
+                                        ctx.preset.sd_sampler.clone(),
+                                        ctx.preset.sd_cfg_scale,
+                                        ctx.preset.sd_auto_scheduler.clone(),
+                                        ctx.preset.sd_auto_vae.clone(),
+                                        ctx.preset.sd_auto_upscaler.clone(),
+                                        ctx.preset.sd_auto_hires_steps,
+                                        ctx.preset.sd_auto_clip_skip,
+                                        ctx.preset.sd_auto_denoising,
+                                        ctx.preset.sd_auto_upscale_by,
+                                    ).await
+                                } else {
+                                    crate::image_gen::generate_image_horde(
+                                        app_handle.clone(),
+                                        ctx.preset.sd_horde_api_key.clone(),
+                                        final_prompt,
+                                        ctx.preset.sd_model.clone(),
+                                        ctx.preset.sd_width,
+                                        ctx.preset.sd_height,
+                                        ctx.preset.sd_steps,
+                                        ctx.preset.sd_sampler.clone(),
+                                        ctx.preset.sd_cfg_scale,
+                                        ctx.preset.sd_allow_nsfw,
+                                        ctx.preset.sd_sanitize_prompts,
+                                        ctx.preset.sd_restore_faces,
+                                        ctx.preset.sd_karras,
+                                        ctx.preset.sd_hires_fix,
+                                        ctx.preset.sd_seed.clone(),
+                                    ).await
+                                };
+                                match generation_result {
                                     Ok(img_path) => {
                                         result_string = format!(r#"{{"status": "success", "image_path": "{}"}}"#, img_path);
                                         let _ = app_handle.emit("backend-log", format!("[AI] Generated image: {}", img_path));

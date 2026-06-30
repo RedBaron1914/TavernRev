@@ -71,6 +71,15 @@ export type Preset = {
   char_avatar_prompt: string;
   user_avatar_prompt: string;
   sd_horde_api_key: string;
+  sd_auto_url: string;
+  sd_auto_auth: string;
+  sd_auto_vae: string;
+  sd_auto_scheduler: string;
+  sd_auto_upscaler: string;
+  sd_auto_hires_steps: number;
+  sd_auto_clip_skip: number;
+  sd_auto_denoising: number;
+  sd_auto_upscale_by: number;
   sd_use_tool: boolean;
   sd_edit_prompts: boolean;
   sd_provider: string;
@@ -149,7 +158,7 @@ export const CHAT_SOURCES = [
 export const SD_PROVIDERS = [
   { value: "horde", labelKey: "sdHorde", label: "Stable Horde" },
   { value: "novel", labelKey: "sdNovel", label: "NovelAI Diffusion (Not Implemented)" },
-  { value: "auto", labelKey: "sdAuto", label: "Stable Diffusion WebUI (Not Implemented)" },
+  { value: "auto", labelKey: "sdAuto", label: "Stable Diffusion WebUI" },
 ];
 
 export const SD_SAMPLERS = [
