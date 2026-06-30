@@ -111,7 +111,7 @@ export function ExtensionsTab({ addToast }: ExtensionsTabProps) {
                     </div>
                     <button 
                         onClick={() => handleDelete(script.name)}
-                        className="p-2 text-gray-600 hover:text-red-400 bg-gray-800 rounded-lg opacity-0 group-hover:opacity-100 transition hover:bg-red-500/10"
+                        className="p-2 text-gray-600 hover:text-red-400 bg-gray-800 rounded-lg md:opacity-0 group-hover:opacity-100 transition hover:bg-red-500/10"
                     >
                         <Trash2 size={16} />
                     </button>

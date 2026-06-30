@@ -50,7 +50,7 @@ export function QuickRepliesTab({
                 </code>
               </div>
             </div>
-            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex gap-2 md:opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={() => setEditingQR(qr)}
                 className="p-2 text-gray-500 hover:text-white transition bg-gray-800 rounded-lg"

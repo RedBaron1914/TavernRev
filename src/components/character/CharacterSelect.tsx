@@ -331,7 +331,7 @@ export const CharacterSelect = ({
                 </button>
                 <ChevronRight
                   size={16}
-                  className="text-gray-500 opacity-0 group-hover:opacity-100 transition"
+                  className="text-gray-500 md:opacity-0 group-hover:opacity-100 transition"
                 />
               </div>
             </div>
