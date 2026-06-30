@@ -45,7 +45,7 @@ export function EntryCard({ entry, onUpdate, onDelete }: EntryCardProps) {
           <span className="flex-1 text-xs text-gray-400 font-mono truncate">{entry.keys}</span>
         )}
         <button onClick={() => onDelete(entry.id)}
-          className="shrink-0 p-1.5 text-gray-600 hover:text-red-400 rounded transition opacity-0 group-hover:opacity-100">
+          className="shrink-0 p-1.5 text-gray-600 hover:text-red-400 rounded transition md:opacity-0 group-hover:opacity-100">
           <Trash2 size={14}/>
         </button>
       </div>

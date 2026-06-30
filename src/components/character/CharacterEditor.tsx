@@ -429,7 +429,7 @@ export const CharacterEditor = ({
                              <div className="flex flex-col md:flex-row gap-8 items-start">
                                 <div className="relative group cursor-pointer shrink-0 mx-auto md:mx-0">
                                     <Avatar src={formData.avatar} name={formData.name} size="xl" />
-                                    <div className="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 border-2 border-dashed border-indigo-500/50">
+                                    <div className="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center md:opacity-0 group-hover:opacity-100 transition duration-300 border-2 border-dashed border-indigo-500/50">
                                         <Image size={32} className="text-white animate-bounce" />
                                     </div>
                                     <input type="file" accept="image/*" onChange={handleAvatarUpload} className="absolute inset-0 opacity-0 cursor-pointer" />

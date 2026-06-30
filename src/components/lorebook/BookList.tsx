@@ -101,7 +101,7 @@ export function BookList({
                 </button>
               )}
               <button onClick={() => onDelete(book.id)}
-                className="p-1.5 text-gray-600 hover:text-red-400 rounded transition opacity-0 group-hover:opacity-100" title={t('delete', 'Delete')}>
+                className="p-1.5 text-gray-600 hover:text-red-400 rounded transition md:opacity-0 group-hover:opacity-100" title={t('delete', 'Delete')}>
                 <Trash2 size={14} />
               </button>
             </div>

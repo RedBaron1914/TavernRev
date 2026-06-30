@@ -54,7 +54,7 @@ export function MessageActions({
             ? activeMessageId === message.id
               ? "opacity-100"
               : "opacity-0 pointer-events-none"
-            : "opacity-0 group-hover:opacity-100"
+            : "md:opacity-0 group-hover:opacity-100"
         }`}
       >
         {!isUser && showGenerationActions && (
@@ -143,7 +143,7 @@ export function MessageActions({
         ? activeMessageId === message.id
           ? "opacity-100 z-10"
           : "opacity-0 pointer-events-none"
-        : "opacity-0 group-hover:opacity-100 z-10"
+        : "md:opacity-0 group-hover:opacity-100 z-10"
     }`}>
       <button
         onClick={() => onBranch(message.id)}

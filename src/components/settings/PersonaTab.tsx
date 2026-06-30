@@ -68,7 +68,7 @@ export function PersonaTab({
             </button>
             <button
               onClick={() => handleDeletePersona(p.id, p.name)}
-              className="p-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition hover:bg-red-500/10 rounded-lg"
+              className="p-2 text-gray-600 hover:text-red-400 md:opacity-0 group-hover:opacity-100 transition hover:bg-red-500/10 rounded-lg"
             >
               <Trash2 size={18} />
             </button>

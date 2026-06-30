@@ -172,7 +172,7 @@ export const StatsModal = ({
               >
                 {t('tokenize', 'Tokenize')}
               </button>
-              <div className="flex-1 bg-gray-950 p-3 rounded-xl border border-white/5 font-mono text-xs flex flex-wrap content-start gap-0.5 overflow-y-auto min-h-[100px]">
+              <div className="flex-1 bg-gray-950 p-3 rounded-xl border border-white/5 font-mono text-xs flex flex-wrap content-start gap-0.5 overflow-y-auto min-h-[100px] custom-scrollbar">
                 {tokens.map((t, i) => (
                   <span
                     key={i}

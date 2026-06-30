@@ -172,7 +172,7 @@ export function Sidebar({
               </button>
               <div
                 className={`flex gap-0.5 pr-1 transition-opacity ${
-                  isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  isMobile ? "opacity-100" : "md:opacity-0 group-hover:opacity-100"
                 }`}
               >
                 <button
