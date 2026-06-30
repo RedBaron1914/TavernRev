@@ -30,6 +30,17 @@ pub fn upload_attachment(app_handle: AppHandle, data: Vec<u8>) -> Result<String,
 }
 
 #[tauri::command]
+pub fn delete_attachment(app_handle: AppHandle, filename: String) -> Result<(), String> {
+    let safe_filename = crate::sanitize_filename(&filename);
+    let attachments_dir = get_attachments_dir(&app_handle);
+    let dest_path = attachments_dir.join(&safe_filename);
+    if dest_path.exists() {
+        std::fs::remove_file(dest_path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn save_extension_script(app_handle: AppHandle, file_name: String, content: String) -> Result<(), String> {
     let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
     let ext_dir = app_dir.join("extensions");
@@ -272,7 +283,7 @@ pub fn update_character(card: Character, db_state: tauri::State<DbState>) -> Res
 }
 
 #[tauri::command]
-pub fn delete_character(id: i64, delete_lore: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
+pub fn delete_character(app_handle: AppHandle, id: i64, delete_lore: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     
     if delete_lore {
@@ -286,7 +297,20 @@ pub fn delete_character(id: i64, delete_lore: bool, db_state: tauri::State<DbSta
         }
     }
     
+    let avatar_filename = database::get_character_avatar(&conn, id).unwrap_or_default();
+    
     database::delete_character(&conn, id).map_err(|e| e.to_string())?;
+
+    if let Some(filename) = avatar_filename {
+        if !filename.is_empty() {
+            let avatars_dir = get_avatars_dir(&app_handle);
+            let path = avatars_dir.join(&filename);
+            if path.exists() {
+                let _ = std::fs::remove_file(path);
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -399,8 +423,19 @@ pub fn get_chats(character_id: i64, group_id: Option<i64>, db_state: tauri::Stat
 }
 
 #[tauri::command]
-pub fn delete_chat(id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
+pub fn delete_chat(app_handle: AppHandle, id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    
+    // Fetch and delete images associated with all messages in this chat
+    let images_to_delete = database::get_chat_images(&conn, id).unwrap_or_default();
+    let attachments_dir = get_attachments_dir(&app_handle);
+    for img in images_to_delete {
+        let path = attachments_dir.join(&img);
+        if path.exists() {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+
     database::delete_chat(&conn, id).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -593,14 +628,36 @@ pub fn set_auto_trim_enabled(chat_id: i64, enabled: bool, db_state: tauri::State
 }
 
 #[tauri::command]
-pub fn delete_message(id: i64, mode: String, chat_id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
+pub fn delete_message(app_handle: AppHandle, id: i64, mode: String, chat_id: i64, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    match mode.as_str() {
-        "swipe" => database::delete_swipe(&conn, id).map_err(|e| e.to_string()),
-        "message" => { database::delete_message(&conn, id).map_err(|e| e.to_string())?; Ok(()) },
-        "branch" => { database::delete_message_branch(&conn, chat_id, id).map_err(|e| e.to_string())?; Ok(()) },
-        _ => Err("Invalid deletion mode".to_string()),
+    
+    let images_to_delete = match mode.as_str() {
+        "swipe" => {
+            database::delete_swipe(&conn, id).map_err(|e| e.to_string())?;
+            Vec::new()
+        },
+        "message" => { 
+            let imgs = database::get_message_images(&conn, id).unwrap_or_default();
+            database::delete_message(&conn, id).map_err(|e| e.to_string())?;
+            imgs
+        },
+        "branch" => { 
+            let imgs = database::get_branch_images(&conn, chat_id, id).unwrap_or_default();
+            database::delete_message_branch(&conn, chat_id, id).map_err(|e| e.to_string())?;
+            imgs
+        },
+        _ => return Err("Invalid deletion mode".to_string()),
+    };
+
+    let attachments_dir = get_attachments_dir(&app_handle);
+    for img in images_to_delete {
+        let path = attachments_dir.join(&img);
+        if path.exists() {
+            let _ = std::fs::remove_file(path);
+        }
     }
+    
+    Ok(())
 }
 
 #[tauri::command]
@@ -685,8 +742,9 @@ pub fn load_preset(app_handle: AppHandle, file_name: String) -> Result<String, S
 #[tauri::command]
 pub fn get_preset(app_handle: AppHandle, preset_name: String) -> Result<serde_json::Value, String> {
     let presets_dir = get_presets_dir(&app_handle);
-    let file_path = presets_dir.join(&preset_name);
-    let content = fs::read_to_string(&file_path).map_err(|e| format!("File read error: {}", e))?;
+    let safe_preset = crate::sanitize_filename(&preset_name);
+    let preset_path = presets_dir.join(&safe_preset);
+    let content = std::fs::read_to_string(preset_path).map_err(|e| format!("File read error: {}", e))?;
     serde_json::from_str(&content).map_err(|e| format!("get_preset JSON parse error: {}. Content starts with: {}", e, &content.chars().take(50).collect::<String>()))
 }
 
@@ -2562,7 +2620,8 @@ pub async fn generate_image_stateless(
 ) -> Result<String, String> {
     println!("DEBUG: generate_image_stateless called! preset={}, prompt={}", preset_name, prompt);
     let presets_dir = crate::commands::get_presets_dir(&app_handle);
-    let preset_path = presets_dir.join(&preset_name);
+    let safe_preset = crate::sanitize_filename(&preset_name);
+    let preset_path = presets_dir.join(&safe_preset);
     let preset_content = std::fs::read_to_string(&preset_path)
         .map_err(|e| format!("File read error for {:?}: {}", preset_path, e))?;
     let preset: crate::api_client::Preset = serde_json::from_str(&preset_content)
@@ -2586,6 +2645,8 @@ pub async fn generate_image_stateless(
             preset.sd_auto_clip_skip,
             preset.sd_auto_denoising,
             preset.sd_auto_upscale_by,
+            preset.sd_hires_fix,
+            preset.sd_restore_faces,
         ).await
     } else {
         crate::image_gen::generate_image_horde(
@@ -2637,7 +2698,18 @@ pub async fn get_horde_models() -> Result<Vec<HordeModelInfo>, String> {
 
 // --- A1111 Fetch Endpoints ---
 
+fn sanitize_a1111_url(url: &str) -> String {
+    let mut clean_url = url.trim_end_matches('/').to_string();
+    if clean_url.ends_with("/sdapi/v1") {
+        clean_url = clean_url.strip_suffix("/sdapi/v1").unwrap().to_string();
+    } else if clean_url.ends_with("/api") {
+        clean_url = clean_url.strip_suffix("/api").unwrap().to_string();
+    }
+    clean_url
+}
+
 async fn a1111_get(url: &str, auth: &str) -> Result<serde_json::Value, String> {
+    println!("Fetching A1111 endpoint: {}", url);
     let client = reqwest::Client::new();
     let mut request = client.get(url);
     if !auth.is_empty() {
@@ -2648,8 +2720,9 @@ async fn a1111_get(url: &str, auth: &str) -> Result<serde_json::Value, String> {
     }
     let res = request.send().await.map_err(|e| format!("Request failed: {}", e))?;
     if !res.status().is_success() {
+        let status = res.status();
         let err_text = res.text().await.unwrap_or_default();
-        return Err(format!("A1111 API Error: {}", err_text));
+        return Err(format!("A1111 API Error ({}): {}", status, err_text.chars().take(100).collect::<String>()));
     }
     res.json().await.map_err(|e| format!("JSON Parse Error: {}", e))
 }
@@ -2662,7 +2735,7 @@ pub struct A1111ModelInfo {
 
 #[tauri::command]
 pub async fn get_a1111_models(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> {
-    let endpoint = format!("{}/sdapi/v1/sd-models", url.trim_end_matches('/'));
+    let endpoint = format!("{}/sdapi/v1/sd-models", sanitize_a1111_url(&url));
     let val = a1111_get(&endpoint, &auth).await?;
     let models: Vec<A1111ModelInfo> = serde_json::from_value(val).map_err(|e| e.to_string())?;
     Ok(models)
@@ -2675,7 +2748,7 @@ pub struct A1111SamplerInfo {
 
 #[tauri::command]
 pub async fn get_a1111_samplers(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> { // Reusing struct layout
-    let endpoint = format!("{}/sdapi/v1/samplers", url.trim_end_matches('/'));
+    let endpoint = format!("{}/sdapi/v1/samplers", sanitize_a1111_url(&url));
     let val = a1111_get(&endpoint, &auth).await?;
     let mut samplers: Vec<A1111ModelInfo> = Vec::new();
     if let Some(arr) = val.as_array() {
@@ -2690,7 +2763,7 @@ pub async fn get_a1111_samplers(url: String, auth: String) -> Result<Vec<A1111Mo
 
 #[tauri::command]
 pub async fn get_a1111_vaes(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> {
-    let endpoint = format!("{}/sdapi/v1/sd-vae", url.trim_end_matches('/'));
+    let endpoint = format!("{}/sdapi/v1/sd-vae", sanitize_a1111_url(&url));
     let val = a1111_get(&endpoint, &auth).await?;
     let mut vaes: Vec<A1111ModelInfo> = vec![A1111ModelInfo { title: "Automatic".to_string(), model_name: "Automatic".to_string() }, A1111ModelInfo { title: "None".to_string(), model_name: "None".to_string() }];
     if let Some(arr) = val.as_array() {
@@ -2705,7 +2778,7 @@ pub async fn get_a1111_vaes(url: String, auth: String) -> Result<Vec<A1111ModelI
 
 #[tauri::command]
 pub async fn get_a1111_upscalers(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> {
-    let endpoint = format!("{}/sdapi/v1/upscalers", url.trim_end_matches('/'));
+    let endpoint = format!("{}/sdapi/v1/upscalers", sanitize_a1111_url(&url));
     let val = a1111_get(&endpoint, &auth).await?;
     let mut upscalers: Vec<A1111ModelInfo> = Vec::new();
     if let Some(arr) = val.as_array() {
@@ -2720,7 +2793,7 @@ pub async fn get_a1111_upscalers(url: String, auth: String) -> Result<Vec<A1111M
 
 #[tauri::command]
 pub async fn get_a1111_schedulers(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> {
-    let endpoint = format!("{}/sdapi/v1/schedulers", url.trim_end_matches('/'));
+    let endpoint = format!("{}/sdapi/v1/schedulers", sanitize_a1111_url(&url));
     let mut schedulers: Vec<A1111ModelInfo> = vec![
         A1111ModelInfo { title: "Automatic".to_string(), model_name: "Automatic".to_string() },
         A1111ModelInfo { title: "Uniform".to_string(), model_name: "Uniform".to_string() },

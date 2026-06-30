@@ -315,7 +315,7 @@ fn default_extra() -> String {
 }
 
 fn serialize_extra_as_object<S: serde::Serializer>(extra: &str, s: S) -> Result<S::Ok, S::Error> {
-    let parsed: serde_json::Value = serde_json::from_str(extra).unwrap_or_default();
+    let parsed: serde_json::Value = serde_json::from_str(extra).unwrap_or_else(|_| serde_json::json!({}));
     parsed.serialize(s)
 }
 
@@ -940,6 +940,14 @@ pub fn get_characters(conn: &Connection) -> Result<Vec<Character>> {
     Ok(results)
 }
 
+pub fn get_character_avatar(conn: &Connection, id: i64) -> Result<Option<String>> {
+    conn.query_row(
+        "SELECT avatar FROM characters WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    ).optional()
+}
+
 pub fn get_character_by_id(conn: &Connection, id: i64) -> Result<Character> {
     let sql = "SELECT id, name, avatar, description, personality, scenario, first_mes, mes_example, creator_notes, tags, alternate_greetings, card_data, created_at, uuid, updated_at FROM characters WHERE id = ?1";
 
@@ -1419,7 +1427,7 @@ pub fn export_chat_jsonl(conn: &Connection, chat_id: i64) -> Result<String, rusq
             "mes": msg.content,
             "swipes": msg.swipes,
             "swipe_id": msg.swipe_id,
-            "extra": serde_json::from_str::<serde_json::Value>(&msg.extra).unwrap_or_default()
+            "extra": serde_json::from_str::<serde_json::Value>(&msg.extra).unwrap_or_else(|_| serde_json::json!({}))
         });
         output.push_str(&serde_json::to_string(&entry).unwrap_or_else(|_| "{}".to_string()));
         output.push('\n');
@@ -1634,7 +1642,7 @@ pub fn get_messages(conn: &Connection, chat_id: i64) -> Result<Vec<Message>> {
         let images_str: String = row
             .get::<_, Option<String>>(9)?
             .unwrap_or_else(|| "[]".to_string());
-        let images: Option<Vec<String>> = serde_json::from_str(&images_str).ok();
+        let images: Option<Vec<String>> = if images_str.trim().is_empty() { None } else { serde_json::from_str(&images_str).ok() };
 
         Ok(Message {
             id: row.get(0)?,
@@ -1672,7 +1680,7 @@ pub fn get_messages_paged(
         let images_str: String = row
             .get::<_, Option<String>>(9)?
             .unwrap_or_else(|| "[]".to_string());
-        let images: Option<Vec<String>> = serde_json::from_str(&images_str).ok();
+        let images: Option<Vec<String>> = if images_str.trim().is_empty() { None } else { serde_json::from_str(&images_str).ok() };
 
         Ok(Message {
             id: row.get(0)?,
@@ -1825,6 +1833,46 @@ pub fn delete_message_branch(conn: &Connection, chat_id: i64, from_id: i64) -> R
         "DELETE FROM messages WHERE chat_id = ?1 AND id >= ?2",
         params![chat_id, from_id],
     )
+}
+
+pub fn get_message_images(conn: &Connection, id: i64) -> Result<Vec<String>> {
+    let images_json: Option<String> = conn.query_row(
+        "SELECT images FROM messages WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    ).optional()?.flatten();
+    
+    if let Some(json) = images_json {
+        let parsed: Vec<String> = serde_json::from_str(&json).unwrap_or_default();
+        return Ok(parsed);
+    }
+    Ok(Vec::new())
+}
+
+pub fn get_branch_images(conn: &Connection, chat_id: i64, from_id: i64) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare("SELECT images FROM messages WHERE chat_id = ?1 AND id >= ?2")?;
+    let mut rows = stmt.query(params![chat_id, from_id])?;
+    let mut all_images = Vec::new();
+    while let Some(row) = rows.next()? {
+        if let Ok(Some(json)) = row.get::<_, Option<String>>(0) {
+            let parsed: Vec<String> = serde_json::from_str(&json).unwrap_or_default();
+            all_images.extend(parsed);
+        }
+    }
+    Ok(all_images)
+}
+
+pub fn get_chat_images(conn: &Connection, chat_id: i64) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare("SELECT images FROM messages WHERE chat_id = ?1")?;
+    let mut rows = stmt.query(params![chat_id])?;
+    let mut all_images = Vec::new();
+    while let Some(row) = rows.next()? {
+        if let Ok(Some(json)) = row.get::<_, Option<String>>(0) {
+            let parsed: Vec<String> = serde_json::from_str(&json).unwrap_or_default();
+            all_images.extend(parsed);
+        }
+    }
+    Ok(all_images)
 }
 
 pub fn branch_chat(

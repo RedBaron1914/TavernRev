@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Preset, SD_PROVIDERS, SD_SAMPLERS, SelectField, InputField, Slider, Toggle } from "./shared";
 import { useTranslation } from 'react-i18next';
 import { RefreshCw, Image } from "lucide-react";
@@ -16,12 +16,20 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
   addToast,
 }) => {
   const { t } = useTranslation('common');
+  const getCachedList = (key: string, defaultList: any[]) => {
+    const cached = localStorage.getItem(key);
+    if (cached) {
+      try { return JSON.parse(cached); } catch { return defaultList; }
+    }
+    return defaultList;
+  };
+
   const [fetchingModels, setFetchingModels] = useState(false);
-  const [availableModels, setAvailableModels] = useState<{value: string, label: string}[]>([{ value: "stable_diffusion", label: "stable_diffusion" }]);
-  const [a1111Samplers, setA1111Samplers] = useState<{value: string, label: string}[]>([]);
-  const [a1111Vaes, setA1111Vaes] = useState<{value: string, label: string}[]>([]);
-  const [a1111Upscalers, setA1111Upscalers] = useState<{value: string, label: string}[]>([]);
-  const [a1111Schedulers, setA1111Schedulers] = useState<{value: string, label: string}[]>([]);
+  const [availableModels, setAvailableModels] = useState<{value: string, label: string}[]>(() => getCachedList("sd_models", [{ value: "stable_diffusion", label: "stable_diffusion" }]));
+  const [a1111Samplers, setA1111Samplers] = useState<{value: string, label: string}[]>(() => getCachedList("sd_samplers", []));
+  const [a1111Vaes, setA1111Vaes] = useState<{value: string, label: string}[]>(() => getCachedList("sd_vaes", []));
+  const [a1111Upscalers, setA1111Upscalers] = useState<{value: string, label: string}[]>(() => getCachedList("sd_upscalers", []));
+  const [a1111Schedulers, setA1111Schedulers] = useState<{value: string, label: string}[]>(() => getCachedList("sd_schedulers", []));
 
   type HordeModelInfo = {
     name: string;
@@ -30,22 +38,24 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
     eta: number;
   };
 
-  const handleFetchHordeModels = async () => {
+  const handleFetchHordeModels = async (silent = false) => {
     try {
       setFetchingModels(true);
       const models = await invoke<HordeModelInfo[]>("get_horde_models");
       if (models && models.length > 0) {
-        setAvailableModels([
+        const modelsList = [
           { value: "", label: t('anyModel', 'Any Model') },
           ...models.map(m => ({ 
             value: m.name, 
             label: `${m.name} (W: ${Math.round(m.count)}, Q: ${Math.round(m.queued)}, ETA: ${Math.round(m.eta)}s)` 
           }))
-        ]);
-        addToast(`Fetched ${models.length} models`, "success");
+        ];
+        setAvailableModels(modelsList);
+        localStorage.setItem("sd_models", JSON.stringify(modelsList));
+        if (!silent) addToast(`Fetched ${models.length} models`, "success");
       }
     } catch (e: any) {
-      addToast(`Failed to fetch models: ${e}`, "error");
+      if (!silent) addToast(`Failed to fetch models: ${e}`, "error");
     } finally {
       setFetchingModels(false);
     }
@@ -56,9 +66,9 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
     model_name: string;
   };
 
-  const handleFetchA1111Data = async () => {
+  const handleFetchA1111Data = async (silent = false) => {
     if (!formData.sd_auto_url) {
-      addToast("Please enter A1111 URL first", "error");
+      if (!silent) addToast("Please enter A1111 URL first", "error");
       return;
     }
     try {
@@ -67,26 +77,61 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
       const auth = formData.sd_auto_auth || "";
       
       const [models, samplers, vaes, upscalers, schedulers] = await Promise.all([
-        invoke<A1111ModelInfo[]>("get_a1111_models", { url, auth }),
-        invoke<A1111ModelInfo[]>("get_a1111_samplers", { url, auth }),
-        invoke<A1111ModelInfo[]>("get_a1111_vaes", { url, auth }),
-        invoke<A1111ModelInfo[]>("get_a1111_upscalers", { url, auth }),
-        invoke<A1111ModelInfo[]>("get_a1111_schedulers", { url, auth })
+        invoke<A1111ModelInfo[]>("get_a1111_models", { url, auth }).catch((e) => { console.warn("Failed models", e); return []; }),
+        invoke<A1111ModelInfo[]>("get_a1111_samplers", { url, auth }).catch((e) => { console.warn("Failed samplers", e); return []; }),
+        invoke<A1111ModelInfo[]>("get_a1111_vaes", { url, auth }).catch((e) => { console.warn("Failed vaes", e); return []; }),
+        invoke<A1111ModelInfo[]>("get_a1111_upscalers", { url, auth }).catch((e) => { console.warn("Failed upscalers", e); return []; }),
+        invoke<A1111ModelInfo[]>("get_a1111_schedulers", { url, auth }).catch((e) => { console.warn("Failed schedulers", e); return []; })
       ]);
 
-      if (models.length) setAvailableModels(models.map(m => ({ value: m.title, label: m.model_name })));
-      if (samplers.length) setA1111Samplers(samplers.map(m => ({ value: m.title, label: m.model_name })));
-      if (vaes.length) setA1111Vaes(vaes.map(m => ({ value: m.title, label: m.model_name })));
-      if (upscalers.length) setA1111Upscalers(upscalers.map(m => ({ value: m.title, label: m.model_name })));
-      if (schedulers.length) setA1111Schedulers(schedulers.map(m => ({ value: m.title, label: m.model_name })));
+      if (models.length) {
+        const mapped = models.map(m => ({ value: m.title, label: m.model_name }));
+        setAvailableModels(mapped);
+        localStorage.setItem("sd_models", JSON.stringify(mapped));
+      }
+      if (samplers.length) {
+        const mapped = samplers.map(m => ({ value: m.title, label: m.model_name }));
+        setA1111Samplers(mapped);
+        localStorage.setItem("sd_samplers", JSON.stringify(mapped));
+      }
+      if (vaes.length) {
+        const mapped = vaes.map(m => ({ value: m.title, label: m.model_name }));
+        setA1111Vaes(mapped);
+        localStorage.setItem("sd_vaes", JSON.stringify(mapped));
+      }
+      if (upscalers.length) {
+        const mapped = upscalers.map(m => ({ value: m.title, label: m.model_name }));
+        setA1111Upscalers(mapped);
+        localStorage.setItem("sd_upscalers", JSON.stringify(mapped));
+      }
+      if (schedulers.length) {
+        const mapped = schedulers.map(m => ({ value: m.title, label: m.model_name }));
+        setA1111Schedulers(mapped);
+        localStorage.setItem("sd_schedulers", JSON.stringify(mapped));
+      }
 
-      addToast("Fetched A1111 data successfully", "success");
+      if (!silent) {
+        if (!models.length && !samplers.length) {
+          addToast("Failed to fetch data from A1111. Ensure URL is correct and --api is enabled.", "error");
+        } else {
+          addToast("Fetched A1111 data successfully", "success");
+        }
+      }
     } catch (e: any) {
-      addToast(`Failed to fetch A1111 data: ${e}`, "error");
+      if (!silent) addToast(`Failed to fetch A1111 data: ${e}`, "error");
     } finally {
       setFetchingModels(false);
     }
   };
+
+  // Cache/Auto-fetch on mount
+  useEffect(() => {
+    if (formData.sd_provider === "horde") {
+      handleFetchHordeModels(true);
+    } else if (formData.sd_provider === "auto" && formData.sd_auto_url) {
+      handleFetchA1111Data(true);
+    }
+  }, [formData.sd_provider]); // Intentionally not including formData.sd_auto_url to avoid spamming while typing
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -162,7 +207,7 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
                     {t('a1111ApiHint', 'Ensure you start your A1111 WebUI with the --api commandline argument.')}
                   </p>
                   <button
-                    onClick={handleFetchA1111Data}
+                    onClick={() => handleFetchA1111Data(false)}
                     disabled={fetchingModels}
                     className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 rounded text-xs transition flex items-center gap-1.5"
                   >
@@ -189,13 +234,13 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
                     label={t('model', 'Model')}
                     value={formData.sd_model}
                     onChange={(v: string) => handleFieldChange("sd_model", v)}
-                    options={availableModels.length > 1 ? availableModels : [{ value: formData.sd_model, label: formData.sd_model || "Select a model" }]}
+                    options={availableModels.length > 0 ? availableModels : [{ value: formData.sd_model, label: formData.sd_model || "Select a model" }]}
                   />
                 )}
               </div>
               {formData.sd_provider === "horde" && (
                 <button
-                  onClick={handleFetchHordeModels}
+                  onClick={() => handleFetchHordeModels(false)}
                   disabled={fetchingModels}
                   className="mb-1.5 px-4 py-2.5 bg-gray-900/60 hover:bg-gray-800 border border-gray-700 rounded-xl text-white text-sm transition flex items-center gap-2 disabled:opacity-50"
                   title="Fetch available models from AI Horde"
@@ -271,29 +316,34 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
             />
           </div>
 
+          {formData.sd_provider === "horde" && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+              <Toggle
+                label={t('allowNsfw', 'Allow NSFW')}
+                field="sd_allow_nsfw"
+                value={formData.sd_allow_nsfw}
+                onChange={handleFieldChange}
+              />
+              <Toggle
+                label={t('sanitizePrompts', 'Sanitize Prompts')}
+                field="sd_sanitize_prompts"
+                value={formData.sd_sanitize_prompts}
+                onChange={handleFieldChange}
+              />
+              <Toggle
+                label={t('karras', 'Karras')}
+                field="sd_karras"
+                value={formData.sd_karras}
+                onChange={handleFieldChange}
+              />
+            </div>
+          )}
+
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pt-4 border-t border-white/5">
-            <Toggle
-              label={t('allowNsfw', 'Allow NSFW')}
-              field="sd_allow_nsfw"
-              value={formData.sd_allow_nsfw}
-              onChange={handleFieldChange}
-            />
-            <Toggle
-              label={t('sanitizePrompts', 'Sanitize Prompts')}
-              field="sd_sanitize_prompts"
-              value={formData.sd_sanitize_prompts}
-              onChange={handleFieldChange}
-            />
             <Toggle
               label={t('restoreFaces', 'Restore Faces')}
               field="sd_restore_faces"
               value={formData.sd_restore_faces}
-              onChange={handleFieldChange}
-            />
-            <Toggle
-              label={t('karras', 'Karras')}
-              field="sd_karras"
-              value={formData.sd_karras}
               onChange={handleFieldChange}
             />
             <Toggle

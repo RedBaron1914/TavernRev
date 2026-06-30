@@ -205,11 +205,19 @@ pub async fn generate_image_horde(
         if let Some(first) = generations.first() {
             let decoded = if first.img.starts_with("http://") || first.img.starts_with("https://") {
                 // It's a URL (R2 storage), download it
-                let img_res = client.get(&first.img).send().await.map_err(|e| format!("Failed to download image: {}", e))?;
+                let mut img_res = client.get(&first.img).send().await.map_err(|e| format!("Failed to download image: {}", e))?;
                 if !img_res.status().is_success() {
                     return Err(format!("Failed to download image from URL: {}", img_res.status()));
                 }
-                img_res.bytes().await.map_err(|e| e.to_string())?.to_vec()
+                let mut data = Vec::new();
+                let max_size = 20 * 1024 * 1024; // 20 MB
+                while let Some(chunk) = img_res.chunk().await.map_err(|e| e.to_string())? {
+                    data.extend_from_slice(&chunk);
+                    if data.len() > max_size {
+                        return Err("Image download exceeded 20MB limit".to_string());
+                    }
+                }
+                data
             } else {
                 // It's a base64 string
                 general_purpose::STANDARD.decode(&first.img).map_err(|e| e.to_string())?
@@ -253,6 +261,7 @@ pub struct AutoGenerateRequest {
     pub hr_upscaler: String,
     pub hr_second_pass_steps: i32,
     pub denoising_strength: f32,
+    pub restore_faces: bool,
     pub override_settings: serde_json::Value,
     pub override_settings_restore_afterwards: bool,
 }
@@ -260,6 +269,16 @@ pub struct AutoGenerateRequest {
 #[derive(Deserialize)]
 pub struct AutoGenerateResponse {
     pub images: Option<Vec<String>>,
+}
+
+fn sanitize_a1111_url(url: &str) -> String {
+    let mut clean_url = url.trim_end_matches('/').to_string();
+    if clean_url.ends_with("/sdapi/v1") {
+        clean_url = clean_url.strip_suffix("/sdapi/v1").unwrap().to_string();
+    } else if clean_url.ends_with("/api") {
+        clean_url = clean_url.strip_suffix("/api").unwrap().to_string();
+    }
+    clean_url
 }
 
 pub async fn generate_image_auto(
@@ -279,6 +298,8 @@ pub async fn generate_image_auto(
     clip_skip: i32,
     denoising: f32,
     upscale_by: f32,
+    hires_fix: bool,
+    restore_faces: bool,
 ) -> Result<String, String> {
     let client = Client::new();
     
@@ -300,11 +321,12 @@ pub async fn generate_image_auto(
         height,
         sampler_name: sampler,
         scheduler,
-        enable_hr: upscale_by > 1.0,
+        enable_hr: hires_fix,
         hr_scale: upscale_by,
         hr_upscaler: upscaler,
         hr_second_pass_steps: hires_steps,
         denoising_strength: denoising,
+        restore_faces,
         override_settings: serde_json::json!({
             "sd_vae": vae,
             "CLIP_stop_at_last_layers": clip_skip
@@ -312,7 +334,7 @@ pub async fn generate_image_auto(
         override_settings_restore_afterwards: true,
     };
 
-    let url = format!("{}/sdapi/v1/txt2img", api_url.trim_end_matches('/'));
+    let url = format!("{}/sdapi/v1/txt2img", sanitize_a1111_url(&api_url));
     
     let mut request_builder = client.post(&url).json(&req);
     if !auth.is_empty() {

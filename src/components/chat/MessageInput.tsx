@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { QuickReply } from "../../types";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { appLocalDataDir, join } from "@tauri-apps/api/path";
 import { useTranslation } from 'react-i18next'
 
@@ -124,7 +124,10 @@ export function MessageInput({
       {attachedImages.length > 0 && (
         <div className="max-w-4xl mx-auto px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
           {attachedImages.map((img, i) => (
-            <AttachmentPreview key={i} filename={img} onRemove={() => setAttachedImages((prev) => prev.filter((_, idx) => idx !== i))} />
+            <AttachmentPreview key={i} filename={img} onRemove={() => {
+              setAttachedImages((prev) => prev.filter((_, idx) => idx !== i));
+              invoke('delete_attachment', { filename: img }).catch(console.error);
+            }} />
           ))}
         </div>
       )}

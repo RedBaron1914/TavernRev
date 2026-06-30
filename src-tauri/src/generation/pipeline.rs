@@ -666,6 +666,8 @@ pub async fn execute_api_loop(
                                         ctx.preset.sd_auto_clip_skip,
                                         ctx.preset.sd_auto_denoising,
                                         ctx.preset.sd_auto_upscale_by,
+                                        ctx.preset.sd_hires_fix,
+                                        ctx.preset.sd_restore_faces,
                                     ).await
                                 } else {
                                     crate::image_gen::generate_image_horde(
