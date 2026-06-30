@@ -223,8 +223,10 @@ pub fn get_lore_vectors(conn: &Connection, entry_ids: &[i64]) -> Result<Vec<Lore
         let mut embedding = Vec::new();
         for chunk in blob.chunks_exact(4) {
             if chunk.len() == 4 {
-                let f = f32::from_le_bytes(chunk.try_into().unwrap());
-                embedding.push(f);
+                if let Ok(arr) = chunk.try_into() {
+                    let f = f32::from_le_bytes(arr);
+                    embedding.push(f);
+                }
             }
         }
 
@@ -279,8 +281,10 @@ pub fn get_chat_vectors(conn: &Connection, chat_id: i64) -> Result<Vec<MemoryVec
         let mut embedding = Vec::new();
         for chunk in blob.chunks_exact(4) {
             if chunk.len() == 4 {
-                let f = f32::from_le_bytes(chunk.try_into().unwrap());
-                embedding.push(f);
+                if let Ok(arr) = chunk.try_into() {
+                    let f = f32::from_le_bytes(arr);
+                    embedding.push(f);
+                }
             }
         }
 

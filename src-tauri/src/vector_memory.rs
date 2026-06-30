@@ -426,7 +426,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn test_fastembed_integration() {
+    async fn test_fastembed_integration() -> Result<(), String> {
         // Initialize a very small model just for testing
         let init = init_model(None, "AllMiniLML6V2");
         assert!(init.is_ok(), "Failed to initialize fastembed: {:?}", init.err());
@@ -440,9 +440,10 @@ mod tests {
         let embeddings = embed_texts(vec!["Hello", "World"], &config).await;
         assert!(embeddings.is_ok());
 
-        let vectors = embeddings.unwrap();
+        let vectors = embeddings.map_err(|e| e.to_string())?;
         assert_eq!(vectors.len(), 2);
         assert_eq!(vectors[0].len(), 384); // AllMiniLML6V2 dimensionality
+        Ok(())
     }
 
     #[tokio::test]

@@ -631,7 +631,7 @@ pub fn save_studio_chats(app_handle: AppHandle, character_id: String, chats_json
     if !studio_dir.exists() {
         fs::create_dir_all(&studio_dir).map_err(|e| e.to_string())?;
     }
-    let file_path = studio_dir.join(format!("{}.json", character_id));
+    let file_path = studio_dir.join(format!("{}.json", crate::sanitize_filename(&character_id)));
     fs::write(&file_path, chats_json).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -639,7 +639,7 @@ pub fn save_studio_chats(app_handle: AppHandle, character_id: String, chats_json
 #[tauri::command]
 pub fn load_studio_chats(app_handle: AppHandle, character_id: String) -> Result<String, String> {
     let local_data_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
-    let file_path = local_data_dir.join("studio_chats").join(format!("{}.json", character_id));
+    let file_path = local_data_dir.join("studio_chats").join(format!("{}.json", crate::sanitize_filename(&character_id)));
     if !file_path.exists() {
         return Ok("[]".to_string());
     }

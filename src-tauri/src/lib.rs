@@ -35,6 +35,14 @@ pub fn get_avatars_dir(app_handle: &AppHandle) -> PathBuf {
     app_dir.join("avatars")
 }
 
+pub fn sanitize_filename(name: &str) -> String {
+    std::path::Path::new(name)
+        .file_name()
+        .and_then(|f| f.to_str())
+        .unwrap_or("unnamed")
+        .to_string()
+}
+
 // --- Database Commands ---
 
 #[cfg(not(target_os = "android"))]

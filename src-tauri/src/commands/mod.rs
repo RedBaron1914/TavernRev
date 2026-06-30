@@ -677,7 +677,7 @@ pub fn list_presets(app_handle: AppHandle) -> Result<Vec<String>, String> {
 #[tauri::command]
 pub fn load_preset(app_handle: AppHandle, file_name: String) -> Result<String, String> {
     let presets_dir = get_presets_dir(&app_handle);
-    let file_path = presets_dir.join(file_name);
+    let file_path = presets_dir.join(crate::sanitize_filename(&file_name));
     fs::read_to_string(file_path).map_err(|e| e.to_string())
 }
 
@@ -692,14 +692,14 @@ pub fn get_preset(app_handle: AppHandle, preset_name: String) -> Result<serde_js
 #[tauri::command]
 pub fn save_preset(app_handle: AppHandle, file_name: String, content: String) -> Result<(), String> {
     let presets_dir = get_presets_dir(&app_handle);
-    let file_path = presets_dir.join(file_name);
+    let file_path = presets_dir.join(crate::sanitize_filename(&file_name));
     fs::write(file_path, content).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_preset(app_handle: AppHandle, file_name: String) -> Result<(), String> {
     let presets_dir = get_presets_dir(&app_handle);
-    let path = presets_dir.join(file_name);
+    let path = presets_dir.join(crate::sanitize_filename(&file_name));
     if path.exists() {
         fs::remove_file(path).map_err(|e| e.to_string())?;
     }
@@ -732,7 +732,7 @@ pub fn list_connection_profiles(app_handle: AppHandle) -> Result<Vec<String>, St
 #[tauri::command]
 pub fn load_connection_profile(app_handle: AppHandle, file_name: String) -> Result<String, String> {
     let dir = get_connections_dir(&app_handle);
-    let file_path = dir.join(file_name);
+    let file_path = dir.join(crate::sanitize_filename(&file_name));
     fs::read_to_string(file_path).map_err(|e| e.to_string())
 }
 
@@ -740,14 +740,14 @@ pub fn load_connection_profile(app_handle: AppHandle, file_name: String) -> Resu
 pub fn save_connection_profile(app_handle: AppHandle, file_name: String, content: String) -> Result<(), String> {
     let dir = get_connections_dir(&app_handle);
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let file_path = dir.join(file_name);
+    let file_path = dir.join(crate::sanitize_filename(&file_name));
     fs::write(file_path, content).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_connection_profile(app_handle: AppHandle, file_name: String) -> Result<(), String> {
     let dir = get_connections_dir(&app_handle);
-    let file_path = dir.join(file_name);
+    let file_path = dir.join(crate::sanitize_filename(&file_name));
     fs::remove_file(file_path).map_err(|e| e.to_string())
 }
 
@@ -1151,7 +1151,7 @@ pub fn get_modules_token_counts(
 #[tauri::command]
 pub fn read_image_base64(file_name: String, app_handle: AppHandle) -> Result<String, String> {
     let avatars_dir = get_avatars_dir(&app_handle);
-    let path = avatars_dir.join(file_name);
+    let path = avatars_dir.join(crate::sanitize_filename(&file_name));
     if !path.exists() {
         return Err("File not found".to_string());
     }

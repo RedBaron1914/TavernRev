@@ -774,7 +774,7 @@ pub async fn generate_google(
         .json(&req)
         .send()
         .await
-        .map_err(|e| format!("Google Request Failed: {}", e))?;
+        .map_err(|e| format!("Google Request Failed: {}", e.without_url()))?;
 
     if !res.status().is_success() {
         let text = res.text().await.unwrap_or_default();
@@ -971,7 +971,7 @@ pub async fn generate_stream(
         .json(&request)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {}", e.without_url()))?;
 
     if !res.status().is_success() {
         return Err(format!("API Error: {}", res.status()));
@@ -1140,7 +1140,7 @@ mod tests {
     }
 
     #[test]
-    fn test_openai_message_serialization_with_tools() {
+    fn test_openai_message_serialization_with_tools() -> Result<(), String> {
         let tc = OpenAIToolCall {
             id: "call_123".to_string(),
             tool_type: "function".to_string(),
@@ -1157,14 +1157,15 @@ mod tests {
             tool_call_id: None,
         };
 
-        let json = serde_json::to_string(&msg).unwrap();
+        let json = serde_json::to_string(&msg).map_err(|e| e.to_string())?;
         assert!(json.contains("tool_calls"));
         assert!(json.contains("get_system_time"));
         assert!(!json.contains("tool_call_id"));
+        Ok(())
     }
 
     #[test]
-    fn test_openai_tool_response_serialization() {
+    fn test_openai_tool_response_serialization() -> Result<(), String> {
         let msg = OpenAIMessage {
             role: "tool".to_string(),
             content: Some(OpenAIContent::Text("Current time is 12:00".to_string())),
@@ -1172,9 +1173,10 @@ mod tests {
             tool_call_id: Some("call_123".to_string()),
         };
 
-        let json = serde_json::to_string(&msg).unwrap();
+        let json = serde_json::to_string(&msg).map_err(|e| e.to_string())?;
         assert!(!json.contains("tool_calls"));
         assert!(json.contains("tool_call_id"));
         assert!(json.contains("call_123"));
+        Ok(())
     }
 }
