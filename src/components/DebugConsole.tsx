@@ -78,8 +78,8 @@ export const DebugConsole = ({
   return (
     <div className="fixed inset-0 bg-black/95 z-[9999] flex flex-col font-mono text-xs text-white p-4 animate-in fade-in duration-200">
       <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-4 bg-black/50 p-2 rounded shrink-0">
-        <h3 className="font-bold text-base text-green-400 flex items-center gap-2"><Trans i18nKey="spanClassnamew3H3RoundedfullBggreen500AnimatepulseSystemConsole"><span className="w-3 h-3 rounded-full bg-green-500 animate-pulse"/>
-            System Console</Trans></h3>
+        <h3 className="font-bold text-base text-green-400 flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse"/>{t('systemConsole', 'System Console')}</h3>
         <div className="flex gap-2">
           <button onClick={fetchPrompt} className="p-2 hover:bg-white/10 rounded text-emerald-400 flex items-center gap-1" title={t('fetchLatestPrompt', 'Fetch Latest Prompt')}><RefreshCw size={18}/></button>
           <button onClick={copyLogs} className="p-2 hover:bg-white/10 rounded text-blue-400" title={t('copyFiltered', 'Copy Filtered')}><Copy size={18}/></button>

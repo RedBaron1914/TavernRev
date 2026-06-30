@@ -1453,7 +1453,7 @@ export default function Settings({
                               value={editingScript.replacement}
                               onChange={(e) => setEditingScript({...editingScript, replacement: e.target.value})}
                           />
-                          <p className="text-xs text-gray-600">{t('supportsMacros', 'Supports macros:')} <code>{"{{setvar::x::1}}"}</code><Trans i18nKey="useCode1codeForCaptureGroups">. Use <code>$1</code> for capture groups.</Trans></p>
+                          <p className="text-xs text-gray-600">{t('supportsMacros', 'Supports macros:')} <code>{"{{setvar::x::1}}"}</code>. {t('useCaptureGroups', 'Use')} <code>$1</code> {t('forCaptureGroups', 'for capture groups.')}</p>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1">

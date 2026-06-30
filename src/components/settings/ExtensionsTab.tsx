@@ -94,8 +94,9 @@ export function ExtensionsTab({ addToast }: ExtensionsTabProps) {
                     <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
                 </button>
                 <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-indigo-500/20 cursor-pointer active:scale-95">
-                    <Upload size={16} /><Trans i18nKey="installPluginJsInputTypefileAcceptjsOnchangehandleuploadClassnamehidden">Install Plugin (.js)
-                    <input type="file" accept=".js" onChange={handleUpload} className="hidden" /></Trans></label>
+                    <Upload size={16} />{t('installPluginJs', 'Install Plugin (.js)')}
+                    <input type="file" accept=".js" onChange={handleUpload} className="hidden" />
+                  </label>
             </div>
         </div>
 
@@ -125,7 +126,7 @@ export function ExtensionsTab({ addToast }: ExtensionsTabProps) {
         </div>
         
         <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
-            <p className="text-xs text-yellow-500/80 font-medium"><Trans i18nKey="bwarningbPluginsHaveFullAccessToYourChatsAndAppDataOnlyInstallScriptsFromTrustedSources">⚠️ <b>Warning:</b> Plugins have full access to your chats and app data. Only install scripts from trusted sources!</Trans></p>
+            <p className="text-xs text-yellow-500/80 font-medium">⚠️ <b>{t('warningTitle', 'Warning:')}</b> {t('pluginsAccessWarning', 'Plugins have full access to your chats and app data. Only install scripts from trusted sources!')}</p>
         </div>
       </div>
     </div>
