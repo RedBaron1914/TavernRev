@@ -341,10 +341,10 @@ pub async fn summarize_chat(chat_id: i64, profile_name: String, preset_name: Str
         log
     };
     
-    let profile_content = fs::read_to_string(get_connections_dir(&app_handle).join(&profile_name)).map_err(|e| e.to_string())?;
+    let profile_content = fs::read_to_string(get_connections_dir(&app_handle).join(crate::sanitize_filename(&profile_name))).map_err(|e| e.to_string())?;
     let profile: crate::api_client::ConnectionProfile = serde_json::from_str(&profile_content).map_err(|e| e.to_string())?;
     
-    let preset_content = fs::read_to_string(get_presets_dir(&app_handle).join(&preset_name)).map_err(|e| e.to_string())?;
+    let preset_content = fs::read_to_string(get_presets_dir(&app_handle).join(crate::sanitize_filename(&preset_name))).map_err(|e| e.to_string())?;
     let preset: crate::api_client::Preset = serde_json::from_str(&preset_content).map_err(|e| e.to_string())?;
     
     let mut messages = Vec::new();

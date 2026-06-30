@@ -39,7 +39,7 @@ pub async fn save_extension_script(app_handle: AppHandle, file_name: String, con
     
     // Ensure it ends with .js for safety
     let safe_name = if file_name.ends_with(".js") { file_name } else { format!("{}.js", file_name) };
-    let file_path = ext_dir.join(safe_name);
+    let file_path = ext_dir.join(crate::sanitize_filename(&safe_name));
     
     std::fs::write(file_path, content).map_err(|e| e.to_string())?;
     Ok(())
@@ -102,7 +102,7 @@ pub fn import_character_card(app_handle: AppHandle, data: Vec<u8>, file_name: St
     let new_filename = if is_json {
         "default.png".to_string()
     } else {
-        let new_name = format!("{}_{}", chrono::Local::now().timestamp(), file_name); // Unique name
+        let new_name = format!("{}_{}", chrono::Local::now().timestamp(), crate::sanitize_filename(&file_name)); // Unique name
         let dest_path = avatars_dir.join(&new_name);
         fs::write(&dest_path, &data).map_err(|e| e.to_string())?;
         new_name
@@ -333,7 +333,7 @@ pub fn import_chat_jsonl(character_id: i64, data: String, db_state: tauri::State
 #[tauri::command]
 pub fn save_export_file(app_handle: AppHandle, filename: String, content: String) -> Result<String, String> {
     let download_dir = app_handle.path().download_dir().map_err(|e| e.to_string())?;
-    let path = download_dir.join(&filename);
+    let path = download_dir.join(crate::sanitize_filename(&filename));
     
     std::fs::write(&path, content).map_err(|e| format!("Failed to write to {:?}: {}", path, e))?;
     
@@ -542,7 +542,7 @@ pub fn get_context_stats(
 
     let context_size: usize = if let Some(name) = profile_name {
         let dir = get_connections_dir(&app_handle);
-        let content = std::fs::read_to_string(dir.join(&name)).unwrap_or_default();
+        let content = std::fs::read_to_string(dir.join(crate::sanitize_filename(&name))).unwrap_or_default();
         let profile: crate::api_client::ConnectionProfile = match serde_json::from_str(&content) {
             Ok(p) => p,
             Err(_) => return Ok(serde_json::json!({

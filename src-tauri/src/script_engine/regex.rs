@@ -174,6 +174,7 @@ mod tests {
                 regex: "apple".to_string(),
                 replacement: "orange".to_string(),
                 placement: "ai".to_string(),
+                disabled: false,
                 run_on_markdown: false,
             }
         ];
@@ -199,6 +200,7 @@ mod tests {
                 regex: "apple".to_string(),
                 replacement: "{{getvar:fruit}}".to_string(),
                 placement: "both".to_string(),
+                disabled: false,
                 run_on_markdown: false,
             }
         ];
@@ -226,6 +228,7 @@ mod tests {
                 regex: "/apple/".to_string(), // No 'g' flag
                 replacement: "orange".to_string(),
                 placement: "both".to_string(),
+                disabled: false,
                 run_on_markdown: false,
             },
             // Test full match ($&) and suffix ($')
@@ -235,6 +238,7 @@ mod tests {
                 regex: "/banana/g".to_string(),
                 replacement: "<$&> $'!".to_string(),
                 placement: "both".to_string(),
+                disabled: false,
                 run_on_markdown: false,
             },
             // Test group backreferences ($1)
@@ -244,6 +248,7 @@ mod tests {
                 regex: "/(super) (man)/g".to_string(),
                 replacement: "$2 $1".to_string(),
                 placement: "both".to_string(),
+                disabled: false,
                 run_on_markdown: false,
             }
         ];
