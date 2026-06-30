@@ -1828,6 +1828,7 @@ export default function Settings({
               chatId={chatId}
               characterId={characterId}
               addToast={addToast}
+              activePresetFile={activePresetFile}
             />
           )}
 

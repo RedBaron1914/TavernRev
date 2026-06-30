@@ -3,6 +3,7 @@ import { Preset, Slider, Toggle } from "./shared";
 import LorebookEditor from "../LorebookEditor";
 import { useTranslation } from 'react-i18next'
 
+
 interface WorldInfoTabProps {
   formData: Preset;
   handleFieldChange: (field: keyof Preset, value: any) => void;
@@ -11,6 +12,7 @@ interface WorldInfoTabProps {
   addToast: (msg: string, type?: "success" | "error" | "info") => void;
   compact?: boolean;
   showLorebooks?: boolean;
+  activePresetFile?: string;
 }
 
 export function WorldInfoTab({
@@ -21,13 +23,14 @@ export function WorldInfoTab({
   addToast,
   compact = false,
   showLorebooks = true,
+  activePresetFile = "Default",
 }: WorldInfoTabProps) {
   const { t } = useTranslation()
   return (
     <div className="h-full flex flex-col gap-4">
       <div className="bg-gray-900/50 p-4 rounded-2xl border border-white/10 shrink-0">
         <div className="flex items-center gap-2 mb-3 text-cyan-400 font-bold text-xs uppercase tracking-wider">
-          <Globe size={16} /> {t('engineSettingsActivePreset', 'Engine Settings (Active Preset)')}
+          <Globe size={16} /> {t('engineSettingsActivePreset', 'Engine Settings ({{activePreset}})', { activePreset: activePresetFile.replace('.json', '') })}
         </div>
         <div className="grid grid-cols-1 gap-6 mb-4">
           <Slider
