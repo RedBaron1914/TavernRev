@@ -402,7 +402,7 @@ export const CharacterEditor = ({
                         className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${activeSection === s.id ? 'bg-indigo-600/10 text-indigo-400 ring-1 ring-indigo-500/30' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
                     >
                         <div className="flex items-center gap-3">
-                            <span className={activeSection === s.id ? 'text-indigo-400' : 'text-gray-500 group-hover:text-gray-300'}>{s.icon}</span>
+                            <span className={activeSection === s.id ? 'text-indigo-400' : 'text-gray-400 md:text-gray-500 md:group-hover:text-gray-300'}>{s.icon}</span>
                             <span className="text-sm font-medium">{s.label}</span>
                         </div>
                         {activeSection === s.id && <ChevronRight size={14} className="animate-in slide-in-from-left-1" />}

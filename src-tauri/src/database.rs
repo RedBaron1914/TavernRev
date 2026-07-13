@@ -366,19 +366,11 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
     let conn = Connection::open(db_path)?;
     conn.execute("PRAGMA foreign_keys = ON;", [])?;
 
-    // Android-safe journal mode (WAL is unstable on some release builds)
-    #[cfg(target_os = "android")]
-    {
-        let _ = conn.execute("PRAGMA journal_mode = DELETE;", []);
-        let _ = conn.execute("PRAGMA synchronous = NORMAL;", []);
-    }
-    #[cfg(not(target_os = "android"))]
-    {
-        let _: String = conn
-            .query_row("PRAGMA journal_mode = WAL", [], |row| row.get(0))
-            .unwrap_or_default();
-        let _ = conn.execute("PRAGMA synchronous = NORMAL;", []);
-    }
+    // Enable WAL for all platforms (testing on Android)
+    let _: String = conn
+        .query_row("PRAGMA journal_mode = WAL", [], |row| row.get(0))
+        .unwrap_or_default();
+    let _ = conn.execute("PRAGMA synchronous = NORMAL;", []);
 
     // 1. ALL TABLES
     conn.execute(
@@ -801,11 +793,11 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
 
 fn seed_default_data(conn: &Connection) -> Result<()> {
     // Seed default character (if empty)
-    if conn.query_row::<i64, _, _>("SELECT COUNT(*) FROM characters", [], |row| row.get(0))? == 0 {
+    if conn.query_row::<i64, _, _>("SELECT COUNT(*) FROM characters WHERE id > 0", [], |row| row.get(0))? == 0 {
         // Create a default character struct
         let char = Character {
             name: "Eldara".to_string(),
-            avatar: "default_avatar.png".to_string(),
+            avatar: "default.png".to_string(),
             description: "A witty and mysterious barmaid with a story to tell.".to_string(),
             first_mes: "Welcome to the tavern, traveler! What can I get you?".to_string(),
             ..Default::default()

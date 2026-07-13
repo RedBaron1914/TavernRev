@@ -1,6 +1,7 @@
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { Terminal } from "lucide-react";
 import { useTranslation } from 'react-i18next'
+import { UpdateChecker } from "./UpdateChecker";
 
 interface AdvancedTabProps {
   addToast: (message: string, type?: "success" | "error" | "info") => void;
@@ -50,6 +51,8 @@ export function AdvancedTab({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <UpdateChecker addToast={addToast} />
+      
       <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-4">
         <h3 className="text-lg font-bold text-white">{t('debugTools', 'Debug Tools')}</h3>
         <p className="text-gray-400 text-sm">

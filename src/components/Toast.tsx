@@ -44,7 +44,7 @@ const Toast = ({ toast, onClose }: { toast: ToastMessage; onClose: (id: string) 
 
 export const ToastContainer = ({ toasts, onClose }: { toasts: ToastMessage[]; onClose: (id: string) => void }) => {
   return (
-    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none p-4 md:p-0 w-full md:w-auto items-center md:items-end">
+    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none p-4 md:p-0 w-full md:w-auto items-center md:items-end" style={{ top: 'calc(1rem + env(safe-area-inset-top))' }}>
       {toasts.map((t) => (
         <Toast key={t.id} toast={t} onClose={onClose} />
       ))}

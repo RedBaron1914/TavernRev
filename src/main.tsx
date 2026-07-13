@@ -32,7 +32,7 @@ class ErrorBoundary extends React.Component<
             padding: 20,
             color: "red",
             background: "#1a1a1a",
-            height: "100vh",
+            height: "100dvh",
           }}
         >
           <h1>{i18next.t('somethingWentWrong', 'Something went wrong.')}</h1>

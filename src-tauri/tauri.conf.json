@@ -35,5 +35,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://raw.githubusercontent.com/stoyaka/TavernRev/main/updater.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEyRTJEQjAxRTVDNEQ4MzYKUldRMjJNVGxBZHZpRW4zMk8vRFEvdEl3NUdZUFhoZE9TR1phZVNoTTVlQU0wQWFpOWZXazdOYk0K",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Bug, ChevronRight } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from 'react-i18next'
@@ -206,14 +206,27 @@ export const Slider = ({
   onChange,
   helpText,
 }: any) => {
-  const [localVal, setLocalVal] = useState(value);
+  const rangeRef = useRef<HTMLInputElement>(null);
+  const numberRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setLocalVal(value);
+    if (rangeRef.current) rangeRef.current.value = value;
+    if (numberRef.current) numberRef.current.value = value;
   }, [value]);
 
-  const handleCommit = () => {
-    onChange(field, localVal);
+  const handleCommit = (e: any) => {
+    onChange(field, e.target.value);
+  };
+
+  const handleNumberChange = (e: any) => {
+    onChange(field, e.target.value);
+  };
+
+  const handleDrag = (e: any) => {
+    // Update number input visually without triggering React state re-render
+    if (numberRef.current) {
+      numberRef.current.value = e.target.value;
+    }
   };
 
   return (
@@ -222,11 +235,9 @@ export const Slider = ({
         <label className="text-sm text-gray-300 font-medium">{label}</label>
         <input
           type="number"
-          value={localVal}
-          onChange={(e) => {
-            setLocalVal(e.target.value);
-            onChange(field, e.target.value);
-          }}
+          ref={numberRef}
+          defaultValue={value}
+          onChange={handleNumberChange}
           className="w-16 bg-gray-950 border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-indigo-500 font-mono"
           min={min}
           max={max}
@@ -235,8 +246,9 @@ export const Slider = ({
       </div>
       <input
         type="range"
-        value={localVal}
-        onChange={(e) => setLocalVal(e.target.value)}
+        ref={rangeRef}
+        defaultValue={value}
+        onChange={handleDrag}
         onMouseUp={handleCommit}
         onTouchEnd={handleCommit}
         className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400"

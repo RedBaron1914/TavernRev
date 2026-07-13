@@ -1,11 +1,11 @@
+use crate::prompt_engine::PromptModule;
+use futures_util::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use futures_util::StreamExt;
-use tauri::{AppHandle, Emitter};
-use crate::prompt_engine::PromptModule;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::OnceLock;
+use tauri::{AppHandle, Emitter};
 
 static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
 
@@ -27,8 +27,12 @@ pub struct ConnectionProfile {
     pub context_size: i32,
 }
 
-fn default_post_processing() -> String { "none".to_string() }
-fn default_context_size() -> i32 { 4096 }
+fn default_post_processing() -> String {
+    "none".to_string()
+}
+fn default_context_size() -> i32 {
+    4096
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Preset {
@@ -146,20 +150,48 @@ pub struct Preset {
     pub prompts: Vec<PromptModule>,
 }
 
-fn default_sd_width() -> i32 { 512 }
-fn default_sd_height() -> i32 { 512 }
-fn default_sd_steps() -> i32 { 20 }
-fn default_sd_sampler() -> String { "k_euler_a".to_string() }
-fn default_sd_cfg() -> f32 { 7.0 }
-fn default_sd_provider() -> String { "horde".to_string() }
-fn default_sd_model() -> String { "stable_diffusion".to_string() }
-fn default_sd_auto_url() -> String { "http://127.0.0.1:7860".to_string() }
-fn default_sd_auto_vae() -> String { "Automatic".to_string() }
-fn default_sd_auto_scheduler() -> String { "Automatic".to_string() }
-fn default_sd_auto_upscaler() -> String { "Latent".to_string() }
-fn default_sd_auto_clip_skip() -> i32 { 1 }
-fn default_sd_auto_denoising() -> f32 { 0.7 }
-fn default_sd_auto_upscale_by() -> f32 { 2.0 }
+fn default_sd_width() -> i32 {
+    512
+}
+fn default_sd_height() -> i32 {
+    512
+}
+fn default_sd_steps() -> i32 {
+    20
+}
+fn default_sd_sampler() -> String {
+    "k_euler_a".to_string()
+}
+fn default_sd_cfg() -> f32 {
+    7.0
+}
+fn default_sd_provider() -> String {
+    "horde".to_string()
+}
+fn default_sd_model() -> String {
+    "stable_diffusion".to_string()
+}
+fn default_sd_auto_url() -> String {
+    "http://127.0.0.1:7860".to_string()
+}
+fn default_sd_auto_vae() -> String {
+    "Automatic".to_string()
+}
+fn default_sd_auto_scheduler() -> String {
+    "Automatic".to_string()
+}
+fn default_sd_auto_upscaler() -> String {
+    "Latent".to_string()
+}
+fn default_sd_auto_clip_skip() -> i32 {
+    1
+}
+fn default_sd_auto_denoising() -> f32 {
+    0.7
+}
+fn default_sd_auto_upscale_by() -> f32 {
+    2.0
+}
 
 impl Default for Preset {
     fn default() -> Self {
@@ -228,9 +260,15 @@ impl Default for Preset {
     }
 }
 
-fn default_true() -> bool { true }
-fn default_wi_depth() -> i32 { 5 }
-fn default_recursion() -> i32 { 5 }
+fn default_true() -> bool {
+    true
+}
+fn default_wi_depth() -> i32 {
+    5
+}
+fn default_recursion() -> i32 {
+    5
+}
 
 // --- OpenAI API Structures ---
 
@@ -564,7 +602,8 @@ pub async fn generate_embeddings(
             base.replace("/chat/completions", "/v1/embeddings")
         } else if base.ends_with("/v1") {
             format!("{}/embeddings", base)
-        } else if !base.contains('/') || (base.starts_with("http") && base.split('/').count() <= 3) {
+        } else if !base.contains('/') || (base.starts_with("http") && base.split('/').count() <= 3)
+        {
             // It's just a base URL like http://127.0.0.1:5000, add default path
             format!("{}/v1/embeddings", base)
         } else {
@@ -582,7 +621,8 @@ pub async fn generate_embeddings(
             input: chunk.to_vec(),
         };
 
-        let mut req = client.post(&url)
+        let mut req = client
+            .post(&url)
             .header("Content-Type", "application/json")
             .json(&req_body);
 
@@ -590,7 +630,10 @@ pub async fn generate_embeddings(
             req = req.header("Authorization", format!("Bearer {}", api_key));
         }
 
-        let resp = req.send().await.map_err(|e| format!("Network error: {}", e))?;
+        let resp = req
+            .send()
+            .await
+            .map_err(|e| format!("Network error: {}", e))?;
         let status = resp.status();
 
         if !status.is_success() {
@@ -598,8 +641,11 @@ pub async fn generate_embeddings(
             return Err(format!("API error {}: {}", status, err_text));
         }
 
-        let parsed: EmbeddingResponse = resp.json().await.map_err(|e| format!("Parse error: {}", e))?;
-        
+        let parsed: EmbeddingResponse = resp
+            .json()
+            .await
+            .map_err(|e| format!("Parse error: {}", e))?;
+
         if let Some(data) = parsed.data {
             let embeddings: Vec<Vec<f32>> = data.into_iter().map(|d| d.embedding).collect();
             all_embeddings.extend(embeddings);
@@ -607,7 +653,7 @@ pub async fn generate_embeddings(
             return Err("No embedding data returned in chunk".to_string());
         }
     }
-    
+
     Ok(all_embeddings)
 }
 
@@ -625,7 +671,7 @@ pub async fn generate_google(
     tools_payload: Option<Vec<OpenAITool>>,
 ) -> Result<(String, Option<Vec<OpenAIToolCall>>), String> {
     let client = get_client();
-    
+
     // Convert messages
     let mut contents = Vec::new();
     let mut system_parts = Vec::new();
@@ -633,7 +679,12 @@ pub async fn generate_google(
     for msg in messages {
         if msg.role == "system" {
             if let Some(OpenAIContent::Text(text)) = &msg.content {
-                system_parts.push(GooglePart { text: Some(text.clone()), inline_data: None, function_call: None, function_response: None });
+                system_parts.push(GooglePart {
+                    text: Some(text.clone()),
+                    inline_data: None,
+                    function_call: None,
+                    function_response: None,
+                });
             }
         } else if msg.role == "tool" {
             if let Some(OpenAIContent::Text(text)) = &msg.content {
@@ -647,17 +698,23 @@ pub async fn generate_google(
                         function_response: Some(GoogleFunctionResponse {
                             name: tc_id,
                             response: serde_json::json!({"result": text}),
-                        })
-                    }]
+                        }),
+                    }],
                 });
             }
         } else {
-            let role = if msg.role == "assistant" || msg.role == "char" { "model" } else { "user" };
+            let role = if msg.role == "assistant" || msg.role == "char" {
+                "model"
+            } else {
+                "user"
+            };
             let mut parts = Vec::new();
 
             if let Some(calls) = &msg.tool_calls {
                 for call in calls {
-                    let args_val: serde_json::Value = serde_json::from_str(&call.function.arguments).unwrap_or(serde_json::json!({}));
+                    let args_val: serde_json::Value =
+                        serde_json::from_str(&call.function.arguments)
+                            .unwrap_or(serde_json::json!({}));
                     parts.push(GooglePart {
                         text: None,
                         inline_data: None,
@@ -672,26 +729,45 @@ pub async fn generate_google(
 
             match &msg.content {
                 Some(OpenAIContent::Text(text)) => {
-                    parts.push(GooglePart { text: Some(text.clone()), inline_data: None, function_call: None, function_response: None });
-                },
+                    parts.push(GooglePart {
+                        text: Some(text.clone()),
+                        inline_data: None,
+                        function_call: None,
+                        function_response: None,
+                    });
+                }
                 Some(OpenAIContent::Array(array)) => {
                     for part in array {
                         if part.part_type == "text" {
                             if let Some(t) = &part.text {
-                                parts.push(GooglePart { text: Some(t.clone()), inline_data: None, function_call: None, function_response: None });
+                                parts.push(GooglePart {
+                                    text: Some(t.clone()),
+                                    inline_data: None,
+                                    function_call: None,
+                                    function_response: None,
+                                });
                             }
                         } else if part.part_type == "image_url" {
                             if let Some(img) = &part.image_url {
                                 if let Some(comma_pos) = img.url.find(',') {
                                     let mime_part = &img.url[0..comma_pos];
-                                    let data = &img.url[comma_pos+1..];
+                                    let data = &img.url[comma_pos + 1..];
                                     let mime = if let Some(semi) = mime_part.find(';') {
-                                        if mime_part.len() > 5 { &mime_part[5..semi] } else { "image/jpeg" }
-                                    } else { "image/jpeg" };
-                                    
+                                        if mime_part.len() > 5 {
+                                            &mime_part[5..semi]
+                                        } else {
+                                            "image/jpeg"
+                                        }
+                                    } else {
+                                        "image/jpeg"
+                                    };
+
                                     parts.push(GooglePart {
                                         text: None,
-                                        inline_data: Some(GoogleInlineData { mime_type: mime.to_string(), data: data.to_string() }),
+                                        inline_data: Some(GoogleInlineData {
+                                            mime_type: mime.to_string(),
+                                            data: data.to_string(),
+                                        }),
                                         function_call: None,
                                         function_response: None,
                                     });
@@ -699,12 +775,15 @@ pub async fn generate_google(
                             }
                         }
                     }
-                },
+                }
                 None => {}
             }
 
             if !parts.is_empty() {
-                contents.push(GoogleContent { role: role.to_string(), parts });
+                contents.push(GoogleContent {
+                    role: role.to_string(),
+                    parts,
+                });
             }
         }
     }
@@ -721,14 +800,15 @@ pub async fn generate_google(
     let is_gemini_3 = model.contains("gemini-3");
     let is_flash = model.contains("flash");
 
-    let thinking_config = if preset.reasoning_effort.is_empty() || preset.reasoning_effort == "none" {
+    let thinking_config = if preset.reasoning_effort.is_empty() || preset.reasoning_effort == "none"
+    {
         None
     } else if is_gemini_3 {
         let level = match preset.reasoning_effort.as_str() {
             "low" => "LOW",
             "medium" => "MEDIUM",
             "high" => "HIGH",
-            _ => "HIGH"
+            _ => "HIGH",
         };
         Some(ThinkingConfig {
             include_thoughts: Some(preset.show_thoughts),
@@ -738,9 +818,21 @@ pub async fn generate_google(
     } else {
         let budget = match preset.reasoning_effort.as_str() {
             "low" => 1024,
-            "medium" => if is_flash { 12288 } else { 16384 },
-            "high" => if is_flash { 24576 } else { 32768 },
-            _ => 0
+            "medium" => {
+                if is_flash {
+                    12288
+                } else {
+                    16384
+                }
+            }
+            "high" => {
+                if is_flash {
+                    24576
+                } else {
+                    32768
+                }
+            }
+            _ => 0,
         };
         if budget > 0 {
             Some(ThinkingConfig {
@@ -754,11 +846,16 @@ pub async fn generate_google(
     };
 
     let google_tools = tools_payload.map(|t_arr| {
-        let decls: Vec<_> = t_arr.into_iter().map(|t| serde_json::json!({
-            "name": t.function.name,
-            "description": t.function.description,
-            "parameters": t.function.parameters
-        })).collect();
+        let decls: Vec<_> = t_arr
+            .into_iter()
+            .map(|t| {
+                serde_json::json!({
+                    "name": t.function.name,
+                    "description": t.function.description,
+                    "parameters": t.function.parameters
+                })
+            })
+            .collect();
         vec![serde_json::json!({
             "functionDeclarations": decls
         })]
@@ -776,14 +873,22 @@ pub async fn generate_google(
         }
         alternating_contents.push(content);
     }
-    
+
     // Gemini also requires the first message to be from the user
     if let Some(first) = alternating_contents.first() {
         if first.role != "user" {
-            alternating_contents.insert(0, GoogleContent {
-                role: "user".to_string(),
-                parts: vec![GooglePart { text: Some("Start.".to_string()), inline_data: None, function_call: None, function_response: None }],
-            });
+            alternating_contents.insert(
+                0,
+                GoogleContent {
+                    role: "user".to_string(),
+                    parts: vec![GooglePart {
+                        text: Some("Start.".to_string()),
+                        inline_data: None,
+                        function_call: None,
+                        function_response: None,
+                    }],
+                },
+            );
         }
     }
 
@@ -799,12 +904,16 @@ pub async fn generate_google(
         tools: google_tools,
     };
 
-    println!("--- GOOGLE PROMPT DEBUG ---\n{}\n--- END PROMPT ---", debug_google_request(&req));
+    println!(
+        "--- GOOGLE PROMPT DEBUG ---\n{}\n--- END PROMPT ---",
+        debug_google_request(&req)
+    );
 
     let url = format!("https://generativelanguage.googleapis.com/v1beta/models/{}:streamGenerateContent?key={}&alt=sse", model, api_key.trim());
 
     let mut response_text = String::new();
-    let res = client.post(&url)
+    let res = client
+        .post(&url)
         .json(&req)
         .send()
         .await
@@ -820,43 +929,52 @@ pub async fn generate_google(
 
     loop {
         if abort_token.load(Ordering::Relaxed) {
-            if !response_text.is_empty() { return Ok((response_text, None)); }
+            if !response_text.is_empty() {
+                return Ok((response_text, None));
+            }
             return Err("Aborted by user".to_string());
         }
 
         match tokio::time::timeout(std::time::Duration::from_millis(100), stream.next()).await {
-            Ok(Some(item)) => {
-                match item {
-                    Ok(chunk) => {
-                        let s = String::from_utf8_lossy(&chunk);
-                        for line in s.lines() {
-                            if let Some(data_str) = line.strip_prefix("data: ") {
-                                if data_str.trim() == "[DONE]" { break; }
+            Ok(Some(item)) => match item {
+                Ok(chunk) => {
+                    let s = String::from_utf8_lossy(&chunk);
+                    for line in s.lines() {
+                        if let Some(data_str) = line.strip_prefix("data: ") {
+                            if data_str.trim() == "[DONE]" {
+                                break;
+                            }
 
-                                if let Ok(json) = serde_json::from_str::<GoogleStreamResponse>(data_str) {
-                                    if let Some(candidates) = json.candidates {
-                                        if let Some(cand) = candidates.first() {
-                                            if let Some(content) = &cand.content {
-                                                if let Some(parts) = &content.parts {
-                                                    for part in parts {
-                                                        if let Some(text) = &part.text {
-                                                            response_text.push_str(text);
-                                                            let _ = app_handle.emit("stream-token", StreamPayload {
+                            if let Ok(json) = serde_json::from_str::<GoogleStreamResponse>(data_str)
+                            {
+                                if let Some(candidates) = json.candidates {
+                                    if let Some(cand) = candidates.first() {
+                                        if let Some(content) = &cand.content {
+                                            if let Some(parts) = &content.parts {
+                                                for part in parts {
+                                                    if let Some(text) = &part.text {
+                                                        response_text.push_str(text);
+                                                        let _ = app_handle.emit(
+                                                            "stream-token",
+                                                            StreamPayload {
                                                                 content: text.clone(),
                                                                 gen_id,
-                                                                target_id
-                                                            });
-                                                        }
-                                                        if let Some(fc) = &part.function_call {
-                                                            parsed_tool_calls.push(OpenAIToolCall {
-                                                                id: fc.name.clone(),
-                                                                tool_type: "function".to_string(),
-                                                                function: OpenAIFunctionCall {
-                                                                    name: fc.name.clone(),
-                                                                    arguments: serde_json::to_string(&fc.args).unwrap_or_default(),
-                                                                }
-                                                            });
-                                                        }
+                                                                target_id,
+                                                            },
+                                                        );
+                                                    }
+                                                    if let Some(fc) = &part.function_call {
+                                                        parsed_tool_calls.push(OpenAIToolCall {
+                                                            id: fc.name.clone(),
+                                                            tool_type: "function".to_string(),
+                                                            function: OpenAIFunctionCall {
+                                                                name: fc.name.clone(),
+                                                                arguments: serde_json::to_string(
+                                                                    &fc.args,
+                                                                )
+                                                                .unwrap_or_default(),
+                                                            },
+                                                        });
                                                     }
                                                 }
                                             }
@@ -865,11 +983,13 @@ pub async fn generate_google(
                                 }
                             }
                         }
-                    },
-                    Err(_) => {
-                         if !response_text.is_empty() { return Ok((response_text, None)); }
-                         return Err("Stream Error".to_string());
                     }
+                }
+                Err(_) => {
+                    if !response_text.is_empty() {
+                        return Ok((response_text, None));
+                    }
+                    return Err("Stream Error".to_string());
                 }
             },
             Ok(None) => break,
@@ -877,7 +997,14 @@ pub async fn generate_google(
         }
     }
 
-    Ok((response_text, if parsed_tool_calls.is_empty() { None } else { Some(parsed_tool_calls) }))
+    Ok((
+        response_text,
+        if parsed_tool_calls.is_empty() {
+            None
+        } else {
+            Some(parsed_tool_calls)
+        },
+    ))
 }
 
 pub async fn generate_horde(
@@ -892,7 +1019,11 @@ pub async fn generate_horde(
     target_id: Option<i64>,
 ) -> Result<String, String> {
     let client = get_client();
-    let api_key = if api_key.is_empty() { "0000000000".to_string() } else { api_key };
+    let api_key = if api_key.is_empty() {
+        "0000000000".to_string()
+    } else {
+        api_key
+    };
 
     let req = HordeRequest {
         prompt,
@@ -911,9 +1042,10 @@ pub async fn generate_horde(
     println!("--- HORDE PROMPT DEBUG: Sending request... ---");
 
     // 1. Submit Async Request
-    let res = client.post("https://stablehorde.net/api/v2/generate/text/async")
+    let res = client
+        .post("https://stablehorde.net/api/v2/generate/text/async")
         .header("apikey", &api_key)
-        .header("Client-Agent", "TavernRev:0.1.0:github.com/yourrepo")
+        .header("Client-Agent", "TavernRev:1.4.0:github.com/TavernRev")
         .json(&req)
         .send()
         .await
@@ -931,24 +1063,32 @@ pub async fn generate_horde(
     // 2. Poll Status
     let mut text = String::new();
     let mut attempts = 0;
-    
+
     loop {
         if abort_token.load(Ordering::Relaxed) {
-            let _ = client.delete(format!("https://stablehorde.net/api/v2/generate/status/{}", id))
+            let _ = client
+                .delete(format!(
+                    "https://stablehorde.net/api/v2/generate/status/{}",
+                    id
+                ))
                 .header("apikey", &api_key)
                 .send()
                 .await;
             return Err("Aborted by user".to_string());
         }
-        
-        if attempts > 120 { 
+
+        if attempts > 120 {
             return Err("Horde Generation Timed Out".to_string());
         }
-        
+
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         attempts += 1;
 
-        let status_res = client.get(format!("https://stablehorde.net/api/v2/generate/text/status/{}", id))
+        let status_res = client
+            .get(format!(
+                "https://stablehorde.net/api/v2/generate/text/status/{}",
+                id
+            ))
             .header("apikey", &api_key)
             .send()
             .await;
@@ -960,11 +1100,14 @@ pub async fn generate_horde(
                         if let Some(gen) = gens.first() {
                             text = gen.text.clone();
                             // Fake stream emission for UI
-                            let _ = app_handle.emit("stream-token", StreamPayload {
-                                content: text.clone(),
-                                gen_id,
-                                target_id
-                            });
+                            let _ = app_handle.emit(
+                                "stream-token",
+                                StreamPayload {
+                                    content: text.clone(),
+                                    gen_id,
+                                    target_id,
+                                },
+                            );
                         }
                     }
                     break;
@@ -993,14 +1136,23 @@ pub async fn generate_stream(
     target_id: Option<i64>,
 ) -> Result<(String, Option<Vec<OpenAIToolCall>>), String> {
     let client = get_client();
-    let url = if api_url.ends_with("/chat/completions") { api_url } else { format!("{}/chat/completions", api_url.trim_end_matches('/')) };
+    let url = if api_url.ends_with("/chat/completions") {
+        api_url
+    } else {
+        format!("{}/chat/completions", api_url.trim_end_matches('/'))
+    };
 
     let mut response_text = String::new();
-    let mut tool_calls_map: std::collections::HashMap<usize, OpenAIToolCall> = std::collections::HashMap::new();
+    let mut tool_calls_map: std::collections::HashMap<usize, OpenAIToolCall> =
+        std::collections::HashMap::new();
 
-    println!("--- OPENAI PROMPT DEBUG ---\n{}\n--- END PROMPT ---", debug_openai_request(&request));
+    println!(
+        "--- OPENAI PROMPT DEBUG ---\n{}\n--- END PROMPT ---",
+        debug_openai_request(&request)
+    );
 
-    let res = client.post(&url)
+    let res = client
+        .post(&url)
         .header("Authorization", format!("Bearer {}", api_key.trim()))
         .json(&request)
         .send()
@@ -1016,60 +1168,82 @@ pub async fn generate_stream(
 
         loop {
             if abort_token.load(Ordering::Relaxed) {
-                if !response_text.is_empty() { return Ok((response_text, None)); }
+                if !response_text.is_empty() {
+                    return Ok((response_text, None));
+                }
                 return Err("Aborted by user".to_string());
             }
 
             match tokio::time::timeout(std::time::Duration::from_millis(100), stream.next()).await {
-                Ok(Some(item)) => {
-                    match item {
-                        Ok(chunk) => {
-                            let s = String::from_utf8_lossy(&chunk);
-                            for line in s.lines() {
-                                if let Some(data_str) = line.strip_prefix("data: ") {
-                                    if data_str.trim() == "[DONE]" { break; }
-                                    match serde_json::from_str::<OpenAIStreamResponse>(data_str) {
-                                        Ok(json) => {
-                                            if let Some(choice) = json.choices.first() {
-                                                if let Some(content) = &choice.delta.content {
-                                                    response_text.push_str(content);
-                                                    let _ = app_handle.emit("stream-token", StreamPayload {
+                Ok(Some(item)) => match item {
+                    Ok(chunk) => {
+                        let s = String::from_utf8_lossy(&chunk);
+                        for line in s.lines() {
+                            if let Some(data_str) = line.strip_prefix("data: ") {
+                                if data_str.trim() == "[DONE]" {
+                                    break;
+                                }
+                                match serde_json::from_str::<OpenAIStreamResponse>(data_str) {
+                                    Ok(json) => {
+                                        if let Some(choice) = json.choices.first() {
+                                            if let Some(content) = &choice.delta.content {
+                                                response_text.push_str(content);
+                                                let _ = app_handle.emit(
+                                                    "stream-token",
+                                                    StreamPayload {
                                                         content: content.clone(),
                                                         gen_id,
-                                                        target_id
-                                                    });
-                                                }
-                                                if let Some(tc_array) = &choice.delta.tool_calls {
-                                                    for tc in tc_array.iter() {
-                                                        let entry = tool_calls_map.entry(tc.index).or_insert(OpenAIToolCall {
+                                                        target_id,
+                                                    },
+                                                );
+                                            }
+                                            if let Some(tc_array) = &choice.delta.tool_calls {
+                                                for tc in tc_array.iter() {
+                                                    let entry = tool_calls_map
+                                                        .entry(tc.index)
+                                                        .or_insert(OpenAIToolCall {
                                                             id: tc.id.clone().unwrap_or_default(),
                                                             tool_type: "function".to_string(),
-                                                            function: OpenAIFunctionCall { name: String::new(), arguments: String::new() }
+                                                            function: OpenAIFunctionCall {
+                                                                name: String::new(),
+                                                                arguments: String::new(),
+                                                            },
                                                         });
-                                                        if let Some(f) = &tc.function {
-                                                            if let Some(name) = &f.name { entry.function.name.push_str(name); }
-                                                            if let Some(args) = &f.arguments { entry.function.arguments.push_str(args); }
+                                                    if let Some(f) = &tc.function {
+                                                        if let Some(name) = &f.name {
+                                                            entry.function.name.push_str(name);
+                                                        }
+                                                        if let Some(args) = &f.arguments {
+                                                            entry.function.arguments.push_str(args);
                                                         }
                                                     }
                                                 }
                                             }
-                                        },
-                                        Err(e) => {
-                                            println!("DEBUG: Failed to parse stream JSON: {}. Raw data: {}", e, data_str);
-                                            let _ = app_handle.emit("backend-log", format!("Stream Parse Error: {}. Raw: {}", e, data_str));
                                         }
+                                    }
+                                    Err(e) => {
+                                        println!(
+                                            "DEBUG: Failed to parse stream JSON: {}. Raw data: {}",
+                                            e, data_str
+                                        );
+                                        let _ = app_handle.emit(
+                                            "backend-log",
+                                            format!("Stream Parse Error: {}. Raw: {}", e, data_str),
+                                        );
                                     }
                                 }
                             }
                         }
-                        Err(_) => {
-                            if !response_text.is_empty() { return Ok((response_text, None)); }
-                            return Err("Stream Error".to_string());
+                    }
+                    Err(_) => {
+                        if !response_text.is_empty() {
+                            return Ok((response_text, None));
                         }
+                        return Err("Stream Error".to_string());
                     }
                 },
-                Ok(None) => break, 
-                Err(_) => continue, 
+                Ok(None) => break,
+                Err(_) => continue,
             }
         }
     } else {
@@ -1081,11 +1255,14 @@ pub async fn generate_stream(
             if let Some(content) = &choice.message.content {
                 response_text = content.clone();
                 if gen_id != 0 {
-                    let _ = app_handle.emit("stream-token", StreamPayload {
-                        content: response_text.clone(),
-                        gen_id,
-                        target_id
-                    });
+                    let _ = app_handle.emit(
+                        "stream-token",
+                        StreamPayload {
+                            content: response_text.clone(),
+                            gen_id,
+                            target_id,
+                        },
+                    );
                 }
             }
             if let Some(tc_array) = &choice.message.tool_calls {
@@ -1181,7 +1358,7 @@ mod tests {
             function: OpenAIFunctionCall {
                 name: "get_system_time".to_string(),
                 arguments: "{}".to_string(),
-            }
+            },
         };
 
         let msg = OpenAIMessage {

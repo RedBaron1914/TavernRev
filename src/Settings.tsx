@@ -13,7 +13,6 @@ import {
   FileText,
   LayoutTemplate,
   ChevronRight,
-  Eye,
   Brain,
   Minimize2,
   Maximize2,
@@ -31,7 +30,6 @@ import { listen } from "@tauri-apps/api/event";
 import PersonaEditor from "./components/PersonaEditor";
 import { ConnectionTab } from "./components/settings/ConnectionTab";
 import { TextGenTab } from "./components/settings/TextGenTab";
-import { UiTab } from "./components/settings/UiTab";
 import { FormattingTab } from "./components/settings/FormattingTab";
 import { PersonaTab } from "./components/settings/PersonaTab";
 import { RegexTab } from "./components/settings/RegexTab";
@@ -443,7 +441,7 @@ const PromptModuleItem = React.memo(({
           </div>
         </div>
         <div
-          className="flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition shrink-0"
+          className="flex items-center gap-0.5 opacity-100 md:opacity-60 md:group-hover:opacity-100 transition shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
           <button
@@ -639,7 +637,6 @@ type SettingsProps = {
 
 const TABS = [
   { id: "connection", labelKey: "apiConnection", label: "API Connection", icon: Wifi },
-  { id: "ui", labelKey: "interfaceAppearance", label: "Interface & Appearance", icon: Eye },
   {
     id: "textgen",
     labelKey: "aiResponseConfiguration", label: "AI Response Configuration",
@@ -1673,7 +1670,7 @@ export default function Settings({
             >
               <tab.icon
                 size={18}
-                className={`transition-colors shrink-0 ${activeTab === tab.id ? "text-white" : "text-gray-500 group-hover:text-gray-300"}`}
+                className={`transition-colors shrink-0 ${activeTab === tab.id ? "text-white" : "text-gray-400 md:text-gray-500 md:group-hover:text-gray-300"}`}
               />
               {tab.labelKey ? t(tab.labelKey, tab.label) : tab.label}
             </button>
@@ -1719,13 +1716,7 @@ export default function Settings({
             />
           )}
 
-                    {/* --- UI TAB --- */}
-
-                    {activeTab === "ui" && (
-                        <UiTab bgMode={bgMode} setBgMode={setBgMode} setCustomBg={setCustomBg} />
-                    )}
-
-          
+                    {/* --- REMOVED UI TAB --- */}
 
                     {/* --- TEXT GEN TAB --- */}
                     {activeTab === "textgen" && (
@@ -1802,6 +1793,9 @@ export default function Settings({
               chatStyle={chatStyle}
               setChatStyle={setChatStyle}
               characterId={characterId}
+              bgMode={bgMode}
+              setBgMode={setBgMode}
+              setCustomBg={setCustomBg}
             />
           )}
 

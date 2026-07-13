@@ -85,3 +85,4 @@ desktop.ini
 .env.local
 *.jks
 *.keystore
+updater.key

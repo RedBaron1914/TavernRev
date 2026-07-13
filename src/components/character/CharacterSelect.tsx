@@ -249,7 +249,7 @@ export const CharacterSelect = ({
                   </span>
                 </div>
                 <div className="flex flex-col md:block min-w-0">
-                  <span className="font-bold text-sm truncate text-gray-200 group-hover:text-white transition block">
+                  <span className="font-bold text-sm truncate text-white md:text-gray-200 md:group-hover:text-white transition block">
                     {char.name}
                   </span>
                   {/* Mobile Only Description Preview */}
@@ -288,7 +288,7 @@ export const CharacterSelect = ({
                                                 </button>
                     
                                                 {/* Desktop Only Description */}              <div className="col-span-6 hidden md:flex flex-col justify-center min-w-0">
-                <div className="text-xs text-gray-500 truncate group-hover:text-gray-400 transition mb-1">
+                <div className="text-xs text-gray-400 md:text-gray-500 truncate md:group-hover:text-gray-400 transition mb-1">
                   {char.creator_notes || char.description}
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1">
@@ -314,7 +314,7 @@ export const CharacterSelect = ({
 
               {/* Date: Hidden on Mobile */}
               <div className="col-span-2 hidden md:flex justify-end items-center gap-3">
-                <span className="text-[10px] text-gray-600 font-mono group-hover:text-gray-500 transition">
+                <span className="text-[10px] text-gray-500 md:text-gray-600 font-mono md:group-hover:text-gray-500 transition">
                   {char.created_at
                     ? new Date(char.created_at).toLocaleDateString()
                     : "N/A"}

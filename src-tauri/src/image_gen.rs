@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
 use std::time::Duration;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Emitter};
 use std::fs;
 use base64::{engine::general_purpose, Engine as _};
 use uuid::Uuid;
@@ -126,7 +126,7 @@ pub async fn generate_image_horde(
             karras: if karras { Some(true) } else { None },
             hires_fix: if hires_fix { Some(true) } else { None },
             post_processing: if post_processing.is_empty() { None } else { Some(post_processing) },
-            seed: if seed.is_empty() { None } else { Some(seed) },
+            seed: if seed.is_empty() || seed == "-1" { None } else { Some(seed) },
         },
         nsfw,
         censor_nsfw: false,
@@ -143,6 +143,7 @@ pub async fn generate_image_horde(
     let res = client
         .post("https://stablehorde.net/api/v2/generate/async")
         .header("apikey", &actual_api_key)
+        .header("Client-Agent", "TavernREV:1.4.0:unknown")
         .json(&req)
         .send()
         .await
@@ -181,6 +182,10 @@ pub async fn generate_image_horde(
             if !status.is_possible {
                 return Err("Horde generation is impossible (no workers support these params).".to_string());
             }
+
+            // Emit progress event to frontend
+            let _ = app_handle.emit("image-gen-progress", status.clone());
+
             if status.done {
                 break; // Done!
             }

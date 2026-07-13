@@ -136,7 +136,7 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="bg-gray-800/50 rounded-2xl p-6 border border-white/5 backdrop-blur-sm shadow-xl relative overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-500" />
         <div className="relative space-y-6">
           <div className="flex items-center gap-3 border-b border-white/5 pb-4">
             <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">

@@ -43,6 +43,8 @@ log = "0.4"
 fastembed = { version = "5.13.0", default-features = false, features = ["ort-load-dynamic", "hf-hub-rustls-tls"] }
 uuid = { version = "1.23.0", features = ["v4"] }
 tauri-plugin-os = "2.3.2"
+tauri-plugin-updater = "2.10.1"
+tauri-plugin-process = "2.3.1"
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13"

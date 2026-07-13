@@ -151,9 +151,14 @@ const RenderedAttachment = ({ filename }: { filename: string }) => {
         if (filename.startsWith("data:image/") || filename.startsWith("http")) {
             setSrc(filename);
         } else {
-            appLocalDataDir().then(appDataPath => join(appDataPath, "attachments", filename)).then(fullPath => {
-                if (active) setSrc(convertFileSrc(fullPath));
-            }).catch(console.error);
+            appLocalDataDir().then(appDataPath => {
+                if (!active) throw new Error("aborted");
+                return join(appDataPath, "attachments", filename);
+            }).then(fullPath => {
+                if (active && fullPath) setSrc(convertFileSrc(fullPath));
+            }).catch(e => {
+                if (e.message !== "aborted") console.error(e);
+            });
         }
         return () => { active = false; };
     }, [filename]);
@@ -251,7 +256,26 @@ function App() {
   const [showQR, setShowQR] = useState(false);
   const [imageGenPrompt, setImageGenPrompt] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imageGenStatus, setImageGenStatus] = useState<{ queue_position: number; wait_time: number; processing: boolean } | null>(null);
   
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    const setupListener = async () => {
+      unlisten = await listen<{ queue_position: number; wait_time: number; processing: number; finished: number; done: boolean }>("image-gen-progress", (event) => {
+        const payload = event.payload;
+        setImageGenStatus({
+          queue_position: payload.queue_position,
+          wait_time: payload.wait_time,
+          processing: payload.processing > 0 || payload.wait_time === 0 || payload.finished > 0
+        });
+      });
+    };
+    setupListener();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
   // Auto-Retry Settings
   const [retryEnabled, setRetryEnabled] = useState(localStorage.getItem("retry_enabled") === "true");
   const [retryTriggers, setRetryTriggers] = useState(localStorage.getItem("retry_triggers") || "429, 503, 500, overloaded, capacity");
@@ -801,6 +825,7 @@ const refreshCharacters = async () => {
           addToast("Generation failed: " + e.toString(), "error");
       } finally {
           setIsGeneratingImage(false);
+          setImageGenStatus(null);
       }
   };
 
@@ -1742,16 +1767,31 @@ const refreshCharacters = async () => {
     }, [activeCharacterId, activeGroupId, refreshChats]);
 
     useEffect(() => {      
+      let isCurrent = true;
       if (activeChatId) {
           const chat = chats.find(c => c.id === activeChatId);
           setChatMemory(chat?.memory || "");
           setMessages([]); 
-          fetchMessages(activeChatId!); 
+          
+          // Fetch manually here to handle race conditions during rapid chat switching
+          const limit = parseInt(localStorage.getItem("ui_msg_limit") || "50");
+          invoke<Message[]>("get_messages_paged", {
+            chatId: activeChatId,
+            limit,
+            offset: 0,
+          }).then((newMsgs) => {
+            if (isCurrent) {
+              setMessages(newMsgs);
+              setOffset(limit);
+              setHasMore(newMsgs.length === limit);
+            }
+          }).catch(console.error);
       } else {
           setChatMemory("");
           setMessages([]);
       }
-    }, [activeChatId, fetchMessages, chats]);
+      return () => { isCurrent = false; };
+    }, [activeChatId, chats]);
 
   // Aggressive Scroll on Load (to handle async image loading)
 
@@ -2245,7 +2285,7 @@ const refreshCharacters = async () => {
         )}
 
         {pendingManualGeneration && activeGroup && (
-          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-sm flex flex-col shadow-2xl">
               <div className="p-4 border-b border-white/10 shrink-0">
                 <h2 className="text-lg font-bold text-white">{t('selectNextSpeaker', 'Select Next Speaker')}</h2>
@@ -2279,7 +2319,7 @@ const refreshCharacters = async () => {
 
         {/* Image Generation Prompt Editor Modal */}
         {imageGenPrompt !== null && (
-          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-lg flex flex-col shadow-2xl">
               <div className="p-4 border-b border-white/10 shrink-0">
                 <h2 className="text-lg font-bold text-white">{t('editPromptsBeforeGeneration', 'Edit Prompts Before Generation')}</h2>
@@ -2333,7 +2373,7 @@ const refreshCharacters = async () => {
         )}
 
         {regenGreetingModal !== null && (
-          <div className="absolute inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="absolute inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <div className="bg-gray-800 rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl flex flex-col">
               <div className="p-4 border-b border-white/10 flex justify-between items-center">
                 <h3 className="font-bold flex items-center gap-2">
@@ -2504,6 +2544,32 @@ const refreshCharacters = async () => {
                 </button>
               </div>
             </div>
+        )}
+
+        {isGeneratingImage && imageGenStatus && (
+          <div className="fixed bottom-24 right-4 z-[100] bg-gray-900 border border-indigo-500/30 rounded-xl p-4 shadow-2xl flex flex-col gap-2 min-w-[240px] animate-in slide-in-from-bottom-5">
+            <div className="flex items-center gap-3">
+              <RefreshCw size={16} className="text-indigo-400 animate-spin" />
+              <span className="text-sm font-semibold text-white">
+                {imageGenStatus.processing 
+                    ? t('generatingImageStatus', 'Generating Image...') 
+                    : t('queuedForGeneration', 'Queued for Generation')}
+              </span>
+            </div>
+            <div className="text-xs text-gray-400 pl-7 space-y-1">
+              {!imageGenStatus.processing ? (
+                <>
+                    <div>{t('queuePosition', 'Queue Position:')} <span className="text-white font-mono">{imageGenStatus.queue_position}</span></div>
+                    <div>{t('estimatedWait', 'Estimated Wait:')} <span className="text-white font-mono">{imageGenStatus.wait_time}s</span></div>
+                </>
+              ) : (
+                <>
+                    <div>{t('workerProcessing', 'Worker is processing...')}</div>
+                    <div>{t('estimatedWait', 'Estimated Wait:')} <span className="text-white font-mono">{imageGenStatus.wait_time}s</span></div>
+                </>
+              )}
+            </div>
+          </div>
         )}
 
         <ToastContainer toasts={toasts} onClose={removeToast} />
