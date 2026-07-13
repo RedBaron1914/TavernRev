@@ -66,22 +66,30 @@ jobs:
           cp onnxruntime-linux-x64-${ONNX_VERSION}/lib/libonnxruntime.so.${ONNX_VERSION} src-tauri/libonnxruntime.so
           rm -rf onnxruntime-linux-x64-${ONNX_VERSION} onnx.tgz
 
-      - name: Bypass custom Tauri wrapper for CI
-        run: pnpm pkg delete scripts.tauri
-
       - name: Build Tauri App
-        uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAVERNREV_DROPBOX_KEY: ${{ secrets.TAVERNREV_DROPBOX_KEY }}
           TAVERNREV_GDRIVE_ID: ${{ secrets.TAVERNREV_GDRIVE_ID }}
           TAVERNREV_GDRIVE_SECRET: ${{ secrets.TAVERNREV_GDRIVE_SECRET }}
+        run: pnpm exec tauri build
+
+      - name: Upload Release Artifacts
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'TavernRev ${{ github.ref_name }}'
-          releaseBody: 'See the changelog for details.'
-          releaseDraft: true
+          tag_name: ${{ github.ref_name }}
+          draft: true
           prerelease: false
+          files: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/nsis/*.zip
+            src-tauri/target/release/bundle/nsis/*.zip.sig
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/appimage/*.tar.gz
+            src-tauri/target/release/bundle/appimage/*.tar.gz.sig
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-android:
     name: Build Android APK
