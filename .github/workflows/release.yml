@@ -74,6 +74,7 @@ jobs:
           TAVERNREV_GDRIVE_ID: ${{ secrets.TAVERNREV_GDRIVE_ID }}
           TAVERNREV_GDRIVE_SECRET: ${{ secrets.TAVERNREV_GDRIVE_SECRET }}
         with:
+          tauriScript: pnpm exec tauri
           tagName: ${{ github.ref_name }}
           releaseName: 'TavernRev ${{ github.ref_name }}'
           releaseBody: 'See the changelog for details.'
