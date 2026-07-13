@@ -821,10 +821,10 @@ export default function Settings({
   };
 
   useEffect(() => {
-    if (formData?.prompts) {
+    if (activeTab === "textgen" && formData?.prompts) {
       updateTokenCounts(formData.prompts);
     }
-  }, [formData, chatId, characterId]);
+  }, [formData, chatId, characterId, activeTab]);
 
   // Collapse/Expand state for prompts
   const [allExpanded, setAllExpanded] = useState<boolean | null>(null);

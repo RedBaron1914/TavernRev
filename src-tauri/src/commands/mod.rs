@@ -1152,11 +1152,11 @@ pub fn count_tokens(text: String) -> Result<usize, String> {
 }
 
 #[tauri::command]
-pub fn get_modules_token_counts(
+pub async fn get_modules_token_counts(
     modules: Vec<PromptModule>,
     chat_id: i64,
     character_id: i64,
-    db_state: tauri::State<DbState>
+    db_state: tauri::State<'_, DbState>
 ) -> Result<std::collections::HashMap<String, usize>, String> {
     let bpe = get_bpe()?;
     
