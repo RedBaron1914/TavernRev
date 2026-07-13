@@ -66,6 +66,9 @@ jobs:
           cp onnxruntime-linux-x64-${ONNX_VERSION}/lib/libonnxruntime.so.${ONNX_VERSION} src-tauri/libonnxruntime.so
           rm -rf onnxruntime-linux-x64-${ONNX_VERSION} onnx.tgz
 
+      - name: Bypass custom Tauri wrapper for CI
+        run: pnpm pkg delete scripts.tauri
+
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
         env:
@@ -74,9 +77,6 @@ jobs:
           TAVERNREV_GDRIVE_ID: ${{ secrets.TAVERNREV_GDRIVE_ID }}
           TAVERNREV_GDRIVE_SECRET: ${{ secrets.TAVERNREV_GDRIVE_SECRET }}
         with:
-          projectPath: '.'
-          tauriPath: 'src-tauri'
-          tauriScript: pnpm exec tauri
           tagName: ${{ github.ref_name }}
           releaseName: 'TavernRev ${{ github.ref_name }}'
           releaseBody: 'See the changelog for details.'
