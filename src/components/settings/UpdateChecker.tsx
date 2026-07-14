@@ -26,8 +26,6 @@ export function UpdateChecker({ addToast }: UpdateCheckerProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState<CustomUpdate | null>(null);
   const [selectedApk, setSelectedApk] = useState<string>("");
-  const [downloadedLength, setDownloadedLength] = useState(0);
-  const [contentLength, setContentLength] = useState(0);
 
   const checkForUpdates = async () => {
     try {
@@ -125,8 +123,6 @@ export function UpdateChecker({ addToast }: UpdateCheckerProps) {
     
     try {
       setIsDownloading(true);
-      setDownloadedLength(0);
-      setContentLength(0);
 
       if (updateAvailable.isAndroid) {
         const { invoke } = await import("@tauri-apps/api/core");
@@ -191,10 +187,7 @@ export function UpdateChecker({ addToast }: UpdateCheckerProps) {
 
           {updateAvailable.assets && (
             <div className="bg-black/20 p-3 rounded-lg border border-white/5">
-              <div className="text-gray-400 text-sm mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap">
-                {updateAvailable.body}
-              </div>
-              
+              <label className="text-xs font-bold text-gray-400 mb-2 block">{t("selectInstaller", "Select installer format:")}</label>
               <select
                 value={selectedApk}
                 onChange={(e) => setSelectedApk(e.target.value)}
@@ -229,22 +222,10 @@ export function UpdateChecker({ addToast }: UpdateCheckerProps) {
             <div className="space-y-2">
               <div className="flex justify-between text-xs text-indigo-300">
                 <span>{t("downloading", "Downloading...")}</span>
-                {!("isAndroid" in updateAvailable) && contentLength > 0 && (
-                  <span>{Math.round((downloadedLength / contentLength) * 100)}%</span>
-                )}
               </div>
-              {!("isAndroid" in updateAvailable) ? (
-                  <div className="h-2 w-full bg-black/50 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-indigo-500 transition-all duration-300"
-                      style={{ width: contentLength > 0 ? `${(downloadedLength / contentLength) * 100}%` : '0%' }}
-                    />
-                  </div>
-              ) : (
-                  <div className="h-2 w-full bg-black/50 rounded-full overflow-hidden relative">
-                     <div className="absolute top-0 bottom-0 left-0 right-0 bg-indigo-500 animate-pulse"></div>
-                  </div>
-              )}
+              <div className="h-2 w-full bg-black/50 rounded-full overflow-hidden relative">
+                 <div className="absolute top-0 bottom-0 left-0 right-0 bg-indigo-500 animate-pulse"></div>
+              </div>
             </div>
           )}
         </div>
