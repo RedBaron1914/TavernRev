@@ -2834,15 +2834,45 @@ pub async fn install_android_update(app: AppHandle, url: String) -> Result<(), S
     }
     let dest_path = cache_dir.join("update.apk");
     
-    let mut response = reqwest::get(&url).await.map_err(|e| e.to_string())?;
-    let mut file = std::fs::File::create(&dest_path).map_err(|e| e.to_string())?;
-    
-    while let Some(chunk) = response.chunk().await.map_err(|e| e.to_string())? {
-        use std::io::Write;
-        file.write_all(&chunk).map_err(|e| e.to_string())?;
+    // Remove partial download if it exists
+    if dest_path.exists() {
+        let _ = fs::remove_file(&dest_path);
     }
     
-    // Explicitly drop and flush the file so Android Package Installer can read it safely
+    let mut response = match reqwest::get(&url).await {
+        Ok(r) => r,
+        Err(e) => return Err(e.to_string()),
+    };
+    
+    use tokio::fs::File;
+    use tokio::io::AsyncWriteExt;
+    
+    let mut file = match File::create(&dest_path).await {
+        Ok(f) => f,
+        Err(e) => return Err(e.to_string()),
+    };
+    
+    loop {
+        match response.chunk().await {
+            Ok(Some(chunk)) => {
+                if let Err(e) = file.write_all(&chunk).await {
+                    let _ = fs::remove_file(&dest_path);
+                    return Err(e.to_string());
+                }
+            },
+            Ok(None) => break, // EOF
+            Err(e) => {
+                let _ = fs::remove_file(&dest_path);
+                return Err(e.to_string());
+            }
+        }
+    }
+    
+    // Explicitly sync to flush OS buffers, then drop to close handle safely
+    if let Err(e) = file.sync_all().await {
+        let _ = fs::remove_file(&dest_path);
+        return Err(e.to_string());
+    }
     drop(file);
 
     let dest_path_str = dest_path.to_string_lossy().to_string();

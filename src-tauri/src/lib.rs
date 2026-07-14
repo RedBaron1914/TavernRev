@@ -94,8 +94,11 @@ pub fn run() {
                 
                 let apk_path = cache_dir.join("update.apk");
                 if apk_path.exists() {
-                    let _ = std::fs::remove_file(apk_path);
-                    log::info!("Cleaned up old update.apk");
+                    if let Err(e) = std::fs::remove_file(&apk_path) {
+                        log::warn!("Failed to delete old update.apk: {}", e);
+                    } else {
+                        log::info!("Cleaned up old update.apk");
+                    }
                 }
             }
 

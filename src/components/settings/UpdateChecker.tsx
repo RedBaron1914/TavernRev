@@ -1,8 +1,6 @@
-import { useState, useEffect } from "react";
-import { check, Update } from "@tauri-apps/plugin-updater";
+import { useState } from "react";
 import { Download, RefreshCw, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { type as osType } from "@tauri-apps/plugin-os";
 
 interface UpdateCheckerProps {
@@ -14,80 +12,105 @@ interface GithubAsset {
   browser_download_url: string;
 }
 
-interface AndroidUpdate {
+interface CustomUpdate {
   version: string;
   date: string;
   body: string;
   assets: GithubAsset[];
-  isAndroid: true;
+  isAndroid: boolean;
 }
 
 export function UpdateChecker({ addToast }: UpdateCheckerProps) {
   const { t } = useTranslation("common");
-  const [isSupportedOs, setIsSupportedOs] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState<Update | AndroidUpdate | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState<CustomUpdate | null>(null);
   const [selectedApk, setSelectedApk] = useState<string>("");
   const [downloadedLength, setDownloadedLength] = useState(0);
   const [contentLength, setContentLength] = useState(0);
 
-  useEffect(() => {
-    const os = osType();
-    setIsSupportedOs(["windows", "macos", "linux"].includes(os));
-  }, []);
-
   const checkForUpdates = async () => {
     try {
       setIsChecking(true);
-      if (isSupportedOs === false) {
-        const { getVersion } = await import("@tauri-apps/api/app");
-        const currentVersion = await getVersion();
-        const response = await fetch("https://api.github.com/repos/RedBaron1914/TavernRev/releases/latest");
-        if (!response.ok) throw new Error("Failed to fetch release");
-        const data = await response.json();
-        const latestVersion = data.tag_name.replace(/^v/, '');
-        
-        // Helper to compare SemVer
-        const compareVersions = (v1: string, v2: string) => {
-          const parts1 = v1.split('.').map(p => parseInt(p.replace(/[^0-9]/g, '')) || 0);
-          const parts2 = v2.split('.').map(p => parseInt(p.replace(/[^0-9]/g, '')) || 0);
-          for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-            const num1 = parts1[i] || 0;
-            const num2 = parts2[i] || 0;
-            if (num1 > num2) return 1;
-            if (num1 < num2) return -1;
-          }
-          return 0;
+      const { getVersion } = await import("@tauri-apps/api/app");
+      const currentVersion = await getVersion();
+      const response = await fetch("https://api.github.com/repos/RedBaron1914/TavernRev/releases/latest", {
+        headers: { "User-Agent": "TavernRev-Updater" }
+      });
+      if (!response.ok) throw new Error("Failed to fetch release");
+      const data = await response.json();
+      const latestVersion = data.tag_name.replace(/^v/, '');
+      
+      const compareVersions = (v1: string, v2: string) => {
+        const parseSemVer = (v: string) => {
+          const [base, pre] = v.split('-');
+          const parts = base.split('.').map(Number);
+          return { parts, pre: pre || '' };
         };
+        const parsed1 = parseSemVer(v1);
+        const parsed2 = parseSemVer(v2);
         
-        if (compareVersions(latestVersion, currentVersion) > 0) {
-            const apks = data.assets.filter((a: any) => a.name.endsWith('.apk'));
-            if (apks.length > 0) {
-                setUpdateAvailable({
-                    version: latestVersion,
-                    date: data.published_at,
-                    body: data.body,
-                    assets: apks,
-                    isAndroid: true
-                });
-                const defApk = apks.find((a: any) => a.name.includes("universal")) || apks[0];
-                setSelectedApk(defApk.browser_download_url);
-                addToast(t("updateFound", "Update {{version}} is available!", { version: latestVersion }), "info");
-            } else {
-                addToast(t("noUpdates", "You are on the latest version."), "success");
-            }
-        } else {
-            addToast(t("noUpdates", "You are on the latest version."), "success");
+        for (let i = 0; i < Math.max(parsed1.parts.length, parsed2.parts.length); i++) {
+          const num1 = parsed1.parts[i] || 0;
+          const num2 = parsed2.parts[i] || 0;
+          if (num1 > num2) return 1;
+          if (num1 < num2) return -1;
         }
+        if (parsed1.pre === '' && parsed2.pre !== '') return 1;
+        if (parsed1.pre !== '' && parsed2.pre === '') return -1;
+        if (parsed1.pre > parsed2.pre) return 1;
+        if (parsed1.pre < parsed2.pre) return -1;
+        return 0;
+      };
+      
+      if (compareVersions(latestVersion, currentVersion) > 0) {
+          let relevantAssets = [];
+          let defaultAssetUrl = "";
+          const os = osType();
+          
+          if (os === "android") {
+              relevantAssets = data.assets.filter((a: any) => a.name.endsWith('.apk'));
+              if (relevantAssets.length > 0) {
+                  const def = relevantAssets.find((a: any) => a.name.includes("arm64-v8a")) 
+                      || relevantAssets.find((a: any) => a.name.includes("universal")) 
+                      || relevantAssets[0];
+                  defaultAssetUrl = def.browser_download_url;
+              }
+          } else if (os === "windows") {
+              relevantAssets = data.assets.filter((a: any) => a.name.endsWith('.msi') || a.name.endsWith('.exe'));
+              if (relevantAssets.length > 0) {
+                  const def = relevantAssets.find((a: any) => a.name.endsWith('.msi')) || relevantAssets[0];
+                  defaultAssetUrl = def.browser_download_url;
+              }
+          } else if (os === "linux") {
+              relevantAssets = data.assets.filter((a: any) => a.name.endsWith('.deb') || a.name.endsWith('.rpm') || a.name.endsWith('.AppImage'));
+              if (relevantAssets.length > 0) {
+                  const def = relevantAssets.find((a: any) => a.name.endsWith('.deb')) 
+                      || relevantAssets.find((a: any) => a.name.endsWith('.rpm')) 
+                      || relevantAssets[0];
+                  defaultAssetUrl = def.browser_download_url;
+              }
+          } else {
+              // MacOS fallback
+              relevantAssets = data.assets.filter((a: any) => a.name.endsWith('.dmg') || a.name.endsWith('.app.tar.gz'));
+              if (relevantAssets.length > 0) defaultAssetUrl = relevantAssets[0].browser_download_url;
+          }
+          
+          if (relevantAssets.length > 0) {
+              setUpdateAvailable({
+                  version: latestVersion,
+                  date: data.published_at,
+                  body: data.body,
+                  assets: relevantAssets,
+                  isAndroid: os === "android"
+              });
+              setSelectedApk(defaultAssetUrl);
+              addToast(t("updateFound", "Update {{version}} is available!", { version: latestVersion }), "info");
+          } else {
+              addToast(t("noUpdates", "You are on the latest version."), "success");
+          }
       } else {
-        const update = await check();
-        if (update) {
-          setUpdateAvailable(update);
-          addToast(t("updateFound", "Update {{version}} is available!", { version: update.version }), "info");
-        } else {
           addToast(t("noUpdates", "You are on the latest version."), "success");
-        }
       }
     } catch (e: any) {
       console.error("Update check failed", e);
@@ -105,26 +128,16 @@ export function UpdateChecker({ addToast }: UpdateCheckerProps) {
       setDownloadedLength(0);
       setContentLength(0);
 
-      if ("isAndroid" in updateAvailable) {
+      if (updateAvailable.isAndroid) {
         const { invoke } = await import("@tauri-apps/api/core");
         addToast(t("downloadingApk", "Downloading update... Please wait for the install prompt."), "info");
         await invoke("install_android_update", { url: selectedApk });
         setIsDownloading(false);
       } else {
-        await updateAvailable.downloadAndInstall((event) => {
-          switch (event.event) {
-            case 'Started':
-              setContentLength(event.data.contentLength || 0);
-              break;
-            case 'Progress':
-              setDownloadedLength((prev) => prev + event.data.chunkLength);
-              break;
-            case 'Finished':
-              break;
-          }
-        });
-        addToast(t("updateInstalled", "Update installed! Restarting..."), "success");
-        await relaunch();
+        const { openUrl } = await import("@tauri-apps/plugin-opener");
+        await openUrl(selectedApk);
+        addToast(t("updateOpenedBrowser", "Update installer is downloading in your browser. Please run it!"), "success");
+        setIsDownloading(false);
       }
     } catch (e: any) {
       console.error("Install failed", e);
@@ -176,21 +189,23 @@ export function UpdateChecker({ addToast }: UpdateCheckerProps) {
             </div>
           )}
 
-          {"isAndroid" in updateAvailable && updateAvailable.assets && (
-            <div className="flex flex-col gap-2 bg-black/20 p-3 rounded-lg border border-white/5">
-                <label className="text-xs font-bold text-gray-400">{t("selectApkToDownload", "Select APK to download:")}</label>
-                <select 
-                    value={selectedApk} 
-                    onChange={(e) => setSelectedApk(e.target.value)}
-                    className="bg-gray-800 text-white text-sm rounded border border-gray-700 px-3 py-2 outline-none focus:border-indigo-500 transition-colors"
-                    disabled={isDownloading}
-                >
-                    {updateAvailable.assets.map((asset) => (
-                        <option key={asset.name} value={asset.browser_download_url}>
-                            {asset.name}
-                        </option>
-                    ))}
-                </select>
+          {updateAvailable.assets && (
+            <div className="bg-black/20 p-3 rounded-lg border border-white/5">
+              <div className="text-gray-400 text-sm mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap">
+                {updateAvailable.body}
+              </div>
+              
+              <select
+                value={selectedApk}
+                onChange={(e) => setSelectedApk(e.target.value)}
+                className="w-full bg-gray-900 border border-white/10 text-white rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              >
+                {updateAvailable.assets.map((asset: any) => (
+                  <option key={asset.name} value={asset.browser_download_url}>
+                    {asset.name}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
