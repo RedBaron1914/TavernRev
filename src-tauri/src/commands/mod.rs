@@ -2841,6 +2841,9 @@ pub async fn install_android_update(app: AppHandle, url: String) -> Result<(), S
         use std::io::Write;
         file.write_all(&chunk).map_err(|e| e.to_string())?;
     }
+    
+    // Explicitly drop and flush the file so Android Package Installer can read it safely
+    drop(file);
 
     let dest_path_str = dest_path.to_string_lossy().to_string();
     
