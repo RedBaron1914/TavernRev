@@ -127,18 +127,22 @@ jobs:
 
       - name: Setup Java
         uses: actions/setup-java@v4
+        if: runner.os != 'Windows'
         with:
           distribution: 'zulu'
           java-version: '17'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        if: runner.os != 'Windows'
 
       - name: Install NDK
+        if: runner.os != 'Windows'
         shell: bash
-        run: sdkmanager.bat "ndk;25.2.9519653" "build-tools;33.0.1" || sdkmanager "ndk;25.2.9519653" "build-tools;33.0.1"
+        run: sdkmanager "ndk;25.2.9519653" "build-tools;33.0.1"
 
       - name: Set NDK Environment Variables
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           echo "NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
