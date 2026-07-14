@@ -143,7 +143,7 @@ pub async fn generate_image_horde(
     let res = client
         .post("https://stablehorde.net/api/v2/generate/async")
         .header("apikey", &actual_api_key)
-        .header("Client-Agent", "TavernREV:1.4.0:unknown")
+        .header("Client-Agent", "TavernREV:1.5.0:unknown")
         .json(&req)
         .send()
         .await

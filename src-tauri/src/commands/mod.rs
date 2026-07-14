@@ -2821,3 +2821,47 @@ pub async fn get_a1111_schedulers(url: String, auth: String) -> Result<Vec<A1111
     
     Ok(schedulers)
 }
+
+#[cfg(target_os = "android")]
+#[tauri::command]
+pub async fn install_android_update(app: AppHandle, url: String) -> Result<(), String> {
+    use std::fs;
+    use jni::objects::JValue;
+    
+    let cache_dir = app.path().app_cache_dir().map_err(|_| "Could not find cache dir")?;
+    if !cache_dir.exists() {
+        fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
+    }
+    let dest_path = cache_dir.join("update.apk");
+    
+    let mut response = reqwest::get(&url).await.map_err(|e| e.to_string())?;
+    let mut file = std::fs::File::create(&dest_path).map_err(|e| e.to_string())?;
+    
+    while let Some(chunk) = response.chunk().await.map_err(|e| e.to_string())? {
+        use std::io::Write;
+        file.write_all(&chunk).map_err(|e| e.to_string())?;
+    }
+
+    let dest_path_str = dest_path.to_string_lossy().to_string();
+    
+    let ctx = ndk_context::android_context();
+    let vm = unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }.map_err(|e| e.to_string())?;
+    let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
+    let activity = unsafe { jni::objects::JObject::from_raw(ctx.context().cast()) };
+
+    let j_path = env.new_string(&dest_path_str).map_err(|e| e.to_string())?;
+    env.call_method(
+        activity,
+        "installApk",
+        "(Ljava/lang/String;)V",
+        &[JValue::Object(&j_path.into())]
+    ).map_err(|e| format!("JNI Error: {:?}", e))?;
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "android"))]
+#[tauri::command]
+pub async fn install_android_update(_app: AppHandle, _url: String) -> Result<(), String> {
+    Err("Only supported on Android".to_string())
+}

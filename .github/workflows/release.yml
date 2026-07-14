@@ -98,7 +98,7 @@ jobs:
 
   build-android:
     name: Build Android APK
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -134,9 +134,11 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install NDK
-        run: sdkmanager "ndk;25.2.9519653" "build-tools;33.0.1"
+        shell: bash
+        run: sdkmanager.bat "ndk;25.2.9519653" "build-tools;33.0.1" || sdkmanager "ndk;25.2.9519653" "build-tools;33.0.1"
 
       - name: Set NDK Environment Variables
+        shell: bash
         run: |
           echo "NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
 
@@ -144,6 +146,7 @@ jobs:
         run: pnpm install
 
       - name: Build APK
+        shell: bash
         env:
           TAVERNREV_DROPBOX_KEY: ${{ secrets.TAVERNREV_DROPBOX_KEY }}
           TAVERNREV_GDRIVE_ID: ${{ secrets.TAVERNREV_GDRIVE_ID }}

@@ -246,6 +246,7 @@ pub fn run() {
             commands::save_extension_script,
             commands::delete_extension_script,
             commands::get_extension_scripts,
+            commands::install_android_update,
             generation::summarize_chat,
             generation::studio_assist,
             generation::update_chat_memory,
