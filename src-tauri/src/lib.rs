@@ -90,6 +90,12 @@ pub fn run() {
                 std::env::set_var("HOME", cache_dir.clone());
                 std::env::set_var("XDG_CACHE_HOME", cache_dir.clone());
                 std::env::set_var("XDG_DATA_HOME", cache_dir.clone());
+                
+                let apk_path = cache_dir.join("update.apk");
+                if apk_path.exists() {
+                    let _ = std::fs::remove_file(apk_path);
+                    log::info!("Cleaned up old update.apk");
+                }
             }
 
             // Setup database
