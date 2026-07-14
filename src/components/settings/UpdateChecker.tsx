@@ -48,7 +48,20 @@ export function UpdateChecker({ addToast }: UpdateCheckerProps) {
         const data = await response.json();
         const latestVersion = data.tag_name.replace(/^v/, '');
         
-        if (latestVersion !== currentVersion) {
+        // Helper to compare SemVer
+        const compareVersions = (v1: string, v2: string) => {
+          const parts1 = v1.split('.').map(p => parseInt(p.replace(/[^0-9]/g, '')) || 0);
+          const parts2 = v2.split('.').map(p => parseInt(p.replace(/[^0-9]/g, '')) || 0);
+          for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+            const num1 = parts1[i] || 0;
+            const num2 = parts2[i] || 0;
+            if (num1 > num2) return 1;
+            if (num1 < num2) return -1;
+          }
+          return 0;
+        };
+        
+        if (compareVersions(latestVersion, currentVersion) > 0) {
             const apks = data.assets.filter((a: any) => a.name.endsWith('.apk'));
             if (apks.length > 0) {
                 setUpdateAvailable({
