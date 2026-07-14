@@ -102,6 +102,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          clean: ${{ runner.os != 'Windows' }}
 
       - name: Setup Windows Bash
         run: echo "C:\Program Files\Git\bin" >> $env:GITHUB_PATH
@@ -121,6 +123,7 @@ jobs:
         run: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
       - name: Rust Cache
+        if: runner.os != 'Windows'
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "src-tauri"
