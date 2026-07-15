@@ -1677,7 +1677,7 @@ export default function Settings({
           ))}
         </nav>
             <div className="p-4 text-center text-[10px] text-gray-600 border-t border-white/5 hidden md:block">
-                {t('tavernrevVersion', 'TavernRev v1.5.4')}
+                {t('tavernrevVersion', 'TavernRev v1.5.5')}
             </div>
         </aside>      {/*MAIN CONTENT AREA */}
       <main className="flex-1 overflow-y-auto bg-gray-950 p-4 md:p-8 custom-scrollbar relative md:pt-[calc(2rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">

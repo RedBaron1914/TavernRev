@@ -10,7 +10,6 @@
     "core:window:allow-show",
     "core:window:allow-set-focus",
     "opener:default",
-    "updater:default",
     "process:default"
   ]
 }

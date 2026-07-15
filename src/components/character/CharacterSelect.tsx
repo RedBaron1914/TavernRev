@@ -14,7 +14,7 @@ const SPLASH_KEYS: Array<[string, string]> = [
     ["splashHydrate", "Don't forget to hydrate!"],
     ["splashSimulation", "Is this simulation?"],
     ["splashTeapot", "Error 418: I'm a teapot"],
-    ["splashVersion", "TavernRev v1.5.4!"],
+    ["splashVersion", "TavernRev v1.5.5!"],
     ["splashTokioDrift", "Tokio Drift!"],
     ["splashRegex", "Regex magic!"],
     ["splashPromptArt", "Prompt Engineering is Art"],
@@ -346,7 +346,7 @@ export const CharacterSelect = ({
         {/* Footer Status */}
         <div className="p-3 bg-gray-950 border-t border-white/5 text-[10px] text-gray-600 flex justify-between px-6">
             <span>{t('charactersCount', '{{count}} Characters', { count: filtered.length })}</span>
-            <span>TavernRev v1.5.4</span>
+            <span>TavernRev v1.5.5</span>
         </div>
       </div>
     </div>
