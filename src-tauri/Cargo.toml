@@ -56,7 +56,7 @@ members = []
 
 [profile.release]
 panic = "abort"
-codegen-units = 1
-lto = true
+codegen-units = 16
+lto = "thin"
 opt-level = "z"
 strip = true
