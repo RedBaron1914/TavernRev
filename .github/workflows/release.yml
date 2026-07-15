@@ -172,6 +172,7 @@ jobs:
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
+          name: 'TavernRev ${{ github.ref_name }}'
           files: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
           draft: true
           tag_name: ${{ github.ref_name }}
