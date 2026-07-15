@@ -2898,3 +2898,101 @@ pub async fn install_android_update(app: AppHandle, url: String) -> Result<(), S
 pub async fn install_android_update(_app: AppHandle, _url: String) -> Result<(), String> {
     Err("Only supported on Android".to_string())
 }
+
+#[cfg(not(target_os = "android"))]
+#[tauri::command]
+pub async fn install_desktop_update(_app: AppHandle, url: String) -> Result<(), String> {
+    use std::fs;
+    use tokio::fs::File;
+    use tokio::io::AsyncWriteExt;
+    
+    let is_msi = url.to_lowercase().ends_with(".msi");
+    let ext = if is_msi { "msi" } else if url.to_lowercase().ends_with(".deb") { "deb" } else { "exe" };
+    
+    let dest_path = std::env::temp_dir().join(format!("tavernrev_update.{}", ext));
+    
+    if dest_path.exists() {
+        let _ = fs::remove_file(&dest_path);
+    }
+    
+    let mut response = match reqwest::get(&url).await {
+        Ok(r) => r,
+        Err(e) => return Err(e.to_string()),
+    };
+    
+    let mut file = match File::create(&dest_path).await {
+        Ok(f) => f,
+        Err(e) => return Err(e.to_string()),
+    };
+    
+    loop {
+        match response.chunk().await {
+            Ok(Some(chunk)) => {
+                if let Err(e) = file.write_all(&chunk).await {
+                    let _ = fs::remove_file(&dest_path);
+                    return Err(e.to_string());
+                }
+            },
+            Ok(None) => break,
+            Err(e) => {
+                let _ = fs::remove_file(&dest_path);
+                return Err(e.to_string());
+            }
+        }
+    }
+    
+    if let Err(e) = file.sync_all().await {
+        let _ = fs::remove_file(&dest_path);
+        return Err(e.to_string());
+    }
+    drop(file);
+    
+    #[cfg(target_os = "windows")]
+    {
+        let mut cmd = std::process::Command::new(if is_msi { "msiexec" } else { dest_path.to_str().unwrap() });
+        if is_msi {
+            cmd.args(["/i", dest_path.to_str().unwrap(), "/passive"]);
+        } else {
+            cmd.args(["/S"]);
+        }
+        
+        match cmd.spawn() {
+            Ok(_) => {
+                std::process::exit(0);
+            },
+            Err(e) => return Err(format!("Failed to launch installer: {}", e)),
+        }
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        let mut cmd = std::process::Command::new("xdg-open");
+        cmd.arg(&dest_path);
+        match cmd.spawn() {
+            Ok(_) => {
+                std::process::exit(0);
+            },
+            Err(e) => return Err(format!("Failed to launch installer: {}", e)),
+        }
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        let mut cmd = std::process::Command::new("open");
+        cmd.arg(&dest_path);
+        match cmd.spawn() {
+            Ok(_) => {
+                std::process::exit(0);
+            },
+            Err(e) => return Err(format!("Failed to launch installer: {}", e)),
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(target_os = "android")]
+#[tauri::command]
+pub async fn install_desktop_update(_app: AppHandle, _url: String) -> Result<(), String> {
+    Err("Only supported on Desktop".to_string())
+}

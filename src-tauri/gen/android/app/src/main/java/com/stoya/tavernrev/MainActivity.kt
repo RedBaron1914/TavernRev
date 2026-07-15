@@ -16,15 +16,21 @@ class MainActivity : TauriActivity() {
   @androidx.annotation.Keep
   fun installApk(filePath: String) {
       runOnUiThread {
-          val file = File(filePath)
-          if (!file.exists()) return@runOnUiThread
-          val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
-          val intent = Intent(Intent.ACTION_VIEW).apply {
-              setDataAndType(uri, "application/vnd.android.package-archive")
-              addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-              addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          try {
+              val file = File(filePath)
+              if (!file.exists()) return@runOnUiThread
+              val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
+              val intent = Intent(Intent.ACTION_VIEW).apply {
+                  setDataAndType(uri, "application/vnd.android.package-archive")
+                  addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                  addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                  addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+              }
+              startActivity(intent)
+          } catch (e: Exception) {
+              e.printStackTrace()
+              android.widget.Toast.makeText(this, "Install failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
           }
-          startActivity(intent)
       }
   }
 }

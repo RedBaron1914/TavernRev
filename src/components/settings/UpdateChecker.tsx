@@ -130,9 +130,9 @@ export function UpdateChecker({ addToast }: UpdateCheckerProps) {
         await invoke("install_android_update", { url: selectedApk });
         setIsDownloading(false);
       } else {
-        const { openUrl } = await import("@tauri-apps/plugin-opener");
-        await openUrl(selectedApk);
-        addToast(t("updateOpenedBrowser", "Update installer is downloading in your browser. Please run it!"), "success");
+        const { invoke } = await import("@tauri-apps/api/core");
+        addToast(t("downloadingDesktop", "Downloading update in the background... The app will close to install when ready."), "info");
+        await invoke("install_desktop_update", { url: selectedApk });
         setIsDownloading(false);
       }
     } catch (e: any) {
