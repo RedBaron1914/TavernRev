@@ -341,7 +341,7 @@ export const CharacterEditor = ({
   return (
     <div className="flex flex-col h-full bg-gray-950 text-gray-100 animate-in fade-in duration-500 overflow-hidden">
       {/* HEADER */}
-      <header className="h-16 shrink-0 border-b border-white/10 bg-gray-900/50 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 z-20">
+      <header className="shrink-0 border-b border-white/10 bg-gray-900/50 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 z-20 pt-[env(safe-area-inset-top)] h-[calc(4rem+env(safe-area-inset-top))]">
         <div className="flex items-center gap-4">
           <button onClick={onCancel} className="p-2 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition">
             <X size={20} />
@@ -392,7 +392,7 @@ export const CharacterEditor = ({
       <div className="flex-1 flex overflow-hidden relative">
         
         {/* LEFT NAVIGATOR (SIDEBAR) */}
-        <aside className={`${isMobile ? `fixed inset-y-16 left-0 z-30 w-64 bg-gray-900 border-r border-white/10 shadow-2xl transform transition-transform duration-300 ${showMobileNav ? 'translate-x-0' : 'translate-x-[-100%]'}` : 'w-64 border-r border-white/5 bg-gray-950/50 flex flex-col'}`}>
+        <aside className={`${isMobile ? `fixed top-[calc(4rem+env(safe-area-inset-top))] bottom-0 pb-[env(safe-area-inset-bottom)] left-0 z-30 w-64 bg-gray-900 border-r border-white/10 shadow-2xl transform transition-transform duration-300 ${showMobileNav ? 'translate-x-0' : 'translate-x-[-100%]'}` : 'w-64 border-r border-white/5 bg-gray-950/50 flex flex-col'}`}>
             <nav className="p-4 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
                 <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-4">{t('studioNavigator', 'Studio Navigator')}</div>
                 {sections.map(s => (
@@ -421,7 +421,7 @@ export const CharacterEditor = ({
 
         {/* CENTER WORKSPACE */}
         <main className="flex-1 flex flex-col min-w-0 bg-gray-950">
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 overflow-y-auto custom-scrollbar pb-[env(safe-area-inset-bottom)]">
                 <div className="max-w-4xl mx-auto p-4 md:p-10 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     
                     {activeSection === "general" && (
