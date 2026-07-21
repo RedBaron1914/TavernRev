@@ -441,15 +441,87 @@ pub fn delete_chat(app_handle: AppHandle, id: i64, db_state: tauri::State<DbStat
 }
 
 #[tauri::command]
-pub fn get_messages(chat_id: i64, db_state: tauri::State<DbState>) -> Result<Vec<Message>, String> {
-    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    database::get_messages(&conn, chat_id).map_err(|e| e.to_string())
+pub async fn get_messages(chat_id: i64, db_state: tauri::State<'_, DbState>) -> Result<Vec<Message>, String> {
+    let (mut messages, regex_scripts, globals, char_name, user_name) = {
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let msgs = database::get_messages(&conn, chat_id).map_err(|e| e.to_string())?;
+        let regex = database::get_regex_scripts(&conn).unwrap_or_default();
+        let g = database::get_global_variables(&conn).unwrap_or_default();
+        
+        let mut cn = "".to_string();
+        let mut un = "You".to_string();
+        
+        if let Ok((cid, pid)) = conn.query_row("SELECT character_id, user_persona_id FROM chats WHERE id = ?1", [chat_id], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, Option<i64>>(1)?))) {
+             if let Ok(n) = conn.query_row("SELECT name FROM characters WHERE id = ?1", [cid], |r| r.get::<_, String>(0)) { cn = n; }
+             if let Some(pid) = pid {
+                 if let Ok(n) = conn.query_row("SELECT name FROM user_personas WHERE id = ?1", [pid], |r| r.get::<_, String>(0)) { un = n; }
+             }
+        }
+        (msgs, regex, g, cn, un)
+    };
+
+    if !regex_scripts.is_empty() {
+        let mut evaluator = script_engine::Evaluator::new(script_engine::ScriptContext {
+            vars: std::collections::HashMap::new(),
+            globals,
+            char_name,
+            user_name,
+        });
+        
+        for msg in &mut messages {
+            let role = if msg.role == "user" { "user" } else { "ai" };
+            let processed = script_engine::process_regex_scripts(&msg.content, role, script_engine::regex::ExecutionContext::Markdown, &regex_scripts, &mut evaluator).await;
+            msg.display_content = Some(processed);
+        }
+    } else {
+        for msg in &mut messages {
+            msg.display_content = Some(msg.content.clone());
+        }
+    }
+
+    Ok(messages)
 }
 
 #[tauri::command]
-pub fn get_messages_paged(chat_id: i64, limit: i64, offset: i64, db_state: tauri::State<DbState>) -> Result<Vec<Message>, String> {
-    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    database::get_messages_paged(&conn, chat_id, limit, offset).map_err(|e| e.to_string())
+pub async fn get_messages_paged(chat_id: i64, limit: i64, offset: i64, db_state: tauri::State<'_, DbState>) -> Result<Vec<Message>, String> {
+    let (mut messages, regex_scripts, globals, char_name, user_name) = {
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let msgs = database::get_messages_paged(&conn, chat_id, limit, offset).map_err(|e| e.to_string())?;
+        let regex = database::get_regex_scripts(&conn).unwrap_or_default();
+        let g = database::get_global_variables(&conn).unwrap_or_default();
+        
+        let mut cn = "".to_string();
+        let mut un = "You".to_string();
+        
+        if let Ok((cid, pid)) = conn.query_row("SELECT character_id, user_persona_id FROM chats WHERE id = ?1", [chat_id], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, Option<i64>>(1)?))) {
+             if let Ok(n) = conn.query_row("SELECT name FROM characters WHERE id = ?1", [cid], |r| r.get::<_, String>(0)) { cn = n; }
+             if let Some(pid) = pid {
+                 if let Ok(n) = conn.query_row("SELECT name FROM user_personas WHERE id = ?1", [pid], |r| r.get::<_, String>(0)) { un = n; }
+             }
+        }
+        (msgs, regex, g, cn, un)
+    };
+
+    if !regex_scripts.is_empty() {
+        let mut evaluator = script_engine::Evaluator::new(script_engine::ScriptContext {
+            vars: std::collections::HashMap::new(),
+            globals,
+            char_name,
+            user_name,
+        });
+        
+        for msg in &mut messages {
+            let role = if msg.role == "user" { "user" } else { "ai" };
+            let processed = script_engine::process_regex_scripts(&msg.content, role, script_engine::regex::ExecutionContext::Markdown, &regex_scripts, &mut evaluator).await;
+            msg.display_content = Some(processed);
+        }
+    } else {
+        for msg in &mut messages {
+            msg.display_content = Some(msg.content.clone());
+        }
+    }
+
+    Ok(messages)
 }
 
 #[tauri::command]
@@ -485,7 +557,7 @@ pub async fn save_message(chat_id: i64, role: String, content: String, images: O
                 user_name,
             });
             
-            let processed = script_engine::process_regex_scripts(&content, "user", &regex_scripts, &mut evaluator).await;
+            let processed = script_engine::process_regex_scripts(&content, "user", script_engine::regex::ExecutionContext::Permanent, &regex_scripts, &mut evaluator).await;
             
             vars = evaluator.get_vars();
             let new_globals = evaluator.get_globals();
@@ -1331,11 +1403,12 @@ pub async fn process_input(app_handle: AppHandle, chat_id: i64, input: String, d
 }
 
 #[tauri::command]
-pub fn create_regex_script(name: String, regex: String, replacement: String, placement: String, run_on_markdown: Option<bool>, disabled: Option<bool>, db_state: tauri::State<DbState>) -> Result<i64, String> {
+pub fn create_regex_script(name: String, regex: String, replacement: String, placement: String, run_on_markdown: Option<bool>, prompt_only: Option<bool>, disabled: Option<bool>, db_state: tauri::State<DbState>) -> Result<i64, String> {
     let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let r_md = run_on_markdown.unwrap_or(true);
+    let p_only = prompt_only.unwrap_or(false);
     let r_dis = disabled.unwrap_or(false);
-    database::create_regex_script(&conn, &name, &regex, &replacement, &placement, r_md, r_dis).map_err(|e| e.to_string())
+    database::create_regex_script(&conn, &name, &regex, &replacement, &placement, r_md, p_only, r_dis).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1386,7 +1459,7 @@ pub fn delete_quick_reply(id: i64, db_state: tauri::State<DbState>) -> Result<()
 pub fn import_regex_scripts(scripts: Vec<database::RegexScript>, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     for script in scripts {
-        database::create_regex_script(&conn, &script.script_name, &script.regex, &script.replacement, &script.placement, script.run_on_markdown, script.disabled).map_err(|e| e.to_string())?;
+        database::create_regex_script(&conn, &script.script_name, &script.regex, &script.replacement, &script.placement, script.run_on_markdown, script.prompt_only, script.disabled).map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -2988,6 +3061,7 @@ pub async fn install_desktop_update(_app: AppHandle, url: String) -> Result<(), 
         }
     }
 
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
     Ok(())
 }
 

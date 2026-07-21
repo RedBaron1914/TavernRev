@@ -2108,7 +2108,7 @@ const refreshCharacters = async () => {
                                     </div>
                                  ) : (
                                      <MessageContent 
-                                         content={displaySwipes[msg.swipe_id || 0] || msg.content} 
+                                         content={msg.display_content || displaySwipes[msg.swipe_id || 0] || msg.content} 
                                          isUser={isUser} 
                                          scale={contentScale} 
                                          userName={activePersona?.name} 
@@ -2179,7 +2179,7 @@ const refreshCharacters = async () => {
                                                                    <div
                                                                      className={`relative px-4 py-3 rounded-2xl shadow-sm ${isUser ? "bg-indigo-600 text-white rounded-tr-none" : "bg-gray-950 border border-gray-800 text-gray-100 rounded-tl-none"}`}>
                                                                      <MessageContent
-                                                                       content={displaySwipes[msg.swipe_id || 0] || msg.content}
+                                                                       content={msg.display_content || displaySwipes[msg.swipe_id || 0] || msg.content}
                                                                        isUser={isUser}
                                                                        scale={contentScale}
                                                                        userName={activePersona?.name}

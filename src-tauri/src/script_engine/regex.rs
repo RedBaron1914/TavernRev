@@ -93,12 +93,32 @@ fn apply_js_replacement(content: &str, replacement: &str, caps: &fancy_regex::Ca
     res
 }
 
-pub async fn process_regex_scripts(content: &str, placement: &str, scripts: &[RegexScript], evaluator: &mut Evaluator) -> String {
+#[derive(PartialEq)]
+pub enum ExecutionContext {
+    Permanent,
+    Prompt,
+    Markdown,
+}
+
+pub async fn process_regex_scripts(content: &str, placement: &str, context: ExecutionContext, scripts: &[RegexScript], evaluator: &mut Evaluator) -> String {
     let mut final_content = content.to_string();
 
     for script in scripts {
         if script.disabled {
             continue;
+        }
+
+        // Check execution scope
+        if script.run_on_markdown && script.prompt_only {
+            // "Both" mode for visual and prompt - only run if context is Prompt or Markdown
+            if context == ExecutionContext::Permanent { continue; }
+        } else if script.run_on_markdown {
+            if context != ExecutionContext::Markdown { continue; }
+        } else if script.prompt_only {
+            if context != ExecutionContext::Prompt { continue; }
+        } else {
+            // Permanent only
+            if context != ExecutionContext::Permanent { continue; }
         }
 
         // Check placement (user/ai/both)
@@ -140,7 +160,6 @@ pub async fn process_regex_scripts(content: &str, placement: &str, scripts: &[Re
             
             if changed {
                 result.push_str(&final_content[last_end..]);
-                println!("DEBUG: Regex Applied: '{}' -> '{}' (Placement: {}). Result: '{}'", script.regex, script.replacement, script.placement, result);
                 final_content = evaluator.evaluate(&result).await;
             }
         }
@@ -176,15 +195,16 @@ mod tests {
                 placement: "ai".to_string(),
                 disabled: false,
                 run_on_markdown: false,
+                prompt_only: false,
             }
         ];
         
         // Should not replace because placement is "user" but script is "ai"
-        let res_user = process_regex_scripts("I have an apple", "user", &scripts, &mut eval).await;
+        let res_user = process_regex_scripts("I have an apple", "user", ExecutionContext::Permanent, &scripts, &mut eval).await;
         assert_eq!(res_user, "I have an apple");
 
         // Should replace because placement matches
-        let res_ai = process_regex_scripts("I have an apple", "ai", &scripts, &mut eval).await;
+        let res_ai = process_regex_scripts("I have an apple", "ai", ExecutionContext::Permanent, &scripts, &mut eval).await;
         assert_eq!(res_ai, "I have an orange");
     }
 
@@ -202,10 +222,11 @@ mod tests {
                 placement: "both".to_string(),
                 disabled: false,
                 run_on_markdown: false,
+                prompt_only: false,
             }
         ];
 
-        let res = process_regex_scripts("I have an apple", "user", &scripts, &mut eval).await;
+        let res = process_regex_scripts("I have an apple", "user", ExecutionContext::Permanent, &scripts, &mut eval).await;
         assert_eq!(res, "I have an banana"); // The macro is evaluated AFTER replacement!
     }
 
@@ -230,6 +251,7 @@ mod tests {
                 placement: "both".to_string(),
                 disabled: false,
                 run_on_markdown: false,
+                prompt_only: false,
             },
             // Test full match ($&) and suffix ($')
             RegexScript {
@@ -240,6 +262,7 @@ mod tests {
                 placement: "both".to_string(),
                 disabled: false,
                 run_on_markdown: false,
+                prompt_only: false,
             },
             // Test group backreferences ($1)
             RegexScript {
@@ -250,17 +273,18 @@ mod tests {
                 placement: "both".to_string(),
                 disabled: false,
                 run_on_markdown: false,
+                prompt_only: false,
             }
         ];
 
-        let mut res = process_regex_scripts("apple and apple", "user", &scripts[0..1], &mut eval).await;
+        let mut res = process_regex_scripts("apple and apple", "user", ExecutionContext::Permanent, &scripts[0..1], &mut eval).await;
         assert_eq!(res, "orange and apple"); // Only first replaced
 
-        res = process_regex_scripts("eating banana today", "user", &scripts[1..2], &mut eval).await;
+        res = process_regex_scripts("eating banana today", "user", ExecutionContext::Permanent, &scripts[1..2], &mut eval).await;
         // matched "banana", $' is " today". So replacement is "<banana>  today!"
         assert_eq!(res, "eating <banana>  today! today");
 
-        res = process_regex_scripts("super man", "user", &scripts[2..3], &mut eval).await;
+        res = process_regex_scripts("super man", "user", ExecutionContext::Permanent, &scripts[2..3], &mut eval).await;
         assert_eq!(res, "man super");
     }
 }

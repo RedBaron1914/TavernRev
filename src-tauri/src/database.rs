@@ -111,6 +111,8 @@ pub struct Message {
     pub extra: String,
     #[serde(default)]
     pub images: Option<Vec<String>>,
+    #[serde(skip_deserializing)]
+    pub display_content: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -513,6 +515,9 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
 
     if !column_exists(&conn, "regex_scripts", "disabled")? {
         conn.execute("ALTER TABLE regex_scripts ADD COLUMN disabled BOOLEAN DEFAULT 0", [])?;
+    }
+    if !column_exists(&conn, "regex_scripts", "prompt_only")? {
+        conn.execute("ALTER TABLE regex_scripts ADD COLUMN prompt_only BOOLEAN DEFAULT 0", [])?;
     }
     
     // --- CORE MIGRATIONS (For Upgrades from v0.7.0) ---
@@ -1649,6 +1654,7 @@ pub fn get_messages(conn: &Connection, chat_id: i64) -> Result<Vec<Message>> {
                 .get::<_, Option<String>>(8)?
                 .unwrap_or_else(|| "{}".to_string()),
             images,
+            display_content: None,
             sender_id: row.get(10).unwrap_or(None),
             sender_name: row.get(11).unwrap_or(None),
         })
@@ -1687,6 +1693,7 @@ pub fn get_messages_paged(
                 .get::<_, Option<String>>(8)?
                 .unwrap_or_else(|| "{}".to_string()),
             images,
+            display_content: None,
             sender_id: row.get(10).unwrap_or(None),
             sender_name: row.get(11).unwrap_or(None),
         })
@@ -1920,6 +1927,8 @@ pub struct RegexScript {
     pub placement: String,
     pub run_on_markdown: bool,
     #[serde(default)]
+    pub prompt_only: bool,
+    #[serde(default)]
     pub disabled: bool,
 }
 
@@ -1930,18 +1939,19 @@ pub fn create_regex_script(
     replacement: &str,
     placement: &str,
     run_on_markdown: bool,
+    prompt_only: bool,
     disabled: bool,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO regex_scripts (script_name, regex, replacement, placement, run_on_markdown, disabled) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![name, regex, replacement, placement, run_on_markdown, disabled]
+        "INSERT INTO regex_scripts (script_name, regex, replacement, placement, run_on_markdown, prompt_only, disabled) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![name, regex, replacement, placement, run_on_markdown, prompt_only, disabled]
     )?;
     Ok(conn.last_insert_rowid())
 }
 
 pub fn get_regex_scripts(conn: &Connection) -> Result<Vec<RegexScript>> {
     let mut stmt = conn.prepare(
-        "SELECT id, script_name, regex, replacement, placement, run_on_markdown, disabled FROM regex_scripts",
+        "SELECT id, script_name, regex, replacement, placement, run_on_markdown, prompt_only, disabled FROM regex_scripts",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok(RegexScript {
@@ -1951,7 +1961,8 @@ pub fn get_regex_scripts(conn: &Connection) -> Result<Vec<RegexScript>> {
             replacement: row.get(3).unwrap_or_default(),
             placement: row.get(4).unwrap_or("both".to_string()),
             run_on_markdown: row.get(5).unwrap_or(true),
-            disabled: row.get(6).unwrap_or(false),
+            prompt_only: row.get(6).unwrap_or(false),
+            disabled: row.get(7).unwrap_or(false),
         })
     })?;
     let mut scripts = Vec::new();
@@ -1963,8 +1974,8 @@ pub fn get_regex_scripts(conn: &Connection) -> Result<Vec<RegexScript>> {
 
 pub fn update_regex_script(conn: &Connection, script: &RegexScript) -> Result<()> {
     conn.execute(
-        "UPDATE regex_scripts SET script_name = ?1, regex = ?2, replacement = ?3, placement = ?4, run_on_markdown = ?5, disabled = ?6 WHERE id = ?7",
-        params![script.script_name, script.regex, script.replacement, script.placement, script.run_on_markdown, script.disabled, script.id]
+        "UPDATE regex_scripts SET script_name = ?1, regex = ?2, replacement = ?3, placement = ?4, run_on_markdown = ?5, prompt_only = ?6, disabled = ?7 WHERE id = ?8",
+        params![script.script_name, script.regex, script.replacement, script.placement, script.run_on_markdown, script.prompt_only, script.disabled, script.id]
     )?;
     Ok(())
 }

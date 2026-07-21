@@ -232,8 +232,27 @@ pub async fn prepare_prompt(
     app_handle: &AppHandle,
     db_state: &tauri::State<'_, DbState>,
 ) -> Result<(Vec<api_client::OpenAIMessage>, script_engine::Evaluator), String> {
+    let regex_scripts = {
+        let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        database::get_regex_scripts(&conn).unwrap_or_default()
+    };
+    
     // --- 2. Module & RAG Injection ---
     let mut msgs = ctx.original_msgs.clone();
+    
+    if !regex_scripts.is_empty() {
+        let mut temp_evaluator = script_engine::Evaluator::new(script_engine::ScriptContext {
+            vars: std::collections::HashMap::new(),
+            globals: std::collections::HashMap::new(),
+            char_name: ctx.char_obj.name.clone(),
+            user_name: ctx.user_name.clone(),
+        });
+        
+        for m in &mut msgs {
+            let role = if m.role == "user" { "user" } else { "ai" };
+            m.content = script_engine::process_regex_scripts(&m.content, role, script_engine::regex::ExecutionContext::Prompt, &regex_scripts, &mut temp_evaluator).await;
+        }
+    }
     
     if msgs.is_empty() {
         let prompt = if let Some(custom) = ctx.nudge.take() {
@@ -740,7 +759,7 @@ pub async fn finalize_response(
         database::get_regex_scripts(&conn).unwrap_or_default()
     };
     
-    let final_response = script_engine::process_regex_scripts(&response_text, "ai", &regex_scripts, &mut evaluator).await;
+    let final_response = script_engine::process_regex_scripts(&response_text, "ai", script_engine::regex::ExecutionContext::Permanent, &regex_scripts, &mut evaluator).await;
                 
     let response_log = format!("[AI] Response Received (Length {}):\n{}", final_response.len(), final_response);
     println!("{}", response_log);

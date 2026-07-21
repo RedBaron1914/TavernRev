@@ -140,6 +140,7 @@ type ImportedRegexScript = {
   replaceString?: string;
   placement?: string | number[];
   markdownOnly?: boolean;
+  promptOnly?: boolean;
   disabled?: boolean;
 };
 
@@ -178,6 +179,7 @@ const normalizeImportedRegexScript = (script: ImportedRegexScript, fallbackId: n
     replacement: script.replacement ?? script.replaceString ?? "",
     placement: normalizeImportedRegexPlacement(script.placement),
     run_on_markdown: script.markdownOnly ?? true,
+    prompt_only: script.promptOnly ?? false,
     disabled: script.disabled ?? false,
   };
 };
@@ -947,10 +949,10 @@ export default function Settings({
   };
 
   const handleCreateScript = async () => {
-      try {
-          await invoke("create_regex_script", { name: t('newScript', 'New Script'), regex: "", replacement: "", placement: "both" });
-          await fetchRegexScripts();
-      } catch(e) { addToast("Error: " + e, "error"); }
+    try {
+      await invoke("create_regex_script", { name: t('newScript', 'New Script'), regex: "", replacement: "", placement: "both", run_on_markdown: true, prompt_only: false });
+      await fetchRegexScripts();
+    } catch(e) { addToast("Error: " + e, "error"); }
   };
   
   const handleUpdateScript = async (script: RegexScript) => {
@@ -1136,6 +1138,7 @@ export default function Settings({
                         replacement: rs.replaceString || "",
                         placement: placement,
                         run_on_markdown: !!rs.markdownOnly,
+                        prompt_only: !!rs.promptOnly,
                         disabled: !!rs.disabled,
                     };
                 });
@@ -1465,6 +1468,32 @@ export default function Settings({
                                   <option value="ai">{t('aiOutput', 'AI Output')}</option>
                               </select>
                           </div>
+                      </div>
+                      
+                      <div className="space-y-3 pt-2">
+                          <label className="text-xs font-bold text-gray-500 uppercase">{t('executionScope', 'Execution Scope')}</label>
+                          <div className="flex items-center space-x-2">
+                              <input 
+                                  type="checkbox" 
+                                  className="form-checkbox bg-gray-800 border-gray-700 text-indigo-500 rounded"
+                                  checked={editingScript.prompt_only}
+                                  onChange={(e) => setEditingScript({...editingScript, prompt_only: e.target.checked})}
+                              />
+                              <span className="text-sm text-gray-300">{t('promptOnlyDesc', 'Prompt Only (Does not affect UI or Database)')}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                              <input 
+                                  type="checkbox" 
+                                  className="form-checkbox bg-gray-800 border-gray-700 text-indigo-500 rounded"
+                                  checked={editingScript.run_on_markdown}
+                                  onChange={(e) => setEditingScript({...editingScript, run_on_markdown: e.target.checked})}
+                              />
+                              <span className="text-sm text-gray-300">{t('markdownOnlyDesc', 'UI / Markdown Only (Does not affect Prompt or Database)')}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 leading-tight">
+                              {t('executionScopeNote', 'If both are unchecked, the script will permanently modify the message in the database when it is sent/received.')}
+                          </p>
+                      </div>
                           <div className="space-y-1">
                               <label className="text-xs font-bold text-gray-500 uppercase">{t('status', 'Status')}</label>
                               <div className="flex items-center gap-2 mt-2">
@@ -1481,7 +1510,6 @@ export default function Settings({
                               </div>
                           </div>
                       </div>
-                  </div>
                   <div className="p-6 border-t border-white/5 flex justify-end gap-3 shrink-0">
                       <button onClick={() => setEditingScript(null)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition">{t('cancel', 'Cancel')}</button>
                       <button onClick={() => { handleUpdateScript(editingScript); setEditingScript(null); }} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg text-sm font-bold transition">{t('saveScript', 'Save Script')}</button>
@@ -1677,7 +1705,7 @@ export default function Settings({
           ))}
         </nav>
             <div className="p-4 text-center text-[10px] text-gray-600 border-t border-white/5 hidden md:block">
-                {t('tavernrevVersion', 'TavernRev v1.5.6')}
+                {t('tavernrevVersion', 'TavernRev v1.5.7')}
             </div>
         </aside>      {/*MAIN CONTENT AREA */}
       <main className="flex-1 overflow-y-auto bg-gray-950 p-4 md:p-8 custom-scrollbar relative md:pt-[calc(2rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">

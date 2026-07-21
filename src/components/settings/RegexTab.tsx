@@ -81,6 +81,16 @@ export function RegexTab({
                 >
                   {script.placement}
                 </span>
+                {script.run_on_markdown && (
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                    UI/Markdown
+                  </span>
+                )}
+                {script.prompt_only && (
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                    Prompt Only
+                  </span>
+                )}
               </div>
               <code className="text-xs text-gray-500 font-mono block truncate">
                 {script.regex}

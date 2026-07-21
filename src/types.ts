@@ -32,6 +32,7 @@ export type UserPersona = {
         replacement: string;
         placement: string;
         run_on_markdown: boolean;
+        prompt_only: boolean;
         disabled?: boolean;
     };
         
@@ -67,6 +68,7 @@ export type Message = {
   sender_id?: number | null;
   sender_name?: string | null;
   content: string;
+  display_content?: string;
   timestamp: string;
   swipes?: string[];
   swipe_id?: number;
