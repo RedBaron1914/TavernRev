@@ -1686,7 +1686,7 @@ const refreshCharacters = async () => {
                         const sIdx = m.swipe_id || 0;
                         if (sIdx < newSwipes.length) newSwipes[sIdx] = newContent;
                     }
-                    return { ...m, content: newContent, swipes: newSwipes };
+                    return { ...m, content: newContent, swipes: newSwipes, display_content: undefined };
                 }
                 return m;
             });
@@ -1696,7 +1696,7 @@ const refreshCharacters = async () => {
         if (last && last.role === "char") {
           return [
             ...prev.slice(0, -1),
-            { ...last, content: last.content + content },
+            { ...last, content: last.content + content, display_content: undefined },
           ];
         }
         return prev;
