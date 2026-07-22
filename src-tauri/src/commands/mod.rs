@@ -2953,15 +2953,23 @@ pub async fn install_android_update(app: AppHandle, url: String) -> Result<(), S
     let ctx = ndk_context::android_context();
     let vm = unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }.map_err(|e| e.to_string())?;
     let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
-    let activity = unsafe { jni::objects::JObject::from_raw(ctx.context().cast()) };
+    let raw_activity = unsafe { jni::objects::JObject::from_raw(ctx.context().cast()) };
+    let global_activity = env.new_global_ref(&raw_activity).map_err(|e| e.to_string())?;
 
     let j_path = env.new_string(&dest_path_str).map_err(|e| e.to_string())?;
-    env.call_method(
-        activity,
+    let res = env.call_method(
+        &global_activity,
         "installApk",
         "(Ljava/lang/String;)V",
-        &[JValue::Object(&j_path.into())]
-    ).map_err(|e| format!("JNI Error: {:?}", e))?;
+        &[jni::objects::JValue::Object(&j_path.into())]
+    );
+
+    if env.exception_check().unwrap_or(false) {
+        env.exception_clear();
+        return Err("Java exception occurred in installApk".to_string());
+    }
+
+    res.map_err(|e| format!("JNI Error: {:?}", e))?;
 
     Ok(())
 }
