@@ -34,6 +34,8 @@ export type UserPersona = {
         run_on_markdown: boolean;
         prompt_only: boolean;
         disabled?: boolean;
+        group_id?: string;
+        previous_disabled_state?: boolean;
     };
         
         export type QuickReply = {

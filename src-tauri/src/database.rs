@@ -519,6 +519,12 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
     if !column_exists(&conn, "regex_scripts", "prompt_only")? {
         conn.execute("ALTER TABLE regex_scripts ADD COLUMN prompt_only BOOLEAN DEFAULT 0", [])?;
     }
+    if !column_exists(&conn, "regex_scripts", "group_id")? {
+        conn.execute("ALTER TABLE regex_scripts ADD COLUMN group_id TEXT", [])?;
+    }
+    if !column_exists(&conn, "regex_scripts", "previous_disabled_state")? {
+        conn.execute("ALTER TABLE regex_scripts ADD COLUMN previous_disabled_state BOOLEAN DEFAULT 0", [])?;
+    }
     
     // --- CORE MIGRATIONS (For Upgrades from v0.7.0) ---
     if !column_exists(&conn, "characters", "uuid")? {
@@ -1930,6 +1936,10 @@ pub struct RegexScript {
     pub prompt_only: bool,
     #[serde(default)]
     pub disabled: bool,
+    #[serde(default)]
+    pub group_id: Option<String>,
+    #[serde(default)]
+    pub previous_disabled_state: bool,
 }
 
 pub fn create_regex_script(
@@ -1941,17 +1951,19 @@ pub fn create_regex_script(
     run_on_markdown: bool,
     prompt_only: bool,
     disabled: bool,
+    group_id: Option<&str>,
+    previous_disabled_state: bool,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO regex_scripts (script_name, regex, replacement, placement, run_on_markdown, prompt_only, disabled) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        params![name, regex, replacement, placement, run_on_markdown, prompt_only, disabled]
+        "INSERT INTO regex_scripts (script_name, regex, replacement, placement, run_on_markdown, prompt_only, disabled, group_id, previous_disabled_state) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![name, regex, replacement, placement, run_on_markdown, prompt_only, disabled, group_id, previous_disabled_state]
     )?;
     Ok(conn.last_insert_rowid())
 }
 
 pub fn get_regex_scripts(conn: &Connection) -> Result<Vec<RegexScript>> {
     let mut stmt = conn.prepare(
-        "SELECT id, script_name, regex, replacement, placement, run_on_markdown, prompt_only, disabled FROM regex_scripts",
+        "SELECT id, script_name, regex, replacement, placement, run_on_markdown, prompt_only, disabled, group_id, previous_disabled_state FROM regex_scripts",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok(RegexScript {
@@ -1963,6 +1975,8 @@ pub fn get_regex_scripts(conn: &Connection) -> Result<Vec<RegexScript>> {
             run_on_markdown: row.get(5).unwrap_or(true),
             prompt_only: row.get(6).unwrap_or(false),
             disabled: row.get(7).unwrap_or(false),
+            group_id: row.get(8).unwrap_or_default(),
+            previous_disabled_state: row.get(9).unwrap_or(false),
         })
     })?;
     let mut scripts = Vec::new();
@@ -1974,14 +1988,37 @@ pub fn get_regex_scripts(conn: &Connection) -> Result<Vec<RegexScript>> {
 
 pub fn update_regex_script(conn: &Connection, script: &RegexScript) -> Result<()> {
     conn.execute(
-        "UPDATE regex_scripts SET script_name = ?1, regex = ?2, replacement = ?3, placement = ?4, run_on_markdown = ?5, prompt_only = ?6, disabled = ?7 WHERE id = ?8",
-        params![script.script_name, script.regex, script.replacement, script.placement, script.run_on_markdown, script.prompt_only, script.disabled, script.id]
+        "UPDATE regex_scripts SET script_name = ?1, regex = ?2, replacement = ?3, placement = ?4, run_on_markdown = ?5, prompt_only = ?6, disabled = ?7, group_id = ?8, previous_disabled_state = ?9 WHERE id = ?10",
+        params![script.script_name, script.regex, script.replacement, script.placement, script.run_on_markdown, script.prompt_only, script.disabled, script.group_id, script.previous_disabled_state, script.id]
     )?;
     Ok(())
 }
 
 pub fn delete_regex_script(conn: &Connection, id: i64) -> Result<()> {
     conn.execute("DELETE FROM regex_scripts WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
+pub fn toggle_regex_group(conn: &Connection, group_id: &str, is_disabled: bool) -> Result<()> {
+    if is_disabled {
+        conn.execute(
+            "UPDATE regex_scripts SET previous_disabled_state = disabled, disabled = 1 WHERE group_id = ?1",
+            params![group_id],
+        )?;
+    } else {
+        conn.execute(
+            "UPDATE regex_scripts SET disabled = previous_disabled_state WHERE group_id = ?1",
+            params![group_id],
+        )?;
+    }
+    Ok(())
+}
+
+pub fn delete_regex_group(conn: &Connection, group_id: &str) -> Result<()> {
+    conn.execute(
+        "DELETE FROM regex_scripts WHERE group_id = ?1",
+        params![group_id],
+    )?;
     Ok(())
 }
 

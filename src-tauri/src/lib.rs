@@ -185,6 +185,8 @@ pub fn run() {
             commands::delete_regex_script,
             commands::get_regex_scripts,
             commands::import_regex_scripts,
+            commands::toggle_regex_group,
+            commands::delete_regex_group,
             commands::process_input,
             commands::read_image_base64,
             commands::upload_avatar,

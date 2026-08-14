@@ -1,7 +1,7 @@
 {
   "name": "tavernrev",
   "private": true,
-  "version": "1.5.8",
+  "version": "1.5.9",
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {

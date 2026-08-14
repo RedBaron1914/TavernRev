@@ -1403,12 +1403,13 @@ pub async fn process_input(app_handle: AppHandle, chat_id: i64, input: String, d
 }
 
 #[tauri::command]
-pub fn create_regex_script(name: String, regex: String, replacement: String, placement: String, run_on_markdown: Option<bool>, prompt_only: Option<bool>, disabled: Option<bool>, db_state: tauri::State<DbState>) -> Result<i64, String> {
+pub fn create_regex_script(name: String, regex: String, replacement: String, placement: String, run_on_markdown: Option<bool>, prompt_only: Option<bool>, disabled: Option<bool>, group_id: Option<String>, previous_disabled_state: Option<bool>, db_state: tauri::State<DbState>) -> Result<i64, String> {
     let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let r_md = run_on_markdown.unwrap_or(true);
     let p_only = prompt_only.unwrap_or(false);
     let r_dis = disabled.unwrap_or(false);
-    database::create_regex_script(&conn, &name, &regex, &replacement, &placement, r_md, p_only, r_dis).map_err(|e| e.to_string())
+    let prev_dis = previous_disabled_state.unwrap_or(false);
+    database::create_regex_script(&conn, &name, &regex, &replacement, &placement, r_md, p_only, r_dis, group_id.as_deref(), prev_dis).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1459,9 +1460,32 @@ pub fn delete_quick_reply(id: i64, db_state: tauri::State<DbState>) -> Result<()
 pub fn import_regex_scripts(scripts: Vec<database::RegexScript>, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     for script in scripts {
-        database::create_regex_script(&conn, &script.script_name, &script.regex, &script.replacement, &script.placement, script.run_on_markdown, script.prompt_only, script.disabled).map_err(|e| e.to_string())?;
+        database::create_regex_script(
+            &conn,
+            &script.script_name,
+            &script.regex,
+            &script.replacement,
+            &script.placement,
+            script.run_on_markdown,
+            script.prompt_only,
+            script.disabled,
+            script.group_id.as_deref(),
+            script.previous_disabled_state,
+        ).map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+#[tauri::command]
+pub fn toggle_regex_group(group_id: String, is_disabled: bool, db_state: tauri::State<DbState>) -> Result<(), String> {
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    database::toggle_regex_group(&conn, &group_id, is_disabled).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_regex_group(group_id: String, db_state: tauri::State<DbState>) -> Result<(), String> {
+    let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    database::delete_regex_group(&conn, &group_id).map_err(|e| e.to_string())
 }
 
 // --- App Setup ---

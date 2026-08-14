@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   X, Image, Cpu, Plus, Trash2, Download, Save, 
   Book, MessageSquare, Sparkles, ChevronRight,
   UserCircle, History,
-  Layout, Type, MessageCircle, Menu, Bot
+  Layout, Type, MessageCircle, Menu, Bot,
+  Edit, Check
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import Avatar from "../Avatar";
@@ -59,6 +60,11 @@ export const CharacterEditor = ({
   const [proposedChanges, setProposedChanges] = useState<Record<string, string | null>>({});
   const [showHistory, setShowHistory] = useState(false);
   const [savedChats, setSavedChats] = useState<StudioChat[]>([]);
+  const [currentStudioChatId, setCurrentStudioChatId] = useState<string | null>(null);
+  const [editingMsgIndex, setEditingMsgIndex] = useState<number | null>(null);
+  const [editMsgContent, setEditMsgContent] = useState("");
+
+  const isInitialMount = useRef(true);
 
   const scrollToBottom = () => {
     const chatContainer = document.getElementById("assistant-chat-history");
@@ -74,6 +80,34 @@ export const CharacterEditor = ({
       .then(json => setSavedChats(JSON.parse(json)))
       .catch(console.error);
   }, [character.id, character.uuid]);
+
+  useEffect(() => {
+    setAssistantMessages([
+      { role: 'assistant', content: t('helloIAmYourAiStudioAssistantICanHelpYouImproveYourCharacterCardTryAskingMeToMakeTheDescriptionMoreDetailedOrSuggestSomeSnarkyPersonalityTraits', 'Hello! I am your AI Studio Assistant. I can help you improve your character card. Try asking me to \'make the description more detailed\' or \'suggest some snarky personality traits\'.') }
+    ]);
+    setCurrentStudioChatId(null);
+    setEditingMsgIndex(null);
+    isInitialMount.current = true;
+  }, [character.id, character.uuid, t]);
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (currentStudioChatId) {
+      setSavedChats(prevChats => {
+        const updated = prevChats.map(c => 
+          c.id === currentStudioChatId ? { ...c, messages: assistantMessages, date: Date.now() } : c
+        );
+        invoke("save_studio_chats", {
+          characterId: String(character.id || character.uuid),
+          chatsJson: JSON.stringify(updated)
+        }).catch(console.error);
+        return updated;
+      });
+    }
+  }, [assistantMessages, currentStudioChatId, character.id, character.uuid]);
 
   const sendAssistantMessage = async (manualInput?: string) => {
     const input = manualInput || assistantInput;
@@ -114,18 +148,26 @@ export const CharacterEditor = ({
   const saveStudioChat = async () => {
     if (assistantMessages.length <= 1) return;
     const title = assistantMessages.find(m => m.role === 'user')?.content.slice(0, 30) + '...';
+    const chatId = currentStudioChatId || crypto.randomUUID();
     const newChat: StudioChat = {
-        id: crypto.randomUUID(),
+        id: chatId,
         title: title || "New Chat",
         date: Date.now(),
         messages: [...assistantMessages]
     };
     try {
+        let updatedChats;
+        if (currentStudioChatId) {
+            updatedChats = savedChats.map(c => c.id === chatId ? newChat : c);
+        } else {
+            updatedChats = [newChat, ...savedChats];
+        }
         await invoke("save_studio_chats", {
             characterId: String(character.id || character.uuid),
-            chatsJson: JSON.stringify([newChat, ...savedChats])
+            chatsJson: JSON.stringify(updatedChats)
         });
-        setSavedChats([newChat, ...savedChats]);
+        setSavedChats(updatedChats);
+        setCurrentStudioChatId(chatId);
         addToast(t('chatSaved', 'Chat saved successfully!'), "success");
     } catch (e) {
         addToast("Failed to save chat: " + e, "error");
@@ -134,6 +176,7 @@ export const CharacterEditor = ({
 
   const loadStudioChat = (chat: StudioChat) => {
     setAssistantMessages(chat.messages);
+    setCurrentStudioChatId(chat.id);
     setShowHistory(false);
   };
 
@@ -145,6 +188,9 @@ export const CharacterEditor = ({
             chatsJson: JSON.stringify(newChats)
         });
         setSavedChats(newChats);
+        if (currentStudioChatId === id) {
+            setCurrentStudioChatId(null);
+        }
     } catch (e) {
         addToast("Failed to delete chat: " + e, "error");
     }
@@ -656,9 +702,26 @@ export const CharacterEditor = ({
             
             {showHistory ? (
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-gray-950/20">
-                    <button onClick={saveStudioChat} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg">
-                        <Save size={14} /> {t('saveCurrentChat', 'Save Current Chat')}
-                    </button>
+                    <div className="flex gap-2">
+                        <button onClick={saveStudioChat} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg">
+                            <Save size={14} /> {t('saveCurrentChat', 'Save Current Chat')}
+                        </button>
+                        <button 
+                            onClick={() => {
+                                if (confirm("Start a new chat? The current conversation will be cleared from this screen.")) {
+                                    setAssistantMessages([
+                                        { role: 'assistant', content: t('helloIAmYourAiStudioAssistantICanHelpYouImproveYourCharacterCardTryAskingMeToMakeTheDescriptionMoreDetailedOrSuggestSomeSnarkyPersonalityTraits', 'Hello! I am your AI Studio Assistant. I can help you improve your character card. Try asking me to \'make the description more detailed\' or \'suggest some snarky personality traits\'.') }
+                                    ]);
+                                    setCurrentStudioChatId(null);
+                                    setEditingMsgIndex(null);
+                                    setShowHistory(false);
+                                }
+                            }} 
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-bold transition shadow-lg border border-white/5"
+                        >
+                            <Plus size={14} /> {t('newChat', 'New Chat')}
+                        </button>
+                    </div>
                     <div className="space-y-2 mt-4">
                         {savedChats.length === 0 ? (
                             <div className="text-center py-10 text-gray-500 text-xs italic">{t('noSavedChats', 'No saved chats.')}</div>
@@ -684,8 +747,8 @@ export const CharacterEditor = ({
                     className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-950/20"
                 >
                 {assistantMessages.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                        <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-xs leading-relaxed shadow-sm ${
+                    <div key={i} className={`flex items-center gap-2 group/msg ${msg.role === 'user' ? 'justify-end flex-row-reverse' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                        <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-xs leading-relaxed shadow-sm relative ${
                             msg.role === 'user' 
                             ? 'bg-indigo-600 text-white rounded-tr-none' 
                             : 'bg-gray-800 text-gray-200 border border-white/5 rounded-tl-none'
@@ -697,11 +760,65 @@ export const CharacterEditor = ({
                                     ))}
                                 </div>
                             )}
-                            <div 
-                                className="prose prose-sm max-w-none break-words overflow-x-auto prose-invert [&_p]:mb-2 last:[&_p]:mb-0 leading-relaxed"
-                                dangerouslySetInnerHTML={{ __html: renderMessageHtml(msg.content) }}
-                            />
+                            {editingMsgIndex === i ? (
+                                <div className="space-y-2 w-full min-w-[200px]">
+                                    <textarea
+                                        value={editMsgContent}
+                                        onChange={(e) => setEditMsgContent(e.target.value)}
+                                        className="w-full bg-gray-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-indigo-500 custom-scrollbar resize-none min-h-[60px]"
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <button 
+                                            onClick={() => setEditingMsgIndex(null)}
+                                            className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-[10px] font-bold text-gray-400 transition"
+                                        >
+                                            {t('cancel', 'Cancel')}
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                const updated = [...assistantMessages];
+                                                updated[i].content = editMsgContent;
+                                                setAssistantMessages(updated);
+                                                setEditingMsgIndex(null);
+                                            }}
+                                            className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-[10px] font-bold text-white transition flex items-center gap-1"
+                                        >
+                                            <Check size={10} /> {t('save', 'Save')}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div 
+                                    className="prose prose-sm max-w-none break-words overflow-x-auto prose-invert [&_p]:mb-2 last:[&_p]:mb-0 leading-relaxed"
+                                    dangerouslySetInnerHTML={{ __html: renderMessageHtml(msg.content) }}
+                                />
+                            )}
                         </div>
+                        {editingMsgIndex !== i && (
+                            <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity flex gap-1 items-center shrink-0">
+                                <button 
+                                    onClick={() => {
+                                        setEditingMsgIndex(i);
+                                        setEditMsgContent(msg.content);
+                                    }}
+                                    className="p-1 hover:bg-gray-800 text-gray-500 hover:text-gray-300 rounded transition"
+                                    title="Edit message"
+                                >
+                                    <Edit size={12} />
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        if (confirm("Delete this message?")) {
+                                            setAssistantMessages(prev => prev.filter((_, idx) => idx !== i));
+                                        }
+                                    }}
+                                    className="p-1 hover:bg-gray-800 text-gray-500 hover:text-red-400 rounded transition"
+                                    title="Delete message"
+                                >
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 ))}
                 {isAssistantThinking && (

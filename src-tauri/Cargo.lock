@@ -5441,7 +5441,7 @@ dependencies = [
 
 [[package]]
 name = "tavernrev"
-version = "1.5.8"
+version = "1.5.9"
 dependencies = [
  "android_logger",
  "async-recursion",

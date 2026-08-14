@@ -142,6 +142,8 @@ type ImportedRegexScript = {
   markdownOnly?: boolean;
   promptOnly?: boolean;
   disabled?: boolean;
+  group_id?: string;
+  previous_disabled_state?: boolean;
 };
 
 const normalizeImportedRegexPlacement = (placement: ImportedRegexScript["placement"]): string => {
@@ -181,6 +183,8 @@ const normalizeImportedRegexScript = (script: ImportedRegexScript, fallbackId: n
     run_on_markdown: script.markdownOnly ?? true,
     prompt_only: script.promptOnly ?? false,
     disabled: script.disabled ?? false,
+    group_id: script.group_id,
+    previous_disabled_state: script.previous_disabled_state ?? false,
   };
 };
 
@@ -920,18 +924,26 @@ export default function Settings({
           const contents = await Promise.all(
               files.map(
                   (file) =>
-                      new Promise<string>((resolve, reject) => {
+                      new Promise<{name: string, content: string}>((resolve, reject) => {
                           const reader = new FileReader();
-                          reader.onload = (ev) => resolve(ev.target?.result as string);
+                          reader.onload = (ev) => resolve({name: file.name, content: ev.target?.result as string});
                           reader.onerror = () => reject(reader.error || new Error(`Failed to read ${file.name}`));
                           reader.readAsText(file);
                       }),
               ),
           );
 
-          const scripts = contents.flatMap((content, index) =>
-              parseImportedRegexScripts(content, index * 1000 + 1),
-          );
+          const scripts: RegexScript[] = [];
+          contents.forEach((fileData, index) => {
+              const fileScripts = parseImportedRegexScripts(fileData.content, index * 1000 + 1);
+              if (fileScripts.length > 5) {
+                  const groupId = `${fileData.name}::${crypto.randomUUID()}`;
+                  fileScripts.forEach(s => {
+                      s.group_id = groupId;
+                  });
+              }
+              scripts.push(...fileScripts);
+          });
 
           if (scripts.length === 0) {
               addToast("No valid regex scripts found in selected files.", "error");
@@ -976,6 +988,24 @@ export default function Settings({
           await invoke("update_regex_script", { script: { ...script, disabled: !script.disabled } });
           await fetchRegexScripts();
       } catch(e) { addToast("Error: " + e, "error"); }
+  };
+
+  const handleToggleGroupStatus = async (groupId: string, isDisabled: boolean) => {
+      try {
+          await invoke("toggle_regex_group", { groupId, isDisabled });
+          await fetchRegexScripts();
+          addToast(isDisabled ? "Group disabled" : "Group enabled", "success");
+      } catch(e) { addToast("Error: " + e, "error"); }
+  };
+
+  const handleDeleteGroup = async (groupId: string) => {
+      if (confirm("Are you sure you want to delete all scripts in this group?")) {
+          try {
+              await invoke("delete_regex_group", { groupId });
+              await fetchRegexScripts();
+              addToast("Group deleted", "success");
+          } catch(e) { addToast("Error: " + e, "error"); }
+      }
   };
 
   const handleCreateQR = async () => {
@@ -1705,7 +1735,7 @@ export default function Settings({
           ))}
         </nav>
             <div className="p-4 text-center text-[10px] text-gray-600 border-t border-white/5 hidden md:block">
-                {t('tavernrevVersion', 'TavernRev v1.5.8')}
+                {t('tavernrevVersion', 'TavernRev v1.5.9')}
             </div>
         </aside>      {/*MAIN CONTENT AREA */}
       <main className="flex-1 overflow-y-auto bg-gray-950 p-4 md:p-8 custom-scrollbar relative md:pt-[calc(2rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
@@ -1786,6 +1816,8 @@ export default function Settings({
               setEditingScript={setEditingScript}
               handleDeleteScript={handleDeleteScript}
               handleToggleScriptStatus={handleToggleScriptStatus}
+              handleToggleGroupStatus={handleToggleGroupStatus}
+              handleDeleteGroup={handleDeleteGroup}
             />
           )}
 
