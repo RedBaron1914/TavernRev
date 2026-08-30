@@ -30,6 +30,7 @@ import {
   Power,
   ChevronDown,
   HelpCircle,
+  Info,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -46,6 +47,7 @@ import { SyncTab } from "./components/settings/SyncTab";
 import { AdvancedTab } from "./components/settings/AdvancedTab";
 import { ExtensionsTab } from "./components/settings/ExtensionsTab";
 import { ImageGenerationTab } from "./components/settings/ImageGenerationTab";
+import { AboutTab } from "./components/settings/AboutTab";
 import { Image as ImageIcon } from "lucide-react";
 import { DebugConsole } from "./components/DebugConsole";
 import {
@@ -668,6 +670,7 @@ const TABS = [
   { id: "imagegen", labelKey: "imageGeneration", label: "Image Generation", icon: ImageIcon },
   { id: "extensions", labelKey: "pluginsExtensions", label: "Plugins & Extensions", icon: Puzzle },
   { id: "janitor", labelKey: "janitorProxy", label: "Janitor.ai Proxy", icon: Link },
+  { id: "about", labelKey: "aboutApp", label: "About & Community", icon: Info },
 ].filter(tab => !isMobile || tab.id !== "janitor");
 
 export const API_TYPES = [
@@ -1797,10 +1800,16 @@ export default function Settings({
             </button>
           ))}
         </nav>
-            <div className="p-4 text-center text-[10px] text-gray-600 border-t border-white/5 hidden md:block">
-                {t('tavernrevVersion', 'TavernRev v1.6.0')}
-            </div>
-        </aside>      {/*MAIN CONTENT AREA */}
+        <div className="p-3 text-center border-t border-white/5 hidden md:block">
+          <button
+            onClick={() => setActiveTab("about")}
+            className="w-full py-2 px-3 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 hover:border-white/10 text-[11px] text-gray-400 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer group"
+          >
+            <Info size={13} className="text-indigo-400 group-hover:scale-110 transition-transform" />
+            <span className="font-medium">TavernRev v1.6.0</span>
+          </button>
+        </div>
+      </aside>      {/*MAIN CONTENT AREA */}
       <main className="flex-1 overflow-y-auto bg-gray-950 p-4 md:p-8 custom-scrollbar relative md:pt-[calc(2rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-4xl mx-auto pb-20">
           <header className="mb-8 pb-4 border-b border-white/5">
@@ -2190,7 +2199,9 @@ export default function Settings({
               </div>
             </div>
           )}
-
+          {activeTab === "about" && (
+            <AboutTab addToast={addToast} />
+          )}
 
         </div>
       </main>
