@@ -693,6 +693,7 @@
   "screenResolution": "Разрешение дисплея",
   "scaleAndDpi": "Масштаб и фактор DPI",
   "deviceType": "Тип устройства",
+  "deviceModel": "Модель устройства",
   "desktopDevice": "ПК / Десктоп",
   "mobileDevice": "Мобильное / Планшет",
   "cpuCores": "Потоки CPU и память",

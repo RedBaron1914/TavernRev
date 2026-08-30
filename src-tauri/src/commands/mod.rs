@@ -3222,3 +3222,53 @@ pub async fn install_desktop_update(_app: AppHandle, url: String) -> Result<(), 
 pub async fn install_desktop_update(_app: AppHandle, _url: String) -> Result<(), String> {
     Err("Only supported on Desktop".to_string())
 }
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct DeviceInfo {
+    pub manufacturer: Option<String>,
+    pub model: Option<String>,
+    pub device: Option<String>,
+    pub os_version: Option<String>,
+}
+
+#[tauri::command]
+pub async fn get_device_info() -> Result<DeviceInfo, String> {
+    #[cfg(target_os = "android")]
+    {
+        let get_prop = |prop: &str| -> Option<String> {
+            let output = std::process::Command::new("getprop")
+                .arg(prop)
+                .output()
+                .ok()?;
+            if output.status.success() {
+                let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !s.is_empty() {
+                    return Some(s);
+                }
+            }
+            None
+        };
+
+        let manufacturer = get_prop("ro.product.manufacturer");
+        let model = get_prop("ro.product.model");
+        let device = get_prop("ro.product.device");
+        let os_version = get_prop("ro.build.version.release");
+
+        Ok(DeviceInfo {
+            manufacturer,
+            model,
+            device,
+            os_version,
+        })
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        Ok(DeviceInfo {
+            manufacturer: None,
+            model: None,
+            device: None,
+            os_version: None,
+        })
+    }
+}

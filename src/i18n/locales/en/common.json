@@ -669,6 +669,7 @@
   "screenResolution": "Display Resolution",
   "scaleAndDpi": "Scale & DPI Factor",
   "deviceType": "Device Type",
+  "deviceModel": "Device Model",
   "desktopDevice": "Desktop",
   "mobileDevice": "Mobile / Tablet",
   "cpuCores": "CPU Threads & Memory",

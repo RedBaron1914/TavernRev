@@ -18,6 +18,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { type, version, arch, platform } from "@tauri-apps/plugin-os";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { invoke } from "@tauri-apps/api/core";
 
 interface AboutTabProps {
   addToast: (message: string, type?: "success" | "error" | "info") => void;
@@ -47,11 +48,26 @@ export function AboutTab({ addToast }: AboutTabProps) {
       osT = navigator.platform || "Unknown";
     }
 
+    // Fallback extraction from user agent for mobile device model
+    let uaModel = "";
+    const ua = navigator.userAgent;
+    const isMobile = /Android|iPhone|iPad/i.test(ua);
+    if (/Android/i.test(ua)) {
+      const match = ua.match(/Android\s+([^;]+);\s+([^;)]+)/i);
+      if (match && match[2]) {
+        uaModel = match[2].trim().replace(/\s+Build\/.*/i, "");
+      }
+    } else if (/iPhone|iPad/i.test(ua)) {
+      uaModel = /iPad/i.test(ua) ? "Apple iPad" : "Apple iPhone";
+    }
+
     return {
       osType: osT,
       osVersion: osV,
       osArch: osA,
       osPlatform: osP,
+      deviceModel: uaModel || (isMobile ? "Mobile Device" : "PC / Desktop"),
+      deviceManufacturer: "",
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
       viewportWidth: window.innerWidth,
@@ -60,13 +76,31 @@ export function AboutTab({ addToast }: AboutTabProps) {
       colorDepth: window.screen.colorDepth || 24,
       cpuCores: navigator.hardwareConcurrency || "N/A",
       memory: (navigator as any).deviceMemory ? `~${(navigator as any).deviceMemory} GB` : "N/A",
-      userAgent: navigator.userAgent,
+      userAgent: ua,
       language: navigator.language || "en",
-      isMobile: /Android|iPhone|iPad/i.test(navigator.userAgent),
+      isMobile,
     };
   });
 
   useEffect(() => {
+    // Fetch hardware device info via native backend
+    invoke<{ manufacturer?: string; model?: string; device?: string; os_version?: string }>("get_device_info")
+      .then((info) => {
+        if (info && (info.model || info.manufacturer)) {
+          const parts = [info.manufacturer, info.model].filter(Boolean);
+          const fullModel = parts.join(" ").trim();
+          if (fullModel) {
+            setSysInfo((prev) => ({
+              ...prev,
+              deviceModel: fullModel,
+              deviceManufacturer: info.manufacturer || "",
+              osVersion: info.os_version || prev.osVersion,
+            }));
+          }
+        }
+      })
+      .catch((e) => console.warn("Failed to get native device info:", e));
+
     const handleResize = () => {
       setSysInfo((prev) => ({
         ...prev,
@@ -93,11 +127,11 @@ export function AboutTab({ addToast }: AboutTabProps) {
     const dpi = Math.round(sysInfo.pixelRatio * 96);
     return `### TavernRev System Diagnostics
 - **App Version**: TavernRev v${APP_VERSION} (${COMMIT_HASH})
+- **Device Model**: ${sysInfo.deviceModel} (${sysInfo.isMobile ? "Mobile" : "Desktop"})
 - **OS / Platform**: ${sysInfo.osType} ${sysInfo.osVersion} (${sysInfo.osArch}) [Platform: ${sysInfo.osPlatform}]
 - **Screen Resolution**: ${sysInfo.screenWidth} × ${sysInfo.screenHeight} (${sysInfo.colorDepth}-bit)
 - **Viewport**: ${sysInfo.viewportWidth} × ${sysInfo.viewportHeight}
 - **Scale / DPI**: ${sysInfo.pixelRatio}x (~${dpi} DPI)
-- **Device Type**: ${sysInfo.isMobile ? "Mobile / Tablet" : "Desktop"}
 - **Hardware**: ${sysInfo.cpuCores} Logical CPU Cores, Memory: ${sysInfo.memory}
 - **Language / Locale**: ${sysInfo.language}
 - **User Agent**: \`${sysInfo.userAgent}\`
@@ -262,7 +296,7 @@ export function AboutTab({ addToast }: AboutTabProps) {
             </div>
           </div>
 
-          {/* Device Type */}
+          {/* Device Model & Type */}
           <div className="p-3.5 bg-black/30 border border-white/5 rounded-xl space-y-1">
             <div className="flex items-center gap-2 text-gray-400 text-xs font-medium">
               {sysInfo.isMobile ? (
@@ -270,13 +304,13 @@ export function AboutTab({ addToast }: AboutTabProps) {
               ) : (
                 <HardDrive size={13} className="text-purple-400" />
               )}
-              <span>{t("deviceType", "Device Type")}</span>
+              <span>{t("deviceModel", "Device Model")}</span>
             </div>
-            <div className="text-xs font-bold text-white">
-              {sysInfo.isMobile ? t("mobileDevice", "Mobile / Tablet") : t("desktopDevice", "Desktop")}
+            <div className="text-xs font-bold text-white truncate" title={sysInfo.deviceModel}>
+              {sysInfo.deviceModel}
             </div>
             <div className="text-[10px] text-gray-500">
-              Locale: {sysInfo.language}
+              {sysInfo.isMobile ? t("mobileDevice", "Mobile / Tablet") : t("desktopDevice", "Desktop")} • {sysInfo.language}
             </div>
           </div>
 

@@ -235,6 +235,7 @@ pub fn run() {
             commands::get_swarm_samplers,
             commands::get_swarm_loras,
             commands::get_a1111_loras,
+            commands::get_device_info,
             commands::list_image_presets,
             commands::load_image_preset,
             commands::save_image_preset,
