@@ -1,6 +1,6 @@
 [package]
 name = "tavernrev"
-version = "1.5.9"
+version = "1.6.0"
 description = "A TavernAI-compatible character chat application"
 license = "AGPL-3.0-only"
 authors = ["you"]
@@ -42,6 +42,7 @@ tiny_http = "0.12"
 log = "0.4"
 fastembed = { version = "5.13.0", default-features = false, features = ["ort-load-dynamic", "hf-hub-rustls-tls"] }
 uuid = { version = "1.23.0", features = ["v4"] }
+tokio-tungstenite = { version = "0.20", features = ["rustls-tls-native-roots"] }
 tauri-plugin-os = "2.3.2"
 tauri-plugin-process = "2.3.1"
 

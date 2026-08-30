@@ -423,6 +423,7 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
             user_persona_id INTEGER,
             group_id INTEGER,
             memory TEXT DEFAULT '',
+            auto_trim_enabled INTEGER NOT NULL DEFAULT 1,
             FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE,
             FOREIGN KEY(user_persona_id) REFERENCES user_personas(id) ON DELETE SET NULL,
             FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE
@@ -1901,8 +1902,8 @@ pub fn branch_chat(
     let new_chat_id = conn.last_insert_rowid();
 
     conn.execute(
-        "INSERT INTO messages (chat_id, role, content, swipes, swipe_id, timestamp)
-         SELECT ?1, role, content, swipes, swipe_id, timestamp
+        "INSERT INTO messages (chat_id, role, content, swipes, swipe_id, is_system, extra, images, sender_id, sender_name, timestamp)
+         SELECT ?1, role, content, swipes, swipe_id, is_system, extra, images, sender_id, sender_name, timestamp
          FROM messages WHERE chat_id = ?2 AND id <= ?3",
         rusqlite::params![new_chat_id, chat_id, from_msg_id],
     )?;

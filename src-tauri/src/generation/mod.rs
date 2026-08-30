@@ -29,7 +29,7 @@ async fn perform_generation(
     rag_config: Option<vector_memory::RagConfig>,
     janitor_session_token: Option<String>,
     janitor_user_id: Option<String>,
-) -> Result<(String, i64, String), String> {
+) -> Result<(String, Vec<String>, i64, String), String> {
     // 1. Data Collection
     let mut ctx = pipeline::load_context(
         &app_handle, chat_id, character_id, &profile_name, &preset_name, &user_name,
@@ -42,12 +42,12 @@ async fn perform_generation(
     ).await?;
     
     // 3. API Execution Loop
-    let raw_ai_text = pipeline::execute_api_loop(final_messages, &ctx, &app_handle, abort_token, gen_id, target_msg_id).await?;
+    let (raw_ai_text, generated_images) = pipeline::execute_api_loop(final_messages, &ctx, &app_handle, abort_token, gen_id, target_msg_id).await?;
     
     // 4. Post Processing
     let final_text = pipeline::finalize_response(raw_ai_text, &ctx, evaluator, &app_handle, &db_state).await?;
 
-    Ok((final_text, ctx.real_char_id, ctx.real_char_name))
+    Ok((final_text, generated_images, ctx.real_char_id, ctx.real_char_name))
 }
 
 #[tauri::command]
@@ -91,11 +91,12 @@ pub async fn generate_reply(
         *state = None;
     }
 
-    let (reply, sender_id, sender_name) = reply_result?;
+    let (reply, generated_images, sender_id, sender_name) = reply_result?;
 
     {
         let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        database::save_message_ext(&conn, chat_id, "char", &reply, None, Some(sender_id), Some(&sender_name)).map_err(|e| e.to_string())?;
+        let images_opt = if generated_images.is_empty() { None } else { Some(generated_images) };
+        database::save_message_ext(&conn, chat_id, "char", &reply, images_opt, Some(sender_id), Some(&sender_name)).map_err(|e| e.to_string())?;
     }
 
     let _ = app_handle.emit("generation_finished", ());
@@ -139,21 +140,27 @@ pub async fn regenerate_reply(
         *state = None;
     }
 
-    let (reply, sender_id, sender_name) = reply_result?;
+    let (reply, generated_images, sender_id, sender_name) = reply_result?;
 
     {
         let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        let mut stmt = conn.prepare("SELECT swipes FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
-        let swipes_str: String = stmt.query_row(rusqlite::params![message_id], |row| row.get(0)).map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare("SELECT swipes, images FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
+        let (swipes_str, images_str): (String, Option<String>) = stmt.query_row(rusqlite::params![message_id], |row| Ok((row.get(0)?, row.get(1)?))).map_err(|e| e.to_string())?;
         let mut swipes: Vec<String> = serde_json::from_str(&swipes_str).unwrap_or_default();
         
         swipes.push(reply.clone());
         let new_swipes_json = serde_json::to_string(&swipes).map_err(|e| e.to_string())?;
         let new_index = swipes.len() - 1;
 
+        let final_images_json = if !generated_images.is_empty() {
+            serde_json::to_string(&generated_images).unwrap_or_else(|_| "[]".to_string())
+        } else {
+            images_str.unwrap_or_else(|| "[]".to_string())
+        };
+
         conn.execute(
-            "UPDATE messages SET content = ?1, swipes = ?2, swipe_id = ?3, sender_id = ?4, sender_name = ?5 WHERE id = ?6",
-            rusqlite::params![reply, new_swipes_json, new_index, sender_id, sender_name, message_id]
+            "UPDATE messages SET content = ?1, swipes = ?2, swipe_id = ?3, sender_id = ?4, sender_name = ?5, images = ?6 WHERE id = ?7",
+            rusqlite::params![reply, new_swipes_json, new_index, sender_id, sender_name, final_images_json, message_id]
         ).map_err(|e| e.to_string())?;
     }
 
@@ -234,12 +241,12 @@ pub async fn continue_reply(
         *state = None;
     }
 
-    let (reply, sender_id, sender_name) = reply_result?;
+    let (reply, generated_images, sender_id, sender_name) = reply_result?;
 
     {
         let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        let mut stmt = conn.prepare("SELECT content, swipes, swipe_id FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
-        let (mut content, swipes_str, swipe_id): (String, String, usize) = stmt.query_row(rusqlite::params![message_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))).map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare("SELECT content, swipes, swipe_id, images FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
+        let (mut content, swipes_str, swipe_id, images_str): (String, String, usize, Option<String>) = stmt.query_row(rusqlite::params![message_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))).map_err(|e| e.to_string())?;
 
         let update_log = format!("[DB] Continuing message: current length = {}, appended reply length = {}, target swipe_id = {}", content.len(), reply.len(), swipe_id);
         println!("{}", update_log);
@@ -251,16 +258,25 @@ pub async fn continue_reply(
         if swipe_id < swipes.len() {
             swipes[swipe_id] = content.clone();
         } else {
-            while swipes.len() <= swipe_id {
-                swipes.push(String::new());
-            }
-            swipes[swipe_id] = content.clone();
+            swipes.push(content.clone());
         }
         let new_swipes_json = serde_json::to_string(&swipes).map_err(|e| e.to_string())?;
 
+        let final_images_json = if !generated_images.is_empty() {
+            let mut all_images: Vec<String> = images_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+            for img in generated_images {
+                if !all_images.contains(&img) {
+                    all_images.push(img);
+                }
+            }
+            serde_json::to_string(&all_images).unwrap_or_else(|_| "[]".to_string())
+        } else {
+            images_str.unwrap_or_else(|| "[]".to_string())
+        };
+
         conn.execute(
-            "UPDATE messages SET content = ?1, swipes = ?2, sender_id = ?3, sender_name = ?4 WHERE id = ?5",
-            rusqlite::params![content, new_swipes_json, sender_id, sender_name, message_id]
+            "UPDATE messages SET content = ?1, swipes = ?2, sender_id = ?3, sender_name = ?4, images = ?5 WHERE id = ?6",
+            rusqlite::params![content, new_swipes_json, sender_id, sender_name, final_images_json, message_id]
         ).map_err(|e| {
             let err_log = format!("[DB Error] Failed to update message: {}", e);
             println!("{}", err_log);
@@ -345,7 +361,7 @@ pub async fn impersonate_user(
         *state = None;
     }
 
-    let (reply, _, _) = reply_result?;
+    let (reply, _, _, _) = reply_result?;
     let _ = app_handle.emit("generation_finished", ());
     Ok(reply)
 }

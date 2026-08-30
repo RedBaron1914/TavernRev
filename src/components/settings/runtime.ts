@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ConnectionProfile, Preset } from "./shared";
+import { ConnectionProfile, Preset, DEFAULT_SD_TOOL_DESCRIPTION } from "./shared";
 import i18next from 'i18next'
 
 export const DEFAULT_PRESET_VALUES: Preset = {
@@ -63,6 +63,13 @@ export const DEFAULT_PRESET_VALUES: Preset = {
   sd_auto_clip_skip: 1,
   sd_auto_denoising: 0.7,
   sd_auto_upscale_by: 2.0,
+  sd_swarm_url: "http://127.0.0.1:7801",
+  sd_swarm_auth_token: "",
+  sd_swarm_refiner_model: "",
+  sd_swarm_refiner_method: "pixel",
+  sd_swarm_refiner_control_percent: 0.8,
+  sd_swarm_refiner_upscale_size: 2.0,
+  sd_swarm_refiner_steps: 0,
   sd_use_tool: false,
   sd_edit_prompts: false,
   sd_provider: "horde",
@@ -71,6 +78,10 @@ export const DEFAULT_PRESET_VALUES: Preset = {
   sd_restore_faces: false,
   sd_karras: true,
   sd_hires_fix: false,
+  sd_positive_prompt: "",
+  sd_negative_prompt: "",
+  sd_send_loras: false,
+  sd_tool_description: DEFAULT_SD_TOOL_DESCRIPTION,
   sd_seed: "",
   sd_model: "stable_diffusion",
   sd_width: 512,
@@ -78,6 +89,46 @@ export const DEFAULT_PRESET_VALUES: Preset = {
   sd_steps: 20,
   sd_sampler: "k_euler_a",
   sd_cfg_scale: 7.0,
+};
+
+export const DEFAULT_IMAGE_PRESET = {
+  name: "Default",
+  sd_provider: "horde",
+  sd_model: "stable_diffusion",
+  sd_sampler: "k_euler_a",
+  sd_width: 512,
+  sd_height: 512,
+  sd_steps: 20,
+  sd_cfg_scale: 7.0,
+  sd_seed: "",
+  sd_positive_prompt: "",
+  sd_negative_prompt: "",
+  sd_send_loras: false,
+  sd_tool_description: DEFAULT_SD_TOOL_DESCRIPTION,
+  sd_allow_nsfw: true,
+  sd_sanitize_prompts: true,
+  sd_restore_faces: false,
+  sd_karras: true,
+  sd_hires_fix: false,
+  sd_auto_url: "http://127.0.0.1:7860",
+  sd_auto_auth: "",
+  sd_auto_vae: "Automatic",
+  sd_auto_scheduler: "Automatic",
+  sd_auto_upscaler: "Latent",
+  sd_auto_hires_steps: 0,
+  sd_auto_clip_skip: 1,
+  sd_auto_denoising: 0.7,
+  sd_auto_upscale_by: 2.0,
+  sd_swarm_url: "http://127.0.0.1:7801",
+  sd_swarm_auth_token: "",
+  sd_swarm_refiner_model: "",
+  sd_swarm_refiner_method: "pixel",
+  sd_swarm_refiner_control_percent: 0.8,
+  sd_swarm_refiner_upscale_size: 2.0,
+  sd_swarm_refiner_steps: 0,
+  sd_horde_api_key: "0000000000",
+  sd_use_tool: false,
+  sd_edit_prompts: false,
 };
 
 const ST_DEFAULT_ORDER = [
@@ -115,6 +166,13 @@ const PRESET_NUMERIC_FIELDS = new Set<keyof Preset>([
   "sd_height",
   "sd_steps",
   "sd_cfg_scale",
+  "sd_auto_hires_steps",
+  "sd_auto_clip_skip",
+  "sd_auto_denoising",
+  "sd_auto_upscale_by",
+  "sd_swarm_refiner_control_percent",
+  "sd_swarm_refiner_upscale_size",
+  "sd_swarm_refiner_steps",
 ]);
 
 export const loadUiSettingsFromStorage = () => ({

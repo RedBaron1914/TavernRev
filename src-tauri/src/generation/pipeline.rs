@@ -656,8 +656,9 @@ pub async fn execute_api_loop(
     abort_token: Arc<AtomicBool>,
     gen_id: u64,
     target_msg_id: Option<i64>,
-) -> Result<String, String> {
+) -> Result<(String, Vec<String>), String> {
     let mut response_text = String::new();
+    let mut generated_images = Vec::new();
     let mut loop_count = 0;
     let use_tools = ctx.profile.post_processing.ends_with("_tools") || ctx.profile.post_processing == "tools" || ctx.preset.sd_use_tool;
     
@@ -666,7 +667,19 @@ pub async fn execute_api_loop(
         
         let tools_payload = if use_tools { 
             let allow_image = ctx.preset.sd_use_tool;
-            let list = api_client::get_available_tools(allow_image);
+            let loras_summary = if allow_image && ctx.preset.sd_send_loras && loop_count == 0 {
+                let loras = if ctx.preset.sd_provider == "swarm" {
+                    crate::image_gen::fetch_swarm_loras(&ctx.preset.sd_swarm_url, &ctx.preset.sd_swarm_auth_token).await.ok()
+                } else if ctx.preset.sd_provider == "auto" {
+                    crate::image_gen::fetch_a1111_loras(&ctx.preset.sd_auto_url, &ctx.preset.sd_auto_auth).await.ok()
+                } else {
+                    None
+                };
+                loras.map(|l| crate::image_gen::format_loras_for_prompt(&l))
+            } else {
+                None
+            };
+            let list = api_client::get_available_tools(allow_image, Some(ctx.preset.sd_tool_description.as_str()), loras_summary.as_deref());
             if list.is_empty() { None } else { Some(list) }
         } else { 
             None 
@@ -772,6 +785,8 @@ pub async fn execute_api_loop(
                                         ctx.preset.sd_auto_url.clone(),
                                         ctx.preset.sd_auto_auth.clone(),
                                         final_prompt,
+                                        ctx.preset.sd_positive_prompt.clone(),
+                                        ctx.preset.sd_negative_prompt.clone(),
                                         ctx.preset.sd_width,
                                         ctx.preset.sd_height,
                                         ctx.preset.sd_steps,
@@ -786,12 +801,38 @@ pub async fn execute_api_loop(
                                         ctx.preset.sd_auto_upscale_by,
                                         ctx.preset.sd_hires_fix,
                                         ctx.preset.sd_restore_faces,
+                                        ctx.preset.sd_sanitize_prompts,
+                                    ).await
+                                } else if ctx.preset.sd_provider == "swarm" {
+                                    crate::image_gen::generate_image_swarm(
+                                        app_handle.clone(),
+                                        ctx.preset.sd_swarm_url.clone(),
+                                        ctx.preset.sd_swarm_auth_token.clone(),
+                                        final_prompt,
+                                        ctx.preset.sd_positive_prompt.clone(),
+                                        ctx.preset.sd_negative_prompt.clone(),
+                                        ctx.preset.sd_model.clone(),
+                                        ctx.preset.sd_width,
+                                        ctx.preset.sd_height,
+                                        ctx.preset.sd_steps,
+                                        ctx.preset.sd_sampler.clone(),
+                                        ctx.preset.sd_cfg_scale,
+                                        ctx.preset.sd_seed.clone(),
+                                        ctx.preset.sd_sanitize_prompts,
+                                        ctx.preset.sd_hires_fix,
+                                        ctx.preset.sd_swarm_refiner_model.clone(),
+                                        ctx.preset.sd_swarm_refiner_method.clone(),
+                                        ctx.preset.sd_swarm_refiner_control_percent,
+                                        ctx.preset.sd_swarm_refiner_upscale_size,
+                                        ctx.preset.sd_swarm_refiner_steps,
                                     ).await
                                 } else {
                                     crate::image_gen::generate_image_horde(
                                         app_handle.clone(),
                                         ctx.preset.sd_horde_api_key.clone(),
                                         final_prompt,
+                                        ctx.preset.sd_positive_prompt.clone(),
+                                        ctx.preset.sd_negative_prompt.clone(),
                                         ctx.preset.sd_model.clone(),
                                         ctx.preset.sd_width,
                                         ctx.preset.sd_height,
@@ -808,6 +849,7 @@ pub async fn execute_api_loop(
                                 };
                                 match generation_result {
                                     Ok(img_path) => {
+                                        generated_images.push(img_path.clone());
                                         result_string = format!(r#"{{"status": "success", "image_path": "{}"}}"#, img_path);
                                         let _ = app_handle.emit("backend-log", format!("[AI] Generated image: {}", img_path));
                                     },
@@ -843,7 +885,7 @@ pub async fn execute_api_loop(
         }
     };
 
-    Ok(final_response)
+    Ok((final_response, generated_images))
 }
 
 pub async fn finalize_response(

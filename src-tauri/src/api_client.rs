@@ -117,6 +117,20 @@ pub struct Preset {
     pub sd_auto_denoising: f32,
     #[serde(default = "default_sd_auto_upscale_by")]
     pub sd_auto_upscale_by: f32,
+    #[serde(default = "default_sd_swarm_url")]
+    pub sd_swarm_url: String,
+    #[serde(default)]
+    pub sd_swarm_auth_token: String,
+    #[serde(default)]
+    pub sd_swarm_refiner_model: String,
+    #[serde(default = "default_sd_swarm_refiner_method")]
+    pub sd_swarm_refiner_method: String,
+    #[serde(default = "default_sd_swarm_refiner_control_percent")]
+    pub sd_swarm_refiner_control_percent: f32,
+    #[serde(default = "default_sd_swarm_refiner_upscale_size")]
+    pub sd_swarm_refiner_upscale_size: f32,
+    #[serde(default)]
+    pub sd_swarm_refiner_steps: i32,
     #[serde(default)]
     pub sd_use_tool: bool,
     #[serde(default)]
@@ -133,6 +147,14 @@ pub struct Preset {
     pub sd_karras: bool,
     #[serde(default)]
     pub sd_hires_fix: bool,
+    #[serde(default)]
+    pub sd_positive_prompt: String,
+    #[serde(default)]
+    pub sd_negative_prompt: String,
+    #[serde(default)]
+    pub sd_send_loras: bool,
+    #[serde(default = "default_sd_tool_description")]
+    pub sd_tool_description: String,
     #[serde(default)]
     pub sd_seed: String,
     #[serde(default = "default_sd_model")]
@@ -192,6 +214,24 @@ fn default_sd_auto_denoising() -> f32 {
 fn default_sd_auto_upscale_by() -> f32 {
     2.0
 }
+fn default_sd_swarm_url() -> String {
+    "http://127.0.0.1:7801".to_string()
+}
+fn default_sd_swarm_refiner_method() -> String {
+    "pixel".to_string()
+}
+fn default_sd_swarm_refiner_control_percent() -> f32 {
+    0.8
+}
+fn default_sd_swarm_refiner_upscale_size() -> f32 {
+    2.0
+}
+fn default_sd_horde_api_key() -> String {
+    "0000000000".to_string()
+}
+pub fn default_sd_tool_description() -> String {
+    "Generates an image of the character or current scenario based on the provided prompt tags. Use this when the user explicitly asks for a picture/photo, or when the current narrative context strongly suggests generating a visual representation. The prompt MUST be a comma-separated list of visual tags (e.g. '1girl, red hair, blue eyes, smiling, forest background').\n\nCharacter tagging rules:\n- If the character is a well-known figure: include their name AND universe/franchise (e.g. 'toga himiko, my hero academia').\n- If the character is niche: use both name+universe AND a visual description via tags, since the SD model may not know them.\n- If the character is an OC (original character): do NOT use their name — describe them entirely through visual tags (hair color, eye color, clothing, etc.).\n\nOther rules:\n- If LoRAs are available, use them where appropriate (character LoRAs for matching characters, style/detail LoRAs as needed).\n- Do NOT add quality booster tags (e.g. 'masterpiece, best quality') — they are already handled by user settings.\n- Pay close attention to body proportions and physical traits described in the character card.".to_string()
+}
 
 impl Default for Preset {
     fn default() -> Self {
@@ -240,6 +280,13 @@ impl Default for Preset {
             sd_auto_clip_skip: 1,
             sd_auto_denoising: 0.7,
             sd_auto_upscale_by: 2.0,
+            sd_swarm_url: default_sd_swarm_url(),
+            sd_swarm_auth_token: String::new(),
+            sd_swarm_refiner_model: String::new(),
+            sd_swarm_refiner_method: default_sd_swarm_refiner_method(),
+            sd_swarm_refiner_control_percent: default_sd_swarm_refiner_control_percent(),
+            sd_swarm_refiner_upscale_size: default_sd_swarm_refiner_upscale_size(),
+            sd_swarm_refiner_steps: 0,
             sd_use_tool: false,
             sd_edit_prompts: false,
             sd_provider: default_sd_provider(),
@@ -248,6 +295,10 @@ impl Default for Preset {
             sd_restore_faces: false,
             sd_karras: true,
             sd_hires_fix: false,
+            sd_positive_prompt: String::new(),
+            sd_negative_prompt: String::new(),
+            sd_send_loras: false,
+            sd_tool_description: default_sd_tool_description(),
             sd_seed: String::new(),
             sd_model: default_sd_model(),
             sd_width: default_sd_width(),
@@ -256,6 +307,132 @@ impl Default for Preset {
             sd_sampler: default_sd_sampler(),
             sd_cfg_scale: default_sd_cfg(),
             prompts: vec![],
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ImageGenPreset {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default = "default_sd_provider")]
+    pub sd_provider: String,
+    #[serde(default = "default_sd_model")]
+    pub sd_model: String,
+    #[serde(default = "default_sd_sampler")]
+    pub sd_sampler: String,
+    #[serde(default = "default_sd_width")]
+    pub sd_width: i32,
+    #[serde(default = "default_sd_height")]
+    pub sd_height: i32,
+    #[serde(default = "default_sd_steps")]
+    pub sd_steps: i32,
+    #[serde(default = "default_sd_cfg")]
+    pub sd_cfg_scale: f32,
+    #[serde(default)]
+    pub sd_seed: String,
+    #[serde(default)]
+    pub sd_positive_prompt: String,
+    #[serde(default)]
+    pub sd_negative_prompt: String,
+    #[serde(default)]
+    pub sd_send_loras: bool,
+    #[serde(default = "default_sd_tool_description")]
+    pub sd_tool_description: String,
+    #[serde(default = "default_true")]
+    pub sd_allow_nsfw: bool,
+    #[serde(default = "default_true")]
+    pub sd_sanitize_prompts: bool,
+    #[serde(default)]
+    pub sd_restore_faces: bool,
+    #[serde(default = "default_true")]
+    pub sd_karras: bool,
+    #[serde(default)]
+    pub sd_hires_fix: bool,
+    // Auto (A1111)
+    #[serde(default = "default_sd_auto_url")]
+    pub sd_auto_url: String,
+    #[serde(default)]
+    pub sd_auto_auth: String,
+    #[serde(default = "default_sd_auto_vae")]
+    pub sd_auto_vae: String,
+    #[serde(default = "default_sd_auto_scheduler")]
+    pub sd_auto_scheduler: String,
+    #[serde(default = "default_sd_auto_upscaler")]
+    pub sd_auto_upscaler: String,
+    #[serde(default)]
+    pub sd_auto_hires_steps: i32,
+    #[serde(default = "default_sd_auto_clip_skip")]
+    pub sd_auto_clip_skip: i32,
+    #[serde(default = "default_sd_auto_denoising")]
+    pub sd_auto_denoising: f32,
+    #[serde(default = "default_sd_auto_upscale_by")]
+    pub sd_auto_upscale_by: f32,
+    // SwarmUI
+    #[serde(default = "default_sd_swarm_url")]
+    pub sd_swarm_url: String,
+    #[serde(default)]
+    pub sd_swarm_auth_token: String,
+    #[serde(default)]
+    pub sd_swarm_refiner_model: String,
+    #[serde(default = "default_sd_swarm_refiner_method")]
+    pub sd_swarm_refiner_method: String,
+    #[serde(default = "default_sd_swarm_refiner_control_percent")]
+    pub sd_swarm_refiner_control_percent: f32,
+    #[serde(default = "default_sd_swarm_refiner_upscale_size")]
+    pub sd_swarm_refiner_upscale_size: f32,
+    #[serde(default)]
+    pub sd_swarm_refiner_steps: i32,
+    // Horde
+    #[serde(default = "default_sd_horde_api_key")]
+    pub sd_horde_api_key: String,
+    // Tools
+    #[serde(default)]
+    pub sd_use_tool: bool,
+    #[serde(default)]
+    pub sd_edit_prompts: bool,
+}
+
+impl Default for ImageGenPreset {
+    fn default() -> Self {
+        Self {
+            name: "Default".to_string(),
+            sd_provider: default_sd_provider(),
+            sd_model: default_sd_model(),
+            sd_sampler: default_sd_sampler(),
+            sd_width: default_sd_width(),
+            sd_height: default_sd_height(),
+            sd_steps: default_sd_steps(),
+            sd_cfg_scale: default_sd_cfg(),
+            sd_seed: String::new(),
+            sd_positive_prompt: String::new(),
+            sd_negative_prompt: String::new(),
+            sd_send_loras: false,
+            sd_tool_description: default_sd_tool_description(),
+            sd_allow_nsfw: true,
+            sd_sanitize_prompts: true,
+            sd_restore_faces: false,
+            sd_karras: true,
+            sd_hires_fix: false,
+            sd_auto_url: default_sd_auto_url(),
+            sd_auto_auth: String::new(),
+            sd_auto_vae: default_sd_auto_vae(),
+            sd_auto_scheduler: default_sd_auto_scheduler(),
+            sd_auto_upscaler: default_sd_auto_upscaler(),
+            sd_auto_hires_steps: 0,
+            sd_auto_clip_skip: 1,
+            sd_auto_denoising: 0.7,
+            sd_auto_upscale_by: 2.0,
+            sd_swarm_url: default_sd_swarm_url(),
+            sd_swarm_auth_token: String::new(),
+            sd_swarm_refiner_model: String::new(),
+            sd_swarm_refiner_method: default_sd_swarm_refiner_method(),
+            sd_swarm_refiner_control_percent: default_sd_swarm_refiner_control_percent(),
+            sd_swarm_refiner_upscale_size: default_sd_swarm_refiner_upscale_size(),
+            sd_swarm_refiner_steps: 0,
+            sd_horde_api_key: default_sd_horde_api_key(),
+            sd_use_tool: false,
+            sd_edit_prompts: false,
         }
     }
 }
@@ -279,7 +456,7 @@ pub struct OpenAITool {
     pub function: OpenAIFunctionDef,
 }
 
-pub fn get_available_tools(allow_image_gen: bool) -> Vec<OpenAITool> {
+pub fn get_available_tools(allow_image_gen: bool, custom_desc: Option<&str>, loras_summary: Option<&str>) -> Vec<OpenAITool> {
     let mut tools = vec![
         OpenAITool {
             tool_type: "function".to_string(),
@@ -295,11 +472,22 @@ pub fn get_available_tools(allow_image_gen: bool) -> Vec<OpenAITool> {
     ];
 
     if allow_image_gen {
+        let mut desc = match custom_desc {
+            Some(d) if !d.trim().is_empty() => d.trim().to_string(),
+            _ => default_sd_tool_description(),
+        };
+        if let Some(loras) = loras_summary {
+            if !loras.trim().is_empty() {
+                desc.push_str("\n\n");
+                desc.push_str(loras);
+            }
+        }
+
         tools.push(OpenAITool {
             tool_type: "function".to_string(),
             function: OpenAIFunctionDef {
                 name: "generate_image".to_string(),
-                description: "Generates an image of the character or current scenario based on the provided prompt tags. Use this when the user explicitly asks for a picture/photo, or when the current narrative context strongly suggests generating a visual representation. The prompt MUST be a comma-separated list of visual tags (e.g. '1girl, red hair, blue eyes, smiling, forest background').".to_string(),
+                description: desc,
                 parameters: serde_json::json!({
                     "type": "object",
                     "properties": {

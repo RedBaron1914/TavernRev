@@ -837,6 +837,72 @@ pub fn delete_preset(app_handle: AppHandle, file_name: String) -> Result<(), Str
     Ok(())
 }
 
+// --- Image Generation Preset Commands ---
+
+pub fn get_image_presets_dir(app_handle: &AppHandle) -> PathBuf {
+    let app_dir = app_handle.path().app_local_data_dir().unwrap_or_default();
+    let dir = app_dir.join("image_presets");
+    if !dir.exists() {
+        let _ = fs::create_dir_all(&dir);
+    }
+    dir
+}
+
+#[tauri::command]
+pub fn list_image_presets(app_handle: AppHandle) -> Result<Vec<String>, String> {
+    let dir = get_image_presets_dir(&app_handle);
+    let mut presets = Vec::new();
+    if dir.exists() {
+        for entry in fs::read_dir(&dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    if ext == "json" {
+                        presets.push(path.file_name().unwrap_or_default().to_string_lossy().into_owned());
+                    }
+                }
+            }
+        }
+    }
+    if presets.is_empty() {
+        let default_preset = crate::api_client::ImageGenPreset::default();
+        let default_json = serde_json::to_string_pretty(&default_preset).unwrap_or_default();
+        let _ = fs::write(dir.join("Default.json"), default_json);
+        presets.push("Default.json".to_string());
+    }
+    presets.sort();
+    Ok(presets)
+}
+
+#[tauri::command]
+pub fn load_image_preset(app_handle: AppHandle, file_name: String) -> Result<String, String> {
+    let dir = get_image_presets_dir(&app_handle);
+    let file_path = dir.join(crate::sanitize_filename(&file_name));
+    if !file_path.exists() {
+        let default_preset = crate::api_client::ImageGenPreset::default();
+        return serde_json::to_string_pretty(&default_preset).map_err(|e| e.to_string());
+    }
+    fs::read_to_string(file_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn save_image_preset(app_handle: AppHandle, file_name: String, content: String) -> Result<(), String> {
+    let dir = get_image_presets_dir(&app_handle);
+    let file_path = dir.join(crate::sanitize_filename(&file_name));
+    fs::write(file_path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_image_preset(app_handle: AppHandle, file_name: String) -> Result<(), String> {
+    let dir = get_image_presets_dir(&app_handle);
+    let path = dir.join(crate::sanitize_filename(&file_name));
+    if path.exists() {
+        fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 // --- Connection Profile Commands ---
 
 pub fn get_connections_dir(app_handle: &AppHandle) -> PathBuf {
@@ -2704,7 +2770,7 @@ pub async fn generate_image_horde(
     cfg_scale: f32,
 ) -> Result<String, String> {
     crate::image_gen::generate_image_horde(
-        app_handle, api_key, prompt, model, width, height, steps, sampler, cfg_scale,
+        app_handle, api_key, prompt, String::new(), String::new(), model, width, height, steps, sampler, cfg_scale,
         true, true, false, true, false, String::new(),
     ).await
 }
@@ -2718,7 +2784,13 @@ pub async fn generate_image_stateless(
     println!("DEBUG: generate_image_stateless called! preset={}, prompt={}", preset_name, prompt);
     let presets_dir = crate::commands::get_presets_dir(&app_handle);
     let safe_preset = crate::sanitize_filename(&preset_name);
-    let preset_path = presets_dir.join(&safe_preset);
+    let mut preset_path = presets_dir.join(&safe_preset);
+    if !preset_path.exists() && !safe_preset.ends_with(".json") {
+        let with_json = presets_dir.join(format!("{}.json", safe_preset));
+        if with_json.exists() {
+            preset_path = with_json;
+        }
+    }
     let preset_content = std::fs::read_to_string(&preset_path)
         .map_err(|e| format!("File read error for {:?}: {}", preset_path, e))?;
     let preset: crate::api_client::Preset = serde_json::from_str(&preset_content)
@@ -2730,6 +2802,8 @@ pub async fn generate_image_stateless(
             preset.sd_auto_url,
             preset.sd_auto_auth,
             prompt,
+            preset.sd_positive_prompt,
+            preset.sd_negative_prompt,
             preset.sd_width,
             preset.sd_height,
             preset.sd_steps,
@@ -2744,12 +2818,38 @@ pub async fn generate_image_stateless(
             preset.sd_auto_upscale_by,
             preset.sd_hires_fix,
             preset.sd_restore_faces,
+            preset.sd_sanitize_prompts,
+        ).await
+    } else if preset.sd_provider == "swarm" {
+        crate::image_gen::generate_image_swarm(
+            app_handle,
+            preset.sd_swarm_url,
+            preset.sd_swarm_auth_token,
+            prompt,
+            preset.sd_positive_prompt,
+            preset.sd_negative_prompt,
+            preset.sd_model,
+            preset.sd_width,
+            preset.sd_height,
+            preset.sd_steps,
+            preset.sd_sampler,
+            preset.sd_cfg_scale,
+            preset.sd_seed,
+            preset.sd_sanitize_prompts,
+            preset.sd_hires_fix,
+            preset.sd_swarm_refiner_model,
+            preset.sd_swarm_refiner_method,
+            preset.sd_swarm_refiner_control_percent,
+            preset.sd_swarm_refiner_upscale_size,
+            preset.sd_swarm_refiner_steps,
         ).await
     } else {
         crate::image_gen::generate_image_horde(
             app_handle,
             preset.sd_horde_api_key,
             prompt,
+            preset.sd_positive_prompt,
+            preset.sd_negative_prompt,
             preset.sd_model,
             preset.sd_width,
             preset.sd_height,
@@ -2917,6 +3017,26 @@ pub async fn get_a1111_schedulers(url: String, auth: String) -> Result<Vec<A1111
     }
     
     Ok(schedulers)
+}
+
+#[tauri::command]
+pub async fn get_swarm_models(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> {
+    crate::image_gen::fetch_swarm_models(&url, &auth).await
+}
+
+#[tauri::command]
+pub async fn get_swarm_samplers(url: String, auth: String) -> Result<Vec<A1111ModelInfo>, String> {
+    crate::image_gen::fetch_swarm_samplers(&url, &auth).await
+}
+
+#[tauri::command]
+pub async fn get_swarm_loras(url: String, auth: String) -> Result<Vec<crate::image_gen::LoraInfo>, String> {
+    crate::image_gen::fetch_swarm_loras(&url, &auth).await
+}
+
+#[tauri::command]
+pub async fn get_a1111_loras(url: String, auth: String) -> Result<Vec<crate::image_gen::LoraInfo>, String> {
+    crate::image_gen::fetch_a1111_loras(&url, &auth).await
 }
 
 #[cfg(target_os = "android")]

@@ -256,17 +256,22 @@ function App() {
   const [showQR, setShowQR] = useState(false);
   const [imageGenPrompt, setImageGenPrompt] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [imageGenStatus, setImageGenStatus] = useState<{ queue_position: number; wait_time: number; processing: boolean } | null>(null);
+  const [imageGenStatus, setImageGenStatus] = useState<{ queue_position?: number; wait_time?: number; processing?: boolean; progress?: number; message?: string; preview?: string } | null>(null);
   
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     const setupListener = async () => {
-      unlisten = await listen<{ queue_position: number; wait_time: number; processing: number; finished: number; done: boolean }>("image-gen-progress", (event) => {
+      unlisten = await listen<any>("image-gen-progress", (event) => {
         const payload = event.payload;
+        if (!payload) return;
+        setIsGeneratingImage(true);
         setImageGenStatus({
-          queue_position: payload.queue_position,
-          wait_time: payload.wait_time,
-          processing: payload.processing > 0 || payload.wait_time === 0 || payload.finished > 0
+          queue_position: typeof payload.queue_position === 'number' ? payload.queue_position : undefined,
+          wait_time: typeof payload.wait_time === 'number' ? payload.wait_time : undefined,
+          processing: payload.processing === true || (typeof payload.processing === 'number' && payload.processing > 0) || payload.wait_time === 0 || payload.finished > 0,
+          progress: typeof payload.progress === 'number' ? payload.progress : (typeof payload.overall_percent === 'number' ? payload.overall_percent : undefined),
+          message: payload.message,
+          preview: payload.preview,
         });
       });
     };
@@ -1724,6 +1729,8 @@ const refreshCharacters = async () => {
     });
 
     const unlistenFinish = listen("generation_finished", async () => {
+      setIsGeneratingImage(false);
+      setImageGenStatus(null);
       if (activeChatIdRef.current) fetchMessages(activeChatIdRef.current);
 
       try {
@@ -2566,27 +2573,46 @@ const refreshCharacters = async () => {
             </div>
         )}
 
-        {isGeneratingImage && imageGenStatus && (
-          <div className="fixed bottom-24 right-4 z-[100] bg-gray-900 border border-indigo-500/30 rounded-xl p-4 shadow-2xl flex flex-col gap-2 min-w-[240px] animate-in slide-in-from-bottom-5">
+        {isGeneratingImage && (
+          <div className="fixed bottom-24 right-4 z-[100] bg-gray-900/95 border border-indigo-500/30 rounded-xl p-4 shadow-2xl flex flex-col gap-2 min-w-[260px] max-w-[320px] backdrop-blur-md animate-in slide-in-from-bottom-5">
             <div className="flex items-center gap-3">
-              <RefreshCw size={16} className="text-indigo-400 animate-spin" />
-              <span className="text-sm font-semibold text-white">
-                {imageGenStatus.processing 
-                    ? t('generatingImageStatus', 'Generating Image...') 
-                    : t('queuedForGeneration', 'Queued for Generation')}
+              <RefreshCw size={16} className="text-indigo-400 animate-spin shrink-0" />
+              <span className="text-sm font-semibold text-white truncate">
+                {imageGenStatus?.message || (
+                  imageGenStatus?.processing || !imageGenStatus?.queue_position
+                    ? t('generatingImageStatus', 'Generating Image...')
+                    : t('queuedForGeneration', 'Queued for Generation')
+                )}
               </span>
+              {imageGenStatus?.progress !== undefined && (
+                <span className="ml-auto text-xs font-mono font-bold text-indigo-400">
+                  {Math.round(imageGenStatus.progress * 100)}%
+                </span>
+              )}
             </div>
+            {imageGenStatus?.progress !== undefined && (
+              <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                <div 
+                  className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300" 
+                  style={{ width: `${Math.min(100, Math.max(0, Math.round(imageGenStatus.progress * 100)))}%` }}
+                />
+              </div>
+            )}
             <div className="text-xs text-gray-400 pl-7 space-y-1">
-              {!imageGenStatus.processing ? (
+              {imageGenStatus?.queue_position !== undefined && imageGenStatus.queue_position > 0 ? (
                 <>
-                    <div>{t('queuePosition', 'Queue Position:')} <span className="text-white font-mono">{imageGenStatus.queue_position}</span></div>
+                  <div>{t('queuePosition', 'Queue Position:')} <span className="text-white font-mono">{imageGenStatus.queue_position}</span></div>
+                  {imageGenStatus?.wait_time !== undefined && imageGenStatus.wait_time > 0 && (
                     <div>{t('estimatedWait', 'Estimated Wait:')} <span className="text-white font-mono">{imageGenStatus.wait_time}s</span></div>
+                  )}
+                </>
+              ) : imageGenStatus?.wait_time !== undefined && imageGenStatus.wait_time > 0 ? (
+                <>
+                  <div>{t('workerProcessing', 'Worker is processing...')}</div>
+                  <div>{t('estimatedWait', 'Estimated Wait:')} <span className="text-white font-mono">{imageGenStatus.wait_time}s</span></div>
                 </>
               ) : (
-                <>
-                    <div>{t('workerProcessing', 'Worker is processing...')}</div>
-                    <div>{t('estimatedWait', 'Estimated Wait:')} <span className="text-white font-mono">{imageGenStatus.wait_time}s</span></div>
-                </>
+                <div>{t('pleaseWaitGenerating', 'Please wait while image is being generated...')}</div>
               )}
             </div>
           </div>

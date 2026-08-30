@@ -74,6 +74,10 @@ pub fn run() {
             let _ = fs::create_dir_all(&presets_dir);
             let _ = commands::seed_default_preset(&presets_dir);
             
+            let image_presets_dir = commands::get_image_presets_dir(&handle);
+            let _ = fs::create_dir_all(&image_presets_dir);
+            let _ = commands::list_image_presets(handle.clone());
+            
             let connections_dir = commands::get_connections_dir(&handle);
             let _ = fs::create_dir_all(&connections_dir);
             let _ = commands::seed_default_connection(&connections_dir);
@@ -227,6 +231,14 @@ pub fn run() {
             commands::get_a1111_vaes,
             commands::get_a1111_upscalers,
             commands::get_a1111_schedulers,
+            commands::get_swarm_models,
+            commands::get_swarm_samplers,
+            commands::get_swarm_loras,
+            commands::get_a1111_loras,
+            commands::list_image_presets,
+            commands::load_image_preset,
+            commands::save_image_preset,
+            commands::delete_image_preset,
             generation::confirm_image_prompt,
             generation::cancel_image_prompt,
             generation::generate_reply,

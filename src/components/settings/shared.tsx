@@ -80,6 +80,13 @@ export type Preset = {
   sd_auto_clip_skip: number;
   sd_auto_denoising: number;
   sd_auto_upscale_by: number;
+  sd_swarm_url: string;
+  sd_swarm_auth_token: string;
+  sd_swarm_refiner_model: string;
+  sd_swarm_refiner_method: string;
+  sd_swarm_refiner_control_percent: number;
+  sd_swarm_refiner_upscale_size: number;
+  sd_swarm_refiner_steps: number;
   sd_use_tool: boolean;
   sd_edit_prompts: boolean;
   sd_provider: string;
@@ -88,6 +95,10 @@ export type Preset = {
   sd_restore_faces: boolean;
   sd_karras: boolean;
   sd_hires_fix: boolean;
+  sd_positive_prompt: string;
+  sd_negative_prompt: string;
+  sd_send_loras: boolean;
+  sd_tool_description: string;
   sd_seed: string;
   sd_model: string;
   sd_width: number;
@@ -96,6 +107,52 @@ export type Preset = {
   sd_sampler: string;
   sd_cfg_scale: number;
 };
+
+export const DEFAULT_SD_TOOL_DESCRIPTION = "Generates an image of the character or current scenario based on the provided prompt tags. Use this when the user explicitly asks for a picture/photo, or when the current narrative context strongly suggests generating a visual representation. The prompt MUST be a comma-separated list of visual tags (e.g. '1girl, red hair, blue eyes, smiling, forest background').\n\nCharacter tagging rules:\n- If the character is a well-known figure: include their name AND universe/franchise (e.g. 'toga himiko, my hero academia').\n- If the character is niche: use both name+universe AND a visual description via tags, since the SD model may not know them.\n- If the character is an OC (original character): do NOT use their name — describe them entirely through visual tags (hair color, eye color, clothing, etc.).\n\nOther rules:\n- If LoRAs are available, use them where appropriate (character LoRAs for matching characters, style/detail LoRAs as needed).\n- Do NOT add quality booster tags (e.g. 'masterpiece, best quality') — they are already handled by user settings.\n- Pay close attention to body proportions and physical traits described in the character card.";
+
+export interface ImageGenPreset {
+  name: string;
+  sd_provider: string;
+  sd_model: string;
+  sd_sampler: string;
+  sd_width: number;
+  sd_height: number;
+  sd_steps: number;
+  sd_cfg_scale: number;
+  sd_seed: string;
+  sd_positive_prompt: string;
+  sd_negative_prompt: string;
+  sd_send_loras: boolean;
+  sd_tool_description: string;
+  sd_allow_nsfw: boolean;
+  sd_sanitize_prompts: boolean;
+  sd_restore_faces: boolean;
+  sd_karras: boolean;
+  sd_hires_fix: boolean;
+  // A1111
+  sd_auto_url: string;
+  sd_auto_auth: string;
+  sd_auto_vae: string;
+  sd_auto_scheduler: string;
+  sd_auto_upscaler: string;
+  sd_auto_hires_steps: number;
+  sd_auto_clip_skip: number;
+  sd_auto_denoising: number;
+  sd_auto_upscale_by: number;
+  // SwarmUI
+  sd_swarm_url: string;
+  sd_swarm_auth_token: string;
+  sd_swarm_refiner_model: string;
+  sd_swarm_refiner_method: string;
+  sd_swarm_refiner_control_percent: number;
+  sd_swarm_refiner_upscale_size: number;
+  sd_swarm_refiner_steps: number;
+  // Horde
+  sd_horde_api_key: string;
+  // Tools
+  sd_use_tool: boolean;
+  sd_edit_prompts: boolean;
+}
 
 export type ApiType =
   | "chat_completion"
@@ -159,6 +216,7 @@ export const SD_PROVIDERS = [
   { value: "horde", labelKey: "sdHorde", label: "Stable Horde" },
   { value: "novel", labelKey: "sdNovel", label: "NovelAI Diffusion (Not Implemented)" },
   { value: "auto", labelKey: "sdAuto", label: "Stable Diffusion WebUI" },
+  { value: "swarm", labelKey: "sdSwarm", label: "SwarmUI" },
 ];
 
 export const SD_SAMPLERS = [
