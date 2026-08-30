@@ -1,6 +1,7 @@
 mod database;
 pub mod message_extra;
 pub mod lorebook;
+pub mod janitor;
 pub mod prompt_engine;
 mod importer;
 use std::sync::{Arc, Mutex, atomic::AtomicBool};
@@ -90,15 +91,6 @@ pub fn run() {
                 std::env::set_var("HOME", cache_dir.clone());
                 std::env::set_var("XDG_CACHE_HOME", cache_dir.clone());
                 std::env::set_var("XDG_DATA_HOME", cache_dir.clone());
-                
-                let apk_path = cache_dir.join("update.apk");
-                if apk_path.exists() {
-                    if let Err(e) = std::fs::remove_file(&apk_path) {
-                        log::warn!("Failed to delete old update.apk: {}", e);
-                    } else {
-                        log::info!("Cleaned up old update.apk");
-                    }
-                }
             }
 
             // Setup database
@@ -265,6 +257,12 @@ pub fn run() {
             generation::save_studio_chats,
             generation::load_studio_chats,
             generation::generate_text_stateless,
+            janitor::auth::open_janitor_login_window,
+            janitor::auth::hide_janitor_login_window,
+            janitor::auth::close_janitor_login_window,
+            janitor::auth::get_janitor_session_status,
+            janitor::auth::test_janitor_connection,
+            janitor::auth::capture_janitor_auth_from_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

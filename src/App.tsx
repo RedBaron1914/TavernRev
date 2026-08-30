@@ -963,16 +963,21 @@ const refreshCharacters = async () => {
         setIsGenerating(true);
         let retryScheduled = false;
         let localErrStr = "";
-        try {
-          await invoke("generate_reply", {
-            chatId: activeChatId,
+          const janitorSessionToken = localStorage.getItem("janitor_session_token") || null;
+          const janitorUserId = localStorage.getItem("janitor_user_id") || null;
+
+          try {
+            await invoke("generate_reply", {
+              chatId: activeChatId,
             characterId: activeCharacterId,
             profileName: activeProfileName || "Default",
             presetName: activePresetFile || "Default",
             userName: activePersona?.name || "You",
             genId,
             forcedSpeakerId,
-            ragConfig: getRagConfig()
+            ragConfig: getRagConfig(),
+            janitorSessionToken,
+            janitorUserId
           });
           await fetchMessages(activeChatId!);
           triggerAutoSync(activeChatId);
@@ -1358,6 +1363,9 @@ const refreshCharacters = async () => {
       setIsGenerating(true);
       let retryScheduled = false;
       try {
+        const janitorSessionToken = localStorage.getItem("janitor_session_token") || null;
+        const janitorUserId = localStorage.getItem("janitor_user_id") || null;
+
         await invoke("regenerate_reply", {
           chatId: activeChatId,
           messageId: msgId,
@@ -1367,7 +1375,9 @@ const refreshCharacters = async () => {
           userName: activePersona?.name || "You",
           genId,
           customNudge,
-          ragConfig: getRagConfig()
+          ragConfig: getRagConfig(),
+          janitorSessionToken,
+          janitorUserId
         });        await fetchMessages(activeChatId!);
 
         const currentMsgs = await invoke<Message[]>("get_messages", { chatId: activeChatId });
@@ -1410,6 +1420,9 @@ const refreshCharacters = async () => {
       setIsGenerating(true);
       let retryScheduled = false;
       try {
+        const janitorSessionToken = localStorage.getItem("janitor_session_token") || null;
+        const janitorUserId = localStorage.getItem("janitor_user_id") || null;
+
         const newText = await invoke<string>("continue_reply", {
           chatId: activeChatId,
           messageId: msgId,
@@ -1418,7 +1431,9 @@ const refreshCharacters = async () => {
           presetName: activePresetFile || "Default",
           userName: activePersona?.name || "You",
           genId,
-          ragConfig: getRagConfig()
+          ragConfig: getRagConfig(),
+          janitorSessionToken,
+          janitorUserId
         });
         await fetchMessages(activeChatId as number);
         
@@ -1462,6 +1477,9 @@ const refreshCharacters = async () => {
       setIsGenerating(true);
       let retryScheduled = false;
       try {
+        const janitorSessionToken = localStorage.getItem("janitor_session_token") || null;
+        const janitorUserId = localStorage.getItem("janitor_user_id") || null;
+
         const generatedText = await invoke<string>("impersonate_user", { 
           chatId: activeChatId,
           characterId: activeCharacterId,
@@ -1470,7 +1488,9 @@ const refreshCharacters = async () => {
           userName: activePersona?.name || "You",
           genId,
           userInput: inputValue,
-          ragConfig: getRagConfig()
+          ragConfig: getRagConfig(),
+          janitorSessionToken,
+          janitorUserId
         });        
         setInputValue(generatedText);
       } catch (e: any) {

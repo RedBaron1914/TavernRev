@@ -279,8 +279,8 @@ pub struct OpenAITool {
     pub function: OpenAIFunctionDef,
 }
 
-pub fn get_available_tools() -> Vec<OpenAITool> {
-    vec![
+pub fn get_available_tools(allow_image_gen: bool) -> Vec<OpenAITool> {
+    let mut tools = vec![
         OpenAITool {
             tool_type: "function".to_string(),
             function: OpenAIFunctionDef {
@@ -292,7 +292,10 @@ pub fn get_available_tools() -> Vec<OpenAITool> {
                 }),
             }
         },
-        OpenAITool {
+    ];
+
+    if allow_image_gen {
+        tools.push(OpenAITool {
             tool_type: "function".to_string(),
             function: OpenAIFunctionDef {
                 name: "generate_image".to_string(),
@@ -308,8 +311,10 @@ pub fn get_available_tools() -> Vec<OpenAITool> {
                     "required": ["prompt"]
                 }),
             }
-        }
-    ]
+        });
+    }
+
+    tools
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -1343,11 +1348,15 @@ mod tests {
 
     #[test]
     fn test_get_available_tools() {
-        let tools = get_available_tools();
+        let tools = get_available_tools(true);
         assert_eq!(tools.len(), 2);
         assert_eq!(tools[0].tool_type, "function");
         assert_eq!(tools[0].function.name, "get_system_time");
         assert_eq!(tools[1].function.name, "generate_image");
+
+        let tools_no_img = get_available_tools(false);
+        assert_eq!(tools_no_img.len(), 1);
+        assert_eq!(tools_no_img[0].function.name, "get_system_time");
     }
 
     #[test]

@@ -4,7 +4,7 @@ import {
   Book, MessageSquare, Sparkles, ChevronRight,
   UserCircle, History,
   Layout, Type, MessageCircle, Menu, Bot,
-  Edit, Check
+  Edit, Check, Link
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import Avatar from "../Avatar";
@@ -15,7 +15,7 @@ import { renderMessageHtml } from "../../App";
 
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 
-type EditorSection = "general" | "description" | "personality" | "scenario" | "examples" | "greetings";
+type EditorSection = "general" | "description" | "personality" | "scenario" | "examples" | "greetings" | "janitor";
 
 interface StudioMessage {
   role: 'system' | 'user' | 'assistant';
@@ -48,6 +48,30 @@ export const CharacterEditor = ({
 }) => {
   const { t } = useTranslation()
   const [formData, setFormData] = useState(character);
+  const [janitorShadowEnabled, setJanitorShadowEnabled] = useState<boolean>(() => {
+    try {
+      const cardData = JSON.parse(character.card_data || "{}");
+      return !!cardData.extensions?.janitor?.shadow_enabled;
+    } catch (e) {
+      return false;
+    }
+  });
+  const [janitorCharacterId, setJanitorCharacterId] = useState<string>(() => {
+    try {
+      const cardData = JSON.parse(character.card_data || "{}");
+      return cardData.extensions?.janitor?.character_id || "";
+    } catch (e) {
+      return "";
+    }
+  });
+  const [janitorChatId, setJanitorChatId] = useState<string>(() => {
+    try {
+      const cardData = JSON.parse(character.card_data || "{}");
+      return cardData.extensions?.janitor?.chat_id?.toString() || "";
+    } catch (e) {
+      return "";
+    }
+  });
   const [activeSection, setActiveSection] = useState<EditorSection>("general");
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [showAssistant, setShowAssistant] = useState(!isMobile);
@@ -303,6 +327,11 @@ export const CharacterEditor = ({
     } catch (e) {}
     if (!cardDataObj.extensions) cardDataObj.extensions = {};
     cardDataObj.extensions.talkativeness = talkativeness;
+    
+    if (!cardDataObj.extensions.janitor) cardDataObj.extensions.janitor = {};
+    cardDataObj.extensions.janitor.shadow_enabled = janitorShadowEnabled;
+    cardDataObj.extensions.janitor.character_id = janitorCharacterId;
+    cardDataObj.extensions.janitor.chat_id = janitorChatId ? (isNaN(Number(janitorChatId)) ? janitorChatId : Number(janitorChatId)) : "";
 
     onSave({
       ...formData,
@@ -382,7 +411,8 @@ export const CharacterEditor = ({
     { id: "scenario", label: t('scenario', 'Scenario'), icon: <History size={18}/> },
     { id: "examples", label: t('exampleMessages', 'Example Messages'), icon: <MessageSquare size={18}/> },
     { id: "greetings", label: t('greetings', 'Greetings'), icon: <MessageCircle size={18}/> },
-  ];
+    { id: "janitor", label: t('janitorProxy', 'Janitor Proxy'), icon: <Link size={18}/> },
+  ].filter(sec => !isMobile || sec.id !== "janitor");
 
   return (
     <div className="flex flex-col h-full bg-gray-950 text-gray-100 animate-in fade-in duration-500 overflow-hidden">
@@ -677,6 +707,97 @@ export const CharacterEditor = ({
                                                 {t('noAlternateGreetingsDefined', 'No alternate greetings defined.')}
                                             </div>
                                         )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSection === "janitor" && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="p-6 bg-gray-900/50 rounded-3xl border border-white/5 space-y-6">
+                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Bot className="text-indigo-400" />
+                                    <span>Janitor.ai Shadow Proxy</span>
+                                </h3>
+                                
+                                <p className="text-sm text-gray-400 leading-relaxed">
+                                    {t('janitorProxyDescription', 'This feature allows you to fetch hidden lorebooks and World Info from Janitor.ai bots dynamically as you chat. Note: You must configure your Janitor session cookie in the main Settings tab.')}
+                                </p>
+
+                                <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                                    <div>
+                                        <div className="text-sm font-bold text-white">{t('enableShadowProxy', 'Enable Shadow Proxy')}</div>
+                                        <div className="text-xs text-gray-400">{t('shadowProxySubtext', 'Forward prompts to Janitor to parse hidden World Info')}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => setJanitorShadowEnabled(!janitorShadowEnabled)}
+                                        className={`w-14 h-8 rounded-full transition-all duration-300 relative ${
+                                            janitorShadowEnabled ? "bg-indigo-600" : "bg-gray-800"
+                                        }`}
+                                    >
+                                        <div
+                                            className={`w-6 h-6 rounded-full bg-white absolute top-1 transition-all duration-300 ${
+                                                janitorShadowEnabled ? "left-7" : "left-1"
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                {janitorShadowEnabled && (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">
+                                                    {t('janitorCharacterIdLabel', 'Janitor Character ID or URL')}
+                                                </label>
+                                                <span className="text-[10px] text-gray-400 bg-white/5 px-2 py-0.5 rounded-full">
+                                                    {t('autoExtractUrl', 'Auto-extracts from URL')}
+                                                </span>
+                                            </div>
+                                            <input
+                                                value={janitorCharacterId}
+                                                onChange={(e) => {
+                                                    let val = e.target.value.trim();
+                                                    // Auto-extract UUID from full URL e.g. https://janitorai.com/characters/127ef147-4d33-4cca-b373-56e533e9440b_character-name
+                                                    const uuidMatch = val.match(/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/);
+                                                    if (uuidMatch) {
+                                                        val = uuidMatch[1];
+                                                    }
+                                                    setJanitorCharacterId(val);
+                                                }}
+                                                className="w-full bg-gray-900 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                                placeholder={t('janitorCharIdPlaceholder', 'Paste URL or UUID (e.g. 127ef147-4d33-4cca-b373-56e533e9440b)')}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">
+                                                    {t('janitorChatIdLabel', 'Janitor Chat ID or URL')}
+                                                </label>
+                                                <span className="text-[10px] text-gray-400 bg-white/5 px-2 py-0.5 rounded-full">
+                                                    {t('autoExtractUrl', 'Auto-extracts from URL')}
+                                                </span>
+                                            </div>
+                                            <input
+                                                value={janitorChatId}
+                                                onChange={(e) => {
+                                                    let val = e.target.value.trim();
+                                                    // Auto-extract chat ID from full URL e.g. https://janitorai.com/chats/669592015
+                                                    const chatMatch = val.match(/chats\/([0-9a-zA-Z_-]+)/);
+                                                    if (chatMatch) {
+                                                        val = chatMatch[1];
+                                                    }
+                                                    setJanitorChatId(val);
+                                                }}
+                                                className="w-full bg-gray-900 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                                placeholder={t('janitorChatIdPlaceholder', 'Paste Chat URL or ID (e.g. 669592015)')}
+                                            />
+                                            <p className="text-[11px] text-gray-500 ml-1">
+                                                {t('janitorChatIdSubtext', 'The ID or URL of the shadow chat with this bot on Janitor.ai. Must exist in your Janitor account.')}
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
                             </div>

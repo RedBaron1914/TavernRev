@@ -105,3 +105,9 @@ export type ChatStats = {
   char_tokens: number;
   total_tokens: number;
 };
+
+export type JanitorCardExtension = {
+  shadow_enabled?: boolean;
+  character_id?: string;
+  chat_id?: string | number;
+};

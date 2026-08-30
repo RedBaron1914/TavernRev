@@ -14,6 +14,8 @@ Built natively for **Android** and **Windows**, TavernRev brings the power of ad
 ## 📥 Download & Install
 
 ### 📱 Android
+> **Fuck Google Disclaimer:** Google Play Protect may falsely flag this application as malicious during installation. Despite our appeals, Google has done nothing to fix this false positive. You can safely ignore their warning and proceed with the installation.
+
 1. Download the latest `.apk` from the **Releases** tab.
 2. Install it on your device (Android 10+ recommended).
 3. Enjoy full offline-capable UI with online AI backends.

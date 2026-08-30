@@ -24,6 +24,12 @@ import {
   UserCircle,
   Zap,
   Puzzle,
+  Link,
+  Eye,
+  EyeOff,
+  Power,
+  ChevronDown,
+  HelpCircle,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -641,6 +647,8 @@ type SettingsProps = {
   markDataChanged: () => void;
 };
 
+const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+
 const TABS = [
   { id: "connection", labelKey: "apiConnection", label: "API Connection", icon: Wifi },
   {
@@ -659,7 +667,8 @@ const TABS = [
   { id: "advanced", labelKey: "advanced", label: "Advanced", icon: SettingsIcon },
   { id: "imagegen", labelKey: "imageGeneration", label: "Image Generation", icon: ImageIcon },
   { id: "extensions", labelKey: "pluginsExtensions", label: "Plugins & Extensions", icon: Puzzle },
-];
+  { id: "janitor", labelKey: "janitorProxy", label: "Janitor.ai Proxy", icon: Link },
+].filter(tab => !isMobile || tab.id !== "janitor");
 
 export const API_TYPES = [
   { value: "chat_completion", labelKey: "chatCompletion", label: "Chat Completion" },
@@ -740,6 +749,46 @@ export default function Settings({
   const [uiSettings, setUiSettings] = useState({ msgLimit: 50, contentScale: 1.0 });
   const [chatStyle, setChatStyle] = useState<"bubbles" | "document">((localStorage.getItem("ui_chat_style") as "bubbles" | "document") || "bubbles");
 
+  const [janitorSessionToken, setJanitorSessionToken] = useState(() => localStorage.getItem("janitor_session_token") || "");
+  const [janitorUserId, setJanitorUserId] = useState(() => localStorage.getItem("janitor_user_id") || "");
+  const [isJanitorWindowRunning, setIsJanitorWindowRunning] = useState(false);
+  const [isJanitorWindowVisible, setIsJanitorWindowVisible] = useState(false);
+  const [showJanitorAdvanced, setShowJanitorAdvanced] = useState(false);
+
+  const refreshJanitorStatus = useCallback(async () => {
+    try {
+      const res = await invoke<{ is_window_running: boolean; is_window_visible: boolean; user_id?: string }>("get_janitor_session_status");
+      setIsJanitorWindowRunning(res.is_window_running);
+      setIsJanitorWindowVisible(res.is_window_visible);
+      if (res.user_id && res.user_id.length > 10) {
+        setJanitorUserId((prev) => {
+          if (!prev) {
+            localStorage.setItem("janitor_user_id", res.user_id!);
+            return res.user_id!;
+          }
+          return prev;
+        });
+      }
+    } catch {
+      setIsJanitorWindowRunning(false);
+      setIsJanitorWindowVisible(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshJanitorStatus();
+    const timer = setInterval(refreshJanitorStatus, 2500);
+    return () => clearInterval(timer);
+  }, [refreshJanitorStatus]);
+
+  useEffect(() => {
+    localStorage.setItem("janitor_session_token", janitorSessionToken);
+  }, [janitorSessionToken]);
+
+  useEffect(() => {
+    localStorage.setItem("janitor_user_id", janitorUserId);
+  }, [janitorUserId]);
+
   // UI State
   const [editingModule, setEditingModule] = useState<any | null>(null);
   const [showConsole, setShowConsole] = useState(false);
@@ -769,10 +818,24 @@ export default function Settings({
           setSyncStatus(event.payload);
       });
 
+      const unlistenJanitorAuth = listen<{ session_token: string; user_id: string }>("janitor-auth-captured", (event) => {
+          if (event.payload.session_token) {
+              setJanitorSessionToken(event.payload.session_token);
+              localStorage.setItem("janitor_session_token", event.payload.session_token);
+          }
+          if (event.payload.user_id) {
+              setJanitorUserId(event.payload.user_id);
+              localStorage.setItem("janitor_user_id", event.payload.user_id);
+          }
+          addToast("Janitor.ai session ready! Background proxy is active.", "success");
+          refreshJanitorStatus();
+      });
+
       return () => {
           unlistenProgress.then((f) => f());
+          unlistenJanitorAuth.then((f) => f());
       };
-  }, []);
+  }, [refreshJanitorStatus]);
 
   const handlePush = async () => {
       setIsPushing(true);
@@ -1912,6 +1975,220 @@ export default function Settings({
 
           {activeTab === "advanced" && (
             <AdvancedTab addToast={addToast} setShowConsole={setShowConsole} />
+          )}
+
+          {activeTab === "janitor" && (
+            <div className="space-y-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="p-6 bg-gray-900/50 rounded-3xl border border-white/5 space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <Link className="text-indigo-400" />
+                    <span>{t('janitorShadowProxyTitle', 'Janitor.ai Shadow Proxy')}</span>
+                  </h2>
+                  <p className="text-xs text-gray-400">
+                    {t('janitorProxyDesc', 'Automatically compiles prompts and extracts hidden lorebooks and World Info via a secure background WebView session, bypassing Cloudflare.')}
+                  </p>
+                </div>
+
+                {/* Session Status & Lifecycle Controls Card */}
+                <div className="p-5 bg-gradient-to-br from-gray-900/80 to-indigo-950/20 border border-white/10 rounded-2xl space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">
+                        {t('janitorStatusLabel', 'Shadow Proxy Status')}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isJanitorWindowRunning && janitorUserId ? (
+                          <span className="px-3 py-1 text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            {t('janitorStatusActive', '🟢 Session Active (Background)')}
+                          </span>
+                        ) : isJanitorWindowRunning ? (
+                          <span className="px-3 py-1 text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full flex items-center gap-1.5 animate-pulse">
+                            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                            {t('janitorStatusWaiting', '🟡 Waiting for Login')}
+                          </span>
+                        ) : janitorUserId ? (
+                          <span className="px-3 py-1 text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full flex items-center gap-1.5">
+                            {t('janitorStatusStopped', '⚪ Stopped (Saved Data)')}
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 text-xs font-bold bg-gray-700/40 text-gray-400 border border-white/10 rounded-full flex items-center gap-1.5">
+                            {t('janitorStatusNotRunning', '⚪ Not Running')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Controls */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {!isJanitorWindowRunning ? (
+                        <button
+                          onClick={async () => {
+                            try {
+                              addToast(t('janitorStartingWindowToast', 'Starting Janitor.ai window...'), "info");
+                              await invoke("open_janitor_login_window");
+                              refreshJanitorStatus();
+                            } catch (e: any) {
+                              addToast(t('janitorWindowErrorToast', 'Window error: ') + e, "error");
+                            }
+                          }}
+                          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-indigo-900/30 cursor-pointer flex items-center gap-2"
+                        >
+                          <Zap size={14} />
+                          <span>{t('janitorStartSession', 'Start Session')}</span>
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await invoke("open_janitor_login_window");
+                                refreshJanitorStatus();
+                              } catch (e: any) {
+                                addToast(t('janitorWindowErrorToast', 'Window error: ') + e, "error");
+                              }
+                            }}
+                            className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                            title={t('janitorShowWindowTooltip', 'Open Janitor browser window for checking or login')}
+                          >
+                            <Eye size={14} />
+                            <span>{t('janitorShowWindow', 'Show Window')}</span>
+                          </button>
+
+                          {isJanitorWindowVisible && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await invoke("hide_janitor_login_window");
+                                  refreshJanitorStatus();
+                                } catch (e: any) {
+                                  addToast("Error: " + e, "error");
+                                }
+                              }}
+                              className="px-3 py-2 bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                              title={t('janitorHideWindowTooltip', 'Minimize Janitor window back to background')}
+                            >
+                              <EyeOff size={14} />
+                              <span>{t('janitorHideWindow', 'Hide')}</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={async () => {
+                              try {
+                                await invoke("close_janitor_login_window");
+                                addToast(t('janitorSessionStoppedToast', 'Session window stopped'), "info");
+                                refreshJanitorStatus();
+                              } catch (e: any) {
+                                addToast("Error: " + e, "error");
+                              }
+                            }}
+                            className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                            title={t('janitorStopSessionTooltip', 'Close background session window')}
+                          >
+                            <Power size={14} />
+                            <span>{t('janitorStopSession', 'Stop')}</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    {isJanitorWindowRunning && janitorUserId
+                      ? t('janitorSessionRunningDesc', 'Session is active and running in the background. All character cards with Shadow Proxy enabled will automatically receive compiled context and lorebooks.')
+                      : isJanitorWindowRunning
+                      ? t('janitorSessionWindowOpenDesc', 'Browser window is open. Please log into your account on the opened Janitor.ai page — the window will automatically minimize after login.')
+                      : t('janitorSessionStartPrompt', 'To use Shadow Proxy, start the session and log into Janitor.ai once. The session will remain active in the background.')}
+                  </p>
+                </div>
+
+                {/* User ID Configuration Card */}
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1 flex items-center justify-between">
+                      <span>{t('janitorUserIdLabel', 'Janitor User ID (UUID) *')}</span>
+                      <span className="text-[10px] text-gray-400 normal-case font-normal">{t('janitorUserIdRequired', 'Required for prompt compilation')}</span>
+                    </label>
+                    <input
+                      value={janitorUserId}
+                      onChange={(e) => setJanitorUserId(e.target.value.trim())}
+                      className="w-full bg-gray-900 border border-white/10 rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all font-mono"
+                      placeholder="e.g. e48b1cb5-3bc7-43fb-897b-0c45d117b36b"
+                    />
+                    <p className="text-[11px] text-gray-400 ml-1">
+                      {t('janitorUserIdHelp', 'Your unique User ID on Janitor.ai. You can copy it from your profile link or browser network requests.')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* How it works info */}
+                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-2">
+                  <div className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                    <HelpCircle size={14} />
+                    <span>{t('janitorHowItWorks', 'How does it work?')}</span>
+                  </div>
+                  <ul className="text-xs text-gray-400 space-y-1.5 list-disc list-inside">
+                    <li>{t('janitorHowItWorks1', 'The session runs inside an isolated browser window (WebView), completely bypassing Cloudflare WAF.')}</li>
+                    <li>{t('janitorHowItWorks2', 'In character settings (Janitor tab), enable «Janitor Shadow Proxy» and specify Character ID and Chat ID.')}</li>
+                    <li>{t('janitorHowItWorks3', 'Before each message, TavernRev seamlessly compiles the system prompt via Janitor and extracts only the triggered lorebook entries.')}</li>
+                  </ul>
+                </div>
+
+                {/* Collapsible Session Cookies Section */}
+                <div className="pt-2 border-t border-white/5">
+                  <button
+                    onClick={() => setShowJanitorAdvanced((prev) => !prev)}
+                    className="w-full flex items-center justify-between py-2 text-xs font-bold text-gray-400 hover:text-gray-200 transition cursor-pointer"
+                  >
+                    <span className="uppercase tracking-wider">{t('janitorCookiesSection', 'Session Cookies / Advanced')}</span>
+                    <ChevronDown
+                      size={16}
+                      className={`transform transition-transform ${showJanitorAdvanced ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {showJanitorAdvanced && (
+                    <div className="space-y-4 pt-3 animate-in fade-in duration-200">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider ml-1">
+                          {t('janitorCookiesLabel', 'Session Cookies (Optional for WebView)')}
+                        </label>
+                        <input
+                          type="password"
+                          value={janitorSessionToken}
+                          onChange={(e) => setJanitorSessionToken(e.target.value.trim())}
+                          className="w-full bg-gray-900 border border-white/10 rounded-2xl px-5 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all font-mono"
+                          placeholder="sb-auth-token.0=...;"
+                        />
+                        <p className="text-[11px] text-gray-500 ml-1">
+                          {t('janitorCookiesHelp', 'Cookies are captured automatically when the browser window is open.')}
+                        </p>
+                      </div>
+
+                      <div className="pt-2 flex justify-end">
+                        <button
+                          onClick={async () => {
+                            setJanitorSessionToken("");
+                            setJanitorUserId("");
+                            localStorage.removeItem("janitor_session_token");
+                            localStorage.removeItem("janitor_user_id");
+                            await invoke("close_janitor_login_window").catch(() => {});
+                            addToast(t('janitorDataResetToast', 'Janitor session data reset'), "info");
+                            refreshJanitorStatus();
+                          }}
+                          className="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Trash2 size={13} />
+                          <span>{t('janitorResetData', 'Reset Janitor Data')}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
 
 

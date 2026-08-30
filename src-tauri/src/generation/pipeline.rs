@@ -231,6 +231,8 @@ pub async fn prepare_prompt(
     ctx: &mut GenerationContext,
     app_handle: &AppHandle,
     db_state: &tauri::State<'_, DbState>,
+    janitor_session_token: Option<String>,
+    janitor_user_id: Option<String>,
 ) -> Result<(Vec<api_client::OpenAIMessage>, script_engine::Evaluator), String> {
     let regex_scripts = {
         let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -239,6 +241,97 @@ pub async fn prepare_prompt(
     
     // --- 2. Module & RAG Injection ---
     let mut msgs = ctx.original_msgs.clone();
+
+    // --- Janitor Shadow Proxy ---
+    let uid_opt = janitor_user_id.as_ref().filter(|u| !u.trim().is_empty());
+    let token_val = janitor_session_token.as_deref().unwrap_or("webview");
+
+    if let Some(uid) = uid_opt {
+        if let Ok(card_json) = serde_json::from_str::<serde_json::Value>(&ctx.char_obj.card_data) {
+            if let Some(janitor_val) = card_json.get("extensions").and_then(|e| e.get("janitor")) {
+                let enabled = janitor_val.get("shadow_enabled").and_then(|v| v.as_bool()).unwrap_or(false);
+                let char_id = janitor_val.get("character_id").and_then(|v| v.as_str()).unwrap_or("");
+                let chat_id = janitor_val.get("chat_id")
+                    .and_then(|v| v.as_str().map(|s| s.parse::<i64>().unwrap_or(0)).or_else(|| v.as_i64()))
+                    .unwrap_or(0);
+
+                if enabled && !char_id.is_empty() && chat_id > 0 {
+                    let log_msg = format!("[Janitor] Shadow Proxy active: requesting generateAlpha for char_id='{}', chat_id={}", char_id, chat_id);
+                    println!("{}", log_msg);
+                    let _ = app_handle.emit("backend-log", log_msg);
+
+                    let session = crate::janitor::client::JanitorSessionConfig {
+                        session_token: token_val.to_string(),
+                        user_id: uid.clone(),
+                    };
+                    
+                    match crate::janitor::client::fetch_shadow_prompt(
+                        app_handle,
+                        &session,
+                        char_id,
+                        chat_id,
+                        &msgs,
+                        &ctx.user_name,
+                        &ctx.user_desc,
+                    ).await {
+                        Ok(res) => {
+                            if let Some(sys_msg) = res.messages.iter().find(|m| m.role == "system") {
+                                if let Some(delta) = crate::janitor::client::extract_lorebook_delta(
+                                    &ctx.char_obj.description,
+                                    &ctx.char_obj.personality,
+                                    &ctx.char_obj.scenario,
+                                    &sys_msg.content,
+                                ) {
+                                    let success_log = format!("[Janitor] Successfully extracted Lorebook delta ({} chars):\n{}", delta.len(), delta);
+                                    println!("{}", success_log);
+                                    let _ = app_handle.emit("backend-log", success_log);
+
+                                    ctx.preset.prompts.push(crate::prompt_engine::PromptModule {
+                                        identifier: "janitor_shadow_lore".to_string(),
+                                        name: "Janitor Shadow Lorebook".to_string(),
+                                        content: format!("\n[Janitor.ai World Info & Lorebooks:\n{}]", delta),
+                                        role: "system".to_string(),
+                                        enabled: true,
+                                        injection_order: -10,
+                                        injection_depth: 0,
+                                        injection_position: 0,
+                                        system_prompt: true,
+                                        marker: None,
+                                        forbid_overrides: false,
+                                        injection_trigger: Vec::new(),
+                                    });
+                                } else {
+                                    let no_delta_log = "[Janitor] Prompt received from Janitor, but no new lorebook delta was triggered.".to_string();
+                                    println!("{}", no_delta_log);
+                                    let _ = app_handle.emit("backend-log", no_delta_log);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            let err_log = format!("[Janitor] Shadow Proxy request failed: {}", e);
+                            println!("{}", err_log);
+                            let _ = app_handle.emit("backend-log", err_log);
+                        }
+                    }
+                } else if enabled {
+                    let warn_log = format!("[Janitor] Shadow Proxy enabled but missing configuration (char_id='{}', chat_id={})", char_id, chat_id);
+                    println!("{}", warn_log);
+                    let _ = app_handle.emit("backend-log", warn_log);
+                }
+            }
+        }
+    } else {
+        // Log when tokens are missing
+        if let Ok(card_json) = serde_json::from_str::<serde_json::Value>(&ctx.char_obj.card_data) {
+            if let Some(janitor_val) = card_json.get("extensions").and_then(|e| e.get("janitor")) {
+                if janitor_val.get("shadow_enabled").and_then(|v| v.as_bool()).unwrap_or(false) {
+                    let missing_auth_log = "[Janitor] Shadow Proxy enabled on character, but Session Token or User ID is missing in Settings!".to_string();
+                    println!("{}", missing_auth_log);
+                    let _ = app_handle.emit("backend-log", missing_auth_log);
+                }
+            }
+        }
+    }
     
     if !regex_scripts.is_empty() {
         let mut temp_evaluator = script_engine::Evaluator::new(script_engine::ScriptContext {
@@ -571,7 +664,13 @@ pub async fn execute_api_loop(
     let final_response = loop {
         if loop_count > 5 { break response_text; }
         
-        let tools_payload = if use_tools { Some(api_client::get_available_tools()) } else { None };
+        let tools_payload = if use_tools { 
+            let allow_image = ctx.preset.sd_use_tool;
+            let list = api_client::get_available_tools(allow_image);
+            if list.is_empty() { None } else { Some(list) }
+        } else { 
+            None 
+        };
 
         let prompt_log = format!("[AI] Prompt Sent to API (Loop {}):\n{}", loop_count, final_messages.iter().map(|m| {
             let t = match &m.content {

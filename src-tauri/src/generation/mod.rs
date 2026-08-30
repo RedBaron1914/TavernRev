@@ -27,6 +27,8 @@ async fn perform_generation(
     gen_id: u64,
     forced_speaker_id: Option<i64>,
     rag_config: Option<vector_memory::RagConfig>,
+    janitor_session_token: Option<String>,
+    janitor_user_id: Option<String>,
 ) -> Result<(String, i64, String), String> {
     // 1. Data Collection
     let mut ctx = pipeline::load_context(
@@ -35,7 +37,9 @@ async fn perform_generation(
     )?;
     
     // 2. Prompt Assembly
-    let (final_messages, evaluator) = pipeline::prepare_prompt(&mut ctx, &app_handle, &db_state).await?;
+    let (final_messages, evaluator) = pipeline::prepare_prompt(
+        &mut ctx, &app_handle, &db_state, janitor_session_token, janitor_user_id
+    ).await?;
     
     // 3. API Execution Loop
     let raw_ai_text = pipeline::execute_api_loop(final_messages, &ctx, &app_handle, abort_token, gen_id, target_msg_id).await?;
@@ -68,14 +72,20 @@ pub async fn generate_reply(
     forced_speaker_id: Option<i64>,
     rag_config: Option<vector_memory::RagConfig>,
     db_state: tauri::State<'_, DbState>,
-    gen_state: tauri::State<'_, GenerationState>
+    gen_state: tauri::State<'_, GenerationState>,
+    janitor_session_token: Option<String>,
+    janitor_user_id: Option<String>,
 ) -> Result<(), String> {
     let abort_token = Arc::new(AtomicBool::new(false));
     if let Ok(mut state) = gen_state.0.lock() {
         *state = Some(abort_token.clone());
     }
 
-    let reply_result = perform_generation(app_handle.clone(), chat_id, character_id, profile_name, preset_name, user_name, None, false, None, db_state.clone(), abort_token, None, gen_id, forced_speaker_id, rag_config).await;
+    let reply_result = perform_generation(
+        app_handle.clone(), chat_id, character_id, profile_name, preset_name, user_name,
+        None, false, None, db_state.clone(), abort_token, None, gen_id, forced_speaker_id,
+        rag_config, janitor_session_token, janitor_user_id
+    ).await;
 
     if let Ok(mut state) = gen_state.0.lock() {
         *state = None;
@@ -105,7 +115,9 @@ pub async fn regenerate_reply(
     custom_nudge: Option<String>,
     rag_config: Option<vector_memory::RagConfig>,
     db_state: tauri::State<'_, DbState>,
-    gen_state: tauri::State<'_, GenerationState>
+    gen_state: tauri::State<'_, GenerationState>,
+    janitor_session_token: Option<String>,
+    janitor_user_id: Option<String>,
 ) -> Result<(), String> {
     let abort_token = Arc::new(AtomicBool::new(false));
     if let Ok(mut state) = gen_state.0.lock() {
@@ -117,7 +129,11 @@ pub async fn regenerate_reply(
         conn.query_row("SELECT sender_id FROM messages WHERE id = ?1", rusqlite::params![message_id], |row| row.get::<_, Option<i64>>(0)).unwrap_or(None)
     };
 
-    let reply_result = perform_generation(app_handle.clone(), chat_id, character_id, profile_name, preset_name, user_name, Some(message_id), false, custom_nudge, db_state.clone(), abort_token, Some(message_id), gen_id, original_sender_id, rag_config).await;
+    let reply_result = perform_generation(
+        app_handle.clone(), chat_id, character_id, profile_name, preset_name, user_name,
+        Some(message_id), false, custom_nudge, db_state.clone(), abort_token, Some(message_id),
+        gen_id, original_sender_id, rag_config, janitor_session_token, janitor_user_id
+    ).await;
 
     if let Ok(mut state) = gen_state.0.lock() {
         *state = None;
@@ -180,7 +196,9 @@ pub async fn continue_reply(
     gen_id: u64,
     rag_config: Option<vector_memory::RagConfig>,
     db_state: tauri::State<'_, DbState>,
-    gen_state: tauri::State<'_, GenerationState>
+    gen_state: tauri::State<'_, GenerationState>,
+    janitor_session_token: Option<String>,
+    janitor_user_id: Option<String>,
 ) -> Result<String, String> {
     let abort_token = Arc::new(AtomicBool::new(false));
     if let Ok(mut state) = gen_state.0.lock() {
@@ -206,7 +224,11 @@ pub async fn continue_reply(
         Some(preset.continue_nudge_prompt.clone()) 
     };
 
-    let reply_result = perform_generation(app_handle.clone(), chat_id, character_id, profile_name, preset_name, user_name, Some(message_id), true, nudge, db_state.clone(), abort_token, Some(message_id), gen_id, original_sender_id, rag_config).await;
+    let reply_result = perform_generation(
+        app_handle.clone(), chat_id, character_id, profile_name, preset_name, user_name,
+        Some(message_id), true, nudge, db_state.clone(), abort_token, Some(message_id),
+        gen_id, original_sender_id, rag_config, janitor_session_token, janitor_user_id
+    ).await;
 
     if let Ok(mut state) = gen_state.0.lock() {
         *state = None;
@@ -286,7 +308,9 @@ pub async fn impersonate_user(
     user_input: Option<String>,
     rag_config: Option<vector_memory::RagConfig>,
     db_state: tauri::State<'_, DbState>,
-    gen_state: tauri::State<'_, GenerationState>
+    gen_state: tauri::State<'_, GenerationState>,
+    janitor_session_token: Option<String>,
+    janitor_user_id: Option<String>,
 ) -> Result<String, String> {
     let abort_token = Arc::new(AtomicBool::new(false));
     if let Ok(mut state) = gen_state.0.lock() {
@@ -311,7 +335,11 @@ pub async fn impersonate_user(
         }
     }
 
-    let reply_result = perform_generation(app_handle.clone(), chat_id, character_id, profile_name, preset_name, user_name, None, false, Some(prompt), db_state.clone(), abort_token, None, gen_id, None, rag_config).await;
+    let reply_result = perform_generation(
+        app_handle.clone(), chat_id, character_id, profile_name, preset_name, user_name,
+        None, false, Some(prompt), db_state.clone(), abort_token, None, gen_id, None,
+        rag_config, janitor_session_token, janitor_user_id
+    ).await;
 
     if let Ok(mut state) = gen_state.0.lock() {
         *state = None;
