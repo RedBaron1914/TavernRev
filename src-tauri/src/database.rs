@@ -115,6 +115,52 @@ pub struct Message {
     pub display_content: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
+pub struct SwipeInfo {
+    #[serde(default)]
+    pub images: Option<Vec<String>>,
+    #[serde(default)]
+    pub send_date: Option<i64>,
+    #[serde(default)]
+    pub gen_started: Option<i64>,
+    #[serde(default)]
+    pub extra: Option<serde_json::Value>,
+}
+
+pub fn get_swipes_info_from_extra(extra_str: &str, swipes_count: usize, current_images: &[String]) -> Vec<SwipeInfo> {
+    let extra_val: serde_json::Value = serde_json::from_str(extra_str).unwrap_or_else(|_| serde_json::json!({}));
+    let mut infos: Vec<SwipeInfo> = if let Some(arr) = extra_val.get("swipes_info").and_then(|v| v.as_array()) {
+        arr.iter().filter_map(|v| serde_json::from_value(v.clone()).ok()).collect()
+    } else {
+        Vec::new()
+    };
+
+    if infos.is_empty() && !current_images.is_empty() {
+        infos.push(SwipeInfo {
+            images: Some(current_images.to_vec()),
+            ..Default::default()
+        });
+    }
+
+    while infos.len() < swipes_count {
+        infos.push(SwipeInfo::default());
+    }
+
+    infos
+}
+
+pub fn put_swipes_info_to_extra(extra_str: &str, swipes_info: &[SwipeInfo]) -> String {
+    let mut extra_val: serde_json::Value = serde_json::from_str(extra_str).unwrap_or_else(|_| serde_json::json!({}));
+    if !extra_val.is_object() {
+        extra_val = serde_json::json!({});
+    }
+    if let Ok(val) = serde_json::to_value(swipes_info) {
+        extra_val["swipes_info"] = val;
+    }
+    serde_json::to_string(&extra_val).unwrap_or_else(|_| "{}".to_string())
+}
+
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
 pub struct Group {
@@ -797,6 +843,14 @@ pub fn init_db(app_handle: AppHandle) -> Result<Connection> {
     )?;
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_messages_chat_id_id ON messages(chat_id, id)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_messages_chat_paged ON messages(chat_id, timestamp DESC, id DESC)",
         [],
     )?;
 
@@ -1729,13 +1783,22 @@ pub fn save_message_ext(
     sender_id: Option<i64>,
     sender_name: Option<&str>,
 ) -> Result<i64> {
+    let img_vec = images.unwrap_or_default();
     let swipes_json = serde_json::to_string(&vec![content]).unwrap_or_else(|_| "[]".to_string());
-    let images_json =
-        serde_json::to_string(&images.unwrap_or_default()).unwrap_or_else(|_| "[]".to_string());
+    let images_json = serde_json::to_string(&img_vec).unwrap_or_else(|_| "[]".to_string());
+    let extra_json = if !img_vec.is_empty() {
+        serde_json::json!({
+            "swipes_info": [
+                { "images": img_vec }
+            ]
+        }).to_string()
+    } else {
+        "{}".to_string()
+    };
 
     conn.execute(
-        "INSERT INTO messages (chat_id, role, content, swipes, swipe_id, is_system, extra, images, sender_id, sender_name) VALUES (?1, ?2, ?3, ?4, 0, 0, '{}', ?5, ?6, ?7)",
-        rusqlite::params![chat_id, role, content, swipes_json, images_json, sender_id, sender_name]
+        "INSERT INTO messages (chat_id, role, content, swipes, swipe_id, is_system, extra, images, sender_id, sender_name) VALUES (?1, ?2, ?3, ?4, 0, 0, ?5, ?6, ?7, ?8)",
+        rusqlite::params![chat_id, role, content, swipes_json, extra_json, images_json, sender_id, sender_name]
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -1797,22 +1860,25 @@ pub fn delete_message(conn: &Connection, id: i64) -> Result<usize> {
 }
 
 pub fn delete_swipe(conn: &Connection, id: i64) -> Result<()> {
-    let (mut swipes, swipe_id): (Vec<String>, usize) = {
-        let mut stmt = conn.prepare("SELECT swipes, swipe_id FROM messages WHERE id = ?1")?;
-        let (swipes_str, swipe_id): (String, usize) = stmt.query_row(params![id], |row| {
-            Ok((
-                row.get(0).unwrap_or_else(|_| "[]".to_string()),
-                row.get(1).unwrap_or(0),
-            ))
-        })?;
-        (
-            serde_json::from_str(&swipes_str).unwrap_or_default(),
-            swipe_id,
-        )
-    };
+    let mut stmt = conn.prepare("SELECT swipes, swipe_id, extra, images FROM messages WHERE id = ?1")?;
+    let (swipes_str, swipe_id, extra_str, images_str): (String, usize, String, Option<String>) = stmt.query_row(params![id], |row| {
+        Ok((
+            row.get(0).unwrap_or_else(|_| "[]".to_string()),
+            row.get(1).unwrap_or(0),
+            row.get(2).unwrap_or_else(|_| "{}".to_string()),
+            row.get(3).unwrap_or(None),
+        ))
+    })?;
+
+    let mut swipes: Vec<String> = serde_json::from_str(&swipes_str).unwrap_or_default();
+    let current_images: Vec<String> = images_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+    let mut swipes_info = get_swipes_info_from_extra(&extra_str, swipes.len(), &current_images);
 
     if swipe_id < swipes.len() {
         swipes.remove(swipe_id);
+    }
+    if swipe_id < swipes_info.len() {
+        swipes_info.remove(swipe_id);
     }
 
     if swipes.is_empty() {
@@ -1824,11 +1890,14 @@ pub fn delete_swipe(conn: &Connection, id: i64) -> Result<()> {
             swipe_id
         };
         let new_content = &swipes[new_index];
+        let new_images = swipes_info.get(new_index).and_then(|si| si.images.clone()).unwrap_or_default();
         let new_swipes_json = serde_json::to_string(&swipes).unwrap_or_else(|_| "[]".to_string());
+        let new_images_json = serde_json::to_string(&new_images).unwrap_or_else(|_| "[]".to_string());
+        let new_extra_json = put_swipes_info_to_extra(&extra_str, &swipes_info);
 
         conn.execute(
-            "UPDATE messages SET content = ?1, swipes = ?2, swipe_id = ?3 WHERE id = ?4",
-            rusqlite::params![new_content, new_swipes_json, new_index, id],
+            "UPDATE messages SET content = ?1, swipes = ?2, swipe_id = ?3, images = ?4, extra = ?5 WHERE id = ?6",
+            rusqlite::params![new_content, new_swipes_json, new_index, new_images_json, new_extra_json, id],
         )?;
     }
     Ok(())

@@ -910,7 +910,7 @@ export const CharacterEditor = ({
                                 </div>
                             ) : (
                                 <div 
-                                    className="prose prose-sm max-w-none break-words overflow-x-auto prose-invert [&_p]:mb-2 last:[&_p]:mb-0 leading-relaxed"
+                                    className="prose prose-sm max-w-none break-words overflow-hidden prose-invert [&_p]:mb-2 last:[&_p]:mb-0 leading-relaxed"
                                     dangerouslySetInnerHTML={{ __html: renderMessageHtml(msg.content) }}
                                 />
                             )}

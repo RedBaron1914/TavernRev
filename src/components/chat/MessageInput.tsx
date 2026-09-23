@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Send,
   MoreVertical,
@@ -102,7 +102,17 @@ export function MessageInput({
   activePersonaName,
   isMobile,
 }: MessageInputProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    const nextHeight = Math.min(textarea.scrollHeight, 240);
+    textarea.style.height = `${Math.max(nextHeight, 40)}px`;
+  }, [inputValue]);
+
   return (
     <>
       {showQR && quickReplies.length > 0 && (
@@ -245,6 +255,7 @@ export function MessageInput({
           </div>
 
           <textarea
+            ref={textareaRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onPaste={handlePaste}
@@ -256,7 +267,7 @@ export function MessageInput({
             }}
             placeholder={t('messageAsActivepersonaname', 'Message as {{activePersonaName}}...', { activePersonaName })}
             rows={1}
-            className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 px-2 py-2 focus:outline-none resize-none max-h-32 min-h-[40px] custom-scrollbar"
+            className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 px-2 py-2 focus:outline-none resize-none max-h-60 min-h-[40px] overflow-y-auto custom-scrollbar leading-relaxed"
             disabled={activeChatId === null}
           />
           {isGenerating ? (

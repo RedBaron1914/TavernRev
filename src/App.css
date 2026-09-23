@@ -26,15 +26,14 @@
 .prose > * {
   max-width: 100%;
 }
-.prose img, .prose video, .prose table, .prose pre, .prose div {
+.prose img, .prose video, .prose div {
   max-width: 100% !important;
   height: auto !important;
 }
 
-/* Container safety */
-.min-w-0 {
-    overflow-x: hidden;
-    overflow-y: clip;
+.prose pre, .prose table {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 /* Table Styling */
@@ -55,8 +54,17 @@
 }
 
 /* Dialogue Highlight Helper */
-.text-teal-300 {
-  color: #5eead4; /* Tailwind teal-300 */
+.text-teal-300,
+.dialogue-text {
+  color: #5eead4 !important; /* Tailwind teal-300 */
+}
+
+/* Preserve custom colored dialogue from <font color="..."> or style="color:..." */
+font[color] .text-teal-300,
+font[color] .dialogue-text,
+[style*="color"] .text-teal-300,
+[style*="color"] .dialogue-text {
+  color: inherit !important;
 }
 
 /* Splash Animation */

@@ -1806,7 +1806,7 @@ export default function Settings({
             className="w-full py-2 px-3 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 hover:border-white/10 text-[11px] text-gray-400 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer group"
           >
             <Info size={13} className="text-indigo-400 group-hover:scale-110 transition-transform" />
-            <span className="font-medium">TavernRev v1.6.0</span>
+            <span className="font-medium">TavernRev v1.6.1</span>
           </button>
         </div>
       </aside>      {/*MAIN CONTENT AREA */}

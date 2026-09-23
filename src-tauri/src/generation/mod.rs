@@ -144,23 +144,44 @@ pub async fn regenerate_reply(
 
     {
         let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        let mut stmt = conn.prepare("SELECT swipes, images FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
-        let (swipes_str, images_str): (String, Option<String>) = stmt.query_row(rusqlite::params![message_id], |row| Ok((row.get(0)?, row.get(1)?))).map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare("SELECT swipes, swipe_id, extra, images FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
+        let (swipes_str, current_swipe_id, extra_str, images_str): (String, usize, String, Option<String>) = stmt.query_row(rusqlite::params![message_id], |row| Ok((
+            row.get(0)?,
+            row.get(1)?,
+            row.get(2).unwrap_or_else(|_| "{}".to_string()),
+            row.get(3)?
+        ))).map_err(|e| e.to_string())?;
+
         let mut swipes: Vec<String> = serde_json::from_str(&swipes_str).unwrap_or_default();
-        
+        let current_images: Vec<String> = images_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+        let mut swipes_info = database::get_swipes_info_from_extra(&extra_str, swipes.len(), &current_images);
+
+        // Ensure current active swipe has its images preserved
+        if current_swipe_id < swipes_info.len() {
+            swipes_info[current_swipe_id].images = Some(current_images);
+        }
+
+        // Add the new swipe and its own generated images
         swipes.push(reply.clone());
-        let new_swipes_json = serde_json::to_string(&swipes).map_err(|e| e.to_string())?;
         let new_index = swipes.len() - 1;
 
+        swipes_info.push(database::SwipeInfo {
+            images: if generated_images.is_empty() { None } else { Some(generated_images.clone()) },
+            send_date: Some(chrono::Utc::now().timestamp_millis()),
+            ..Default::default()
+        });
+
+        let new_swipes_json = serde_json::to_string(&swipes).map_err(|e| e.to_string())?;
+        let new_extra_json = database::put_swipes_info_to_extra(&extra_str, &swipes_info);
         let final_images_json = if !generated_images.is_empty() {
             serde_json::to_string(&generated_images).unwrap_or_else(|_| "[]".to_string())
         } else {
-            images_str.unwrap_or_else(|| "[]".to_string())
+            "[]".to_string()
         };
 
         conn.execute(
-            "UPDATE messages SET content = ?1, swipes = ?2, swipe_id = ?3, sender_id = ?4, sender_name = ?5, images = ?6 WHERE id = ?7",
-            rusqlite::params![reply, new_swipes_json, new_index, sender_id, sender_name, final_images_json, message_id]
+            "UPDATE messages SET content = ?1, swipes = ?2, swipe_id = ?3, sender_id = ?4, sender_name = ?5, images = ?6, extra = ?7 WHERE id = ?8",
+            rusqlite::params![reply, new_swipes_json, new_index, sender_id, sender_name, final_images_json, new_extra_json, message_id]
         ).map_err(|e| e.to_string())?;
     }
 
@@ -171,15 +192,33 @@ pub async fn regenerate_reply(
 #[tauri::command]
 pub fn swipe_message(message_id: i64, swipe_index: usize, db_state: tauri::State<DbState>) -> Result<(), String> {
     let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    let mut stmt = conn.prepare("SELECT swipes FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
-    let swipes_str: String = stmt.query_row(rusqlite::params![message_id], |row| row.get(0)).map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT swipes, swipe_id, extra, images FROM messages WHERE id = ?1").map_err(|e| e.to_string())?;
+    let (swipes_str, current_swipe_id, extra_str, images_str): (String, usize, String, Option<String>) = stmt.query_row(rusqlite::params![message_id], |row| Ok((
+        row.get(0)?,
+        row.get(1)?,
+        row.get(2).unwrap_or_else(|_| "{}".to_string()),
+        row.get(3)?
+    ))).map_err(|e| e.to_string())?;
+
     let swipes: Vec<String> = serde_json::from_str(&swipes_str).unwrap_or_default();
+    let current_images: Vec<String> = images_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
 
     if swipe_index < swipes.len() {
-        let content = &swipes[swipe_index];
+        let mut swipes_info = database::get_swipes_info_from_extra(&extra_str, swipes.len(), &current_images);
+
+        // Preserve current images on current swipe
+        if current_swipe_id < swipes_info.len() {
+            swipes_info[current_swipe_id].images = Some(current_images);
+        }
+
+        let new_content = &swipes[swipe_index];
+        let new_images = swipes_info.get(swipe_index).and_then(|si| si.images.clone()).unwrap_or_default();
+        let new_images_json = serde_json::to_string(&new_images).unwrap_or_else(|_| "[]".to_string());
+        let new_extra_json = database::put_swipes_info_to_extra(&extra_str, &swipes_info);
+
         conn.execute(
-            "UPDATE messages SET content = ?1, swipe_id = ?2 WHERE id = ?3",
-            rusqlite::params![content, swipe_index, message_id]
+            "UPDATE messages SET content = ?1, swipe_id = ?2, images = ?3, extra = ?4 WHERE id = ?5",
+            rusqlite::params![new_content, swipe_index, new_images_json, new_extra_json, message_id]
         ).map_err(|e| e.to_string())?;
     }
     Ok(())

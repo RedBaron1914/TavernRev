@@ -6,7 +6,7 @@ use std::fs;
 use base64::{engine::general_purpose, Engine as _};
 use uuid::Uuid;
 use tokio_tungstenite::connect_async;
-use tokio_tungstenite::tungstenite::http::Request;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::Message;
 use futures_util::{StreamExt, SinkExt};
 
@@ -688,11 +688,12 @@ async fn generate_image_swarm_ws(
     };
 
     let ws_url = format!("{}/API/GenerateText2ImageWS", ws_base);
-    let mut req_builder = Request::builder().uri(&ws_url);
+    let mut req = ws_url.into_client_request().map_err(|e| format!("Invalid WS request URL: {}", e))?;
     if !auth_token.is_empty() {
-        req_builder = req_builder.header("Cookie", format!("swarm_token={}", auth_token));
+        if let Ok(header_val) = format!("swarm_token={}", auth_token).parse() {
+            req.headers_mut().insert("Cookie", header_val);
+        }
     }
-    let req = req_builder.body(()).map_err(|e| format!("Invalid WS request: {}", e))?;
 
     let (ws_stream, _) = connect_async(req).await.map_err(|e| format!("WS connect failed: {}", e))?;
     let (mut ws_write, mut ws_read) = ws_stream.split();
@@ -783,6 +784,11 @@ async fn generate_image_swarm_ws(
                         let file_path = attachments_dir.join(&filename);
                         fs::write(&file_path, img_bytes).map_err(|e| e.to_string())?;
                         println!("Saved SwarmUI WS image to {:?}", file_path);
+                        
+                        // Perform graceful WebSocket close handshake to prevent SwarmUI server exceptions
+                        let _ = ws_write.send(Message::Close(None)).await;
+                        let _ = ws_write.close().await;
+
                         return Ok(filename);
                     }
                 }

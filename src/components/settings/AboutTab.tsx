@@ -10,7 +10,6 @@ import {
   HardDrive,
   Globe,
   Sparkles,
-  MessageSquare,
   Github,
   Maximize,
   Smartphone
@@ -24,9 +23,8 @@ interface AboutTabProps {
   addToast: (message: string, type?: "success" | "error" | "info") => void;
 }
 
-const DISCORD_INVITE_URL = "https://discord.gg/K5524BnmMp"; // Discord community invite link
 const GITHUB_REPO_URL = "https://github.com/RedBaron1914/TavernRev";
-const APP_VERSION = "1.6.0";
+const APP_VERSION = "1.6.1";
 const COMMIT_HASH = "f03cf30";
 
 export function AboutTab({ addToast }: AboutTabProps) {
@@ -187,35 +185,10 @@ export function AboutTab({ addToast }: AboutTabProps) {
       </div>
 
       {/* COMMUNITY & SUPPORT BANNERS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* DISCORD CARD */}
-        <div className="p-5 bg-gradient-to-br from-[#5865F2]/15 via-gray-900 to-gray-900 border border-[#5865F2]/30 rounded-2xl flex flex-col justify-between space-y-4 hover:border-[#5865F2]/50 transition group">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5 text-[#5865F2]">
-              <MessageSquare size={20} />
-              <h3 className="font-bold text-white text-sm">
-                {t("discordCommunityTitle", "Discord Community & Support")}
-              </h3>
-            </div>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              {t(
-                "discordCommunityDesc",
-                "Found a bug, have a feature request, or want to share cards and lorebooks? Join our Discord server!"
-              )}
-            </p>
-          </div>
-          <button
-            onClick={() => handleOpenLink(DISCORD_INVITE_URL)}
-            className="w-full py-2.5 px-4 bg-[#5865F2] hover:bg-[#4752C4] text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-[#5865F2]/20 cursor-pointer active:scale-95"
-          >
-            <span>{t("joinDiscord", "Join Discord Server")}</span>
-            <ExternalLink size={13} />
-          </button>
-        </div>
-
+      <div>
         {/* GITHUB CARD */}
-        <div className="p-5 bg-gray-900/60 border border-white/10 rounded-2xl flex flex-col justify-between space-y-4 hover:border-white/20 transition group">
-          <div className="space-y-2">
+        <div className="p-5 bg-gray-900/60 border border-white/10 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-white/20 transition group">
+          <div className="space-y-1">
             <div className="flex items-center gap-2.5 text-gray-300">
               <Github size={20} />
               <h3 className="font-bold text-white text-sm">
@@ -231,7 +204,7 @@ export function AboutTab({ addToast }: AboutTabProps) {
           </div>
           <button
             onClick={() => handleOpenLink(GITHUB_REPO_URL)}
-            className="w-full py-2.5 px-4 bg-white/10 hover:bg-white/15 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 border border-white/10 cursor-pointer active:scale-95"
+            className="py-2.5 px-5 bg-white/10 hover:bg-white/15 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 border border-white/10 cursor-pointer active:scale-95 shrink-0"
           >
             <span>{t("openGithub", "Open GitHub Repository")}</span>
             <ExternalLink size={13} />

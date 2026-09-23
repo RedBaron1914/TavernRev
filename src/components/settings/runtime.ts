@@ -408,11 +408,25 @@ export const useActivePreset = () => {
   }, []);
 
   const loadPresetData = useCallback(async (fileName: string) => {
+    const currentActiveImagePreset = localStorage.getItem("active_image_preset") || "Default.json";
+    let sdSettings: Partial<Preset> = {};
+    try {
+      const imgPresetContent = await invoke<string>("load_image_preset", { fileName: currentActiveImagePreset });
+      sdSettings = JSON.parse(imgPresetContent);
+    } catch {
+      // ignore
+    }
+
     const normalized = await loadPresetFile(fileName);
-    setFormData(normalized);
+    const merged: Preset = {
+      ...normalized,
+      ...(sdSettings as any),
+    };
+
+    setFormData(merged);
     setActivePresetFile(fileName);
     localStorage.setItem("active_preset", fileName);
-    return normalized;
+    return merged;
   }, []);
 
   useEffect(() => {

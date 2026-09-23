@@ -64,6 +64,14 @@ if (fs.existsSync(ruLocalePath)) {
     fs.writeFileSync(ruLocalePath, ruLocale, 'utf8');
 }
 
+// src/components/settings/AboutTab.tsx
+const aboutTabPath = path.join(root, 'src', 'components', 'settings', 'AboutTab.tsx');
+if (fs.existsSync(aboutTabPath)) {
+    let aboutTab = fs.readFileSync(aboutTabPath, 'utf8');
+    aboutTab = aboutTab.replace(/const APP_VERSION = "[^"]+";/, `const APP_VERSION = "${cleanVersion}";`);
+    fs.writeFileSync(aboutTabPath, aboutTab, 'utf8');
+}
+
 // README.md
 const readmePath = path.join(root, 'README.md');
 if (fs.existsSync(readmePath)) {

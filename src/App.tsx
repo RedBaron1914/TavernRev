@@ -68,14 +68,26 @@ const converter = new showdown.Converter({
               text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
               text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<i>$1</i>');
 
-              // 3. Dialogue Highlighting (Teal-300) - safe vs markdown links and HTML attributes
-              text = text.replace(/\]\("[^"]+"\)|=\s*"[^"]+"|("([^"]+)")/g, (match, fullDialogue, dialogueInner) => {
+              // 3. Dialogue Highlighting (dialogue-text / text-teal-300) - safe vs markdown links and HTML tags/attributes
+              text = text.replace(/\]\("[^"]+"\)|<[^>]+>|("([^"]+)")/g, (match, fullDialogue, dialogueInner) => {
                   if (fullDialogue) {
-                      return i18next.t('spanClasstextteal300dialogueinnerspan', '<span class="text-teal-300">"{{dialogueInner}}"</span>', { dialogueInner });
+                      return `<span class="dialogue-text">"${dialogueInner}"</span>`;
                   }
                   return match;
               });
-              text = text.replace(/«([^»]+)»/g, '<span class="text-teal-300">«$1»</span>');
+
+              // Special quotation marks:
+              // «...» (Guillemets / Ёлочки)
+              text = text.replace(/«([^»]+)»/g, '<span class="dialogue-text">«$1»</span>');
+              // “...” or ”...” (Curly quotes)
+              text = text.replace(/[“\”]([^“”]+)[”\“]/g, '<span class="dialogue-text">“$1”</span>');
+              // „...“ or „...” (German/Russian low-9 and high quotes / Лапки)
+              text = text.replace(/„([^“”]+)([“”])/g, '<span class="dialogue-text">„$1$2</span>');
+              // ‹...› (Single guillemets)
+              text = text.replace(/‹([^›]+)›/g, '<span class="dialogue-text">‹$1›</span>');
+              // 「...」 and 『...』 (CJK corner brackets)
+              text = text.replace(/「([^」]+)」/g, '<span class="dialogue-text">「$1」</span>');
+              text = text.replace(/『([^』]+)』/g, '<span class="dialogue-text">『$1』</span>');
               return text;
           }
       },
@@ -223,7 +235,7 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
                 </details>
             )}
             <div 
-                className={`prose prose-sm max-w-none break-words overflow-x-auto [&_p]:mb-4 last:[&_p]:mb-0 ${isUser ? 'prose-invert text-white' : 'prose-invert text-gray-100'}`}
+                className={`prose prose-sm max-w-none break-words overflow-hidden [&_p]:mb-4 last:[&_p]:mb-0 ${isUser ? 'prose-invert text-white' : 'prose-invert text-gray-100'}`}
                 dangerouslySetInnerHTML={{ __html: html }}
             />
         </div>
@@ -807,8 +819,9 @@ const refreshCharacters = async () => {
       }
       try {
           setIsGeneratingImage(true);
+          const activeImgPreset = localStorage.getItem("active_image_preset") || "Default.json";
           const imgPath = await invoke<string>("generate_image_stateless", {
-              presetName: activePresetFile || "Default",
+              presetName: activeImgPreset,
               prompt: finalTags
           });
           addToast(t('imageGeneratedSuccessfully', 'Image generated successfully!'), "success");
@@ -1329,16 +1342,36 @@ const refreshCharacters = async () => {
     let nextId = direction === "left" ? currentId - 1 : currentId + 1;
 
     if (nextId < 0) nextId = total - 1;
-
     if (nextId >= total) nextId = 0;
 
+    // 1. Instant optimistic update in React state (0ms latency without full chat refetch)
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id === msgId) {
+          const nextContent = m.swipes && m.swipes[nextId] !== undefined ? m.swipes[nextId] : m.content;
+          const extraObj = (typeof m.extra === "string" ? JSON.parse(m.extra || "{}") : m.extra) || {};
+          const swipesInfo = extraObj.swipes_info || [];
+          const nextImages = swipesInfo[nextId]?.images ?? (nextId === 0 ? m.images : []);
+          return {
+            ...m,
+            swipe_id: nextId,
+            content: nextContent,
+            display_content: nextContent,
+            images: nextImages,
+          };
+        }
+        return m;
+      })
+    );
+
+    // 2. Persist to database in background
     try {
       await invoke("swipe_message", { messageId: msgId, swipeIndex: nextId });
-
-      await fetchMessages(activeChatId!);
-      triggerAutoSync(activeChatId!);
+      if (activeChatId) {
+        triggerAutoSync(activeChatId);
+      }
     } catch (e) {
-      console.error(e);
+      console.error("Failed to persist swipe:", e);
     }
   };
 

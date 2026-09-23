@@ -680,6 +680,7 @@ pub async fn execute_api_loop(
                 None
             };
             let list = api_client::get_available_tools(allow_image, Some(ctx.preset.sd_tool_description.as_str()), loras_summary.as_deref());
+            let _ = app_handle.emit("backend-log", format!("[AI] Tool calling enabled (allow_image_gen: {}, tools_count: {})", allow_image, list.len()));
             if list.is_empty() { None } else { Some(list) }
         } else { 
             None 

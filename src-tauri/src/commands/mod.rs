@@ -2782,18 +2782,33 @@ pub async fn generate_image_stateless(
     prompt: String,
 ) -> Result<String, String> {
     println!("DEBUG: generate_image_stateless called! preset={}, prompt={}", preset_name, prompt);
-    let presets_dir = crate::commands::get_presets_dir(&app_handle);
+    let image_presets_dir = crate::commands::get_image_presets_dir(&app_handle);
     let safe_preset = crate::sanitize_filename(&preset_name);
-    let mut preset_path = presets_dir.join(&safe_preset);
+    let mut preset_path = image_presets_dir.join(&safe_preset);
     if !preset_path.exists() && !safe_preset.ends_with(".json") {
-        let with_json = presets_dir.join(format!("{}.json", safe_preset));
+        let with_json = image_presets_dir.join(format!("{}.json", safe_preset));
         if with_json.exists() {
             preset_path = with_json;
         }
     }
+    // Fallback to text presets directory for backwards compatibility
+    if !preset_path.exists() {
+        let text_presets_dir = crate::commands::get_presets_dir(&app_handle);
+        let mut fallback_path = text_presets_dir.join(&safe_preset);
+        if !fallback_path.exists() && !safe_preset.ends_with(".json") {
+            let with_json = text_presets_dir.join(format!("{}.json", safe_preset));
+            if with_json.exists() {
+                fallback_path = with_json;
+            }
+        }
+        if fallback_path.exists() {
+            preset_path = fallback_path;
+        }
+    }
+
     let preset_content = std::fs::read_to_string(&preset_path)
         .map_err(|e| format!("File read error for {:?}: {}", preset_path, e))?;
-    let preset: crate::api_client::Preset = serde_json::from_str(&preset_content)
+    let preset: crate::api_client::ImageGenPreset = serde_json::from_str(&preset_content)
         .map_err(|e| format!("Preset JSON parse error: {}. Content starts with: {}", e, &preset_content.chars().take(50).collect::<String>()))?;
 
     if preset.sd_provider == "auto" {

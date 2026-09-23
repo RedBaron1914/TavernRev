@@ -84,6 +84,60 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
     }
   };
 
+  // Debounced auto-save for active image preset so changes are immediately persisted in image_presets/
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeImagePreset && formData) {
+        const fileToSave = activeImagePreset.endsWith('.json') ? activeImagePreset : `${activeImagePreset}.json`;
+        const presetData: ImageGenPreset = {
+          name: fileToSave.replace('.json', ''),
+          sd_provider: formData.sd_provider,
+          sd_model: formData.sd_model,
+          sd_sampler: formData.sd_sampler,
+          sd_width: formData.sd_width,
+          sd_height: formData.sd_height,
+          sd_steps: formData.sd_steps,
+          sd_cfg_scale: formData.sd_cfg_scale,
+          sd_seed: formData.sd_seed,
+          sd_positive_prompt: formData.sd_positive_prompt || "",
+          sd_negative_prompt: formData.sd_negative_prompt || "",
+          sd_send_loras: formData.sd_send_loras || false,
+          sd_tool_description: formData.sd_tool_description || DEFAULT_SD_TOOL_DESCRIPTION,
+          sd_allow_nsfw: formData.sd_allow_nsfw,
+          sd_sanitize_prompts: formData.sd_sanitize_prompts,
+          sd_restore_faces: formData.sd_restore_faces,
+          sd_karras: formData.sd_karras,
+          sd_hires_fix: formData.sd_hires_fix,
+          sd_auto_url: formData.sd_auto_url,
+          sd_auto_auth: formData.sd_auto_auth,
+          sd_auto_vae: formData.sd_auto_vae,
+          sd_auto_scheduler: formData.sd_auto_scheduler,
+          sd_auto_upscaler: formData.sd_auto_upscaler,
+          sd_auto_hires_steps: formData.sd_auto_hires_steps,
+          sd_auto_clip_skip: formData.sd_auto_clip_skip,
+          sd_auto_denoising: formData.sd_auto_denoising,
+          sd_auto_upscale_by: formData.sd_auto_upscale_by,
+          sd_swarm_url: formData.sd_swarm_url,
+          sd_swarm_auth_token: formData.sd_swarm_auth_token,
+          sd_swarm_refiner_model: formData.sd_swarm_refiner_model,
+          sd_swarm_refiner_method: formData.sd_swarm_refiner_method,
+          sd_swarm_refiner_control_percent: formData.sd_swarm_refiner_control_percent,
+          sd_swarm_refiner_upscale_size: formData.sd_swarm_refiner_upscale_size,
+          sd_swarm_refiner_steps: formData.sd_swarm_refiner_steps,
+          sd_horde_api_key: formData.sd_horde_api_key,
+          sd_use_tool: formData.sd_use_tool,
+          sd_edit_prompts: formData.sd_edit_prompts,
+        };
+        invoke("save_image_preset", {
+          fileName: fileToSave,
+          content: JSON.stringify(presetData, null, 2)
+        }).catch(console.error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [activeImagePreset, formData]);
+
   const handleSaveCurrentPreset = async (targetFile?: string) => {
     const fileToSave = targetFile || activeImagePreset || "Default.json";
     const presetData: ImageGenPreset = {
