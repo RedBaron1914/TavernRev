@@ -878,14 +878,14 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
                   onChange={handleFieldChange}
                 />
                 <Slider
-                  label={t('refinerControlPercent', 'Refiner Control % (Step Switch)')}
+                  label={t('refinerControlPercent', 'Refiner Control % (Denoise / Step Ratio)')}
                   field="sd_swarm_refiner_control_percent"
-                  value={formData.sd_swarm_refiner_control_percent || 0.8}
-                  min={0.1}
+                  value={formData.sd_swarm_refiner_control_percent ?? 0.2}
+                  min={0.05}
                   max={1.0}
                   step={0.05}
                   onChange={handleFieldChange}
-                  helpText={t('refinerControlHelp', 'Point where refiner/upscaler takes over (e.g. 0.8 = at 80% progress)')}
+                  helpText={t('refinerControlHelp', 'Fraction of steps to let the refiner run (e.g. 0.2 = refiner runs 20% of steps)')}
                 />
               </div>
             </div>

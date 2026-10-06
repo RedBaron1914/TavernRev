@@ -138,11 +138,9 @@ pub fn load_context(
     if character_id == 0 {
         let group_id: Option<i64> = conn.query_row("SELECT group_id FROM chats WHERE id = ?1", rusqlite::params![chat_id], |row| row.get(0)).ok().flatten();
         if let Some(gid) = group_id {
-            if let Ok(group_scen) = conn.query_row("SELECT scenario FROM groups WHERE id = ?1", rusqlite::params![gid], |row| row.get::<_, Option<String>>(0)) {
-                if let Some(scen) = group_scen {
-                    if !scen.trim().is_empty() {
-                        char_obj.scenario = scen;
-                    }
+            if let Ok(Some(scen)) = conn.query_row("SELECT scenario FROM groups WHERE id = ?1", rusqlite::params![gid], |row| row.get::<_, Option<String>>(0)) {
+                if !scen.trim().is_empty() {
+                    char_obj.scenario = scen;
                 }
             }
         }
@@ -374,7 +372,7 @@ pub async fn prepare_prompt(
             }
             
             if !query.trim().is_empty() {
-                let results = crate::vector_memory::query_chat_memory(&*db_state, ctx.chat_id, &query, rag).await;
+                let results = crate::vector_memory::query_chat_memory(db_state, ctx.chat_id, &query, rag).await;
                 if let Ok(results) = results {
                     if !results.is_empty() {
                         let mut combined_memory = String::new();
@@ -481,7 +479,7 @@ pub async fn prepare_prompt(
                 query.push('\n');
             }
             if !query.trim().is_empty() {
-                if let Ok(matched_ids) = crate::vector_memory::query_lorebook_memory(&*db_state, ctx.real_char_id, ctx.chat_id, &query, rag).await {
+                if let Ok(matched_ids) = crate::vector_memory::query_lorebook_memory(db_state, ctx.real_char_id, ctx.chat_id, &query, rag).await {
                     for entry in &mut lore_entries_db {
                         if matched_ids.contains(&entry.id) {
                             // Forcefully activate the entry via RAG semantic match
@@ -679,7 +677,8 @@ pub async fn execute_api_loop(
             } else {
                 None
             };
-            let list = api_client::get_available_tools(allow_image, Some(ctx.preset.sd_tool_description.as_str()), loras_summary.as_deref());
+            let is_swarm = ctx.preset.sd_provider == "swarm";
+            let list = api_client::get_available_tools(allow_image, Some(ctx.preset.sd_tool_description.as_str()), loras_summary.as_deref(), is_swarm);
             let _ = app_handle.emit("backend-log", format!("[AI] Tool calling enabled (allow_image_gen: {}, tools_count: {})", allow_image, list.len()));
             if list.is_empty() { None } else { Some(list) }
         } else { 
@@ -777,9 +776,24 @@ pub async fn execute_api_loop(
                             }
 
                             if final_prompt.is_empty() {
-                                result_string = format!(r#"{{"status": "error", "message": "User cancelled image generation"}}"#);
+                                result_string = r#"{"status": "error", "message": "User cancelled image generation"}"#.to_string();
                             } else {
-                                let _ = app_handle.emit("backend-log", format!("[AI] Generating image with tags: {}", final_prompt));
+                                let aspect_ratio = args.get("aspect_ratio").and_then(|v| v.as_str());
+                                let (effective_width, effective_height) = crate::api_client::resolve_image_dimensions(
+                                    ctx.preset.sd_width,
+                                    ctx.preset.sd_height,
+                                    aspect_ratio,
+                                );
+                                let _ = app_handle.emit(
+                                    "backend-log",
+                                    format!(
+                                        "[AI] Generating image with tags: {} ({}x{}, ratio: {:?})",
+                                        final_prompt,
+                                        effective_width,
+                                        effective_height,
+                                        aspect_ratio.unwrap_or("preset")
+                                    ),
+                                );
                                 let generation_result = if ctx.preset.sd_provider == "auto" {
                                     crate::image_gen::generate_image_auto(
                                         app_handle.clone(),
@@ -788,8 +802,8 @@ pub async fn execute_api_loop(
                                         final_prompt,
                                         ctx.preset.sd_positive_prompt.clone(),
                                         ctx.preset.sd_negative_prompt.clone(),
-                                        ctx.preset.sd_width,
-                                        ctx.preset.sd_height,
+                                        effective_width,
+                                        effective_height,
                                         ctx.preset.sd_steps,
                                         ctx.preset.sd_sampler.clone(),
                                         ctx.preset.sd_cfg_scale,
@@ -813,8 +827,8 @@ pub async fn execute_api_loop(
                                         ctx.preset.sd_positive_prompt.clone(),
                                         ctx.preset.sd_negative_prompt.clone(),
                                         ctx.preset.sd_model.clone(),
-                                        ctx.preset.sd_width,
-                                        ctx.preset.sd_height,
+                                        effective_width,
+                                        effective_height,
                                         ctx.preset.sd_steps,
                                         ctx.preset.sd_sampler.clone(),
                                         ctx.preset.sd_cfg_scale,
@@ -835,8 +849,8 @@ pub async fn execute_api_loop(
                                         ctx.preset.sd_positive_prompt.clone(),
                                         ctx.preset.sd_negative_prompt.clone(),
                                         ctx.preset.sd_model.clone(),
-                                        ctx.preset.sd_width,
-                                        ctx.preset.sd_height,
+                                        effective_width,
+                                        effective_height,
                                         ctx.preset.sd_steps,
                                         ctx.preset.sd_sampler.clone(),
                                         ctx.preset.sd_cfg_scale,

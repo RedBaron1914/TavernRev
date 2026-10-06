@@ -430,21 +430,22 @@ pub async fn summarize_chat(chat_id: i64, profile_name: String, preset_name: Str
     let preset_content = fs::read_to_string(get_presets_dir(&app_handle).join(crate::sanitize_filename(&preset_name))).map_err(|e| e.to_string())?;
     let preset: crate::api_client::Preset = serde_json::from_str(&preset_content).map_err(|e| e.to_string())?;
     
-    let mut messages = Vec::new();
-    messages.push(crate::prompt_engine::Message {
-        role: "system".to_string(),
-        content: "[System Note: Summarize the key events, current state, and character dynamics of the following chat log. Keep it concise. Focus purely on facts that are useful to remember later. Do not include meta-commentary.]".to_string(),
-        name: None,
-        images: None,
-        db_id: None,
-    });
-    messages.push(crate::prompt_engine::Message {
-        role: "user".to_string(),
-        content: chat_log,
-        name: None,
-        images: None,
-        db_id: None,
-    });
+    let messages = [
+        crate::prompt_engine::Message {
+            role: "system".to_string(),
+            content: "[System Note: Summarize the key events, current state, and character dynamics of the following chat log. Keep it concise. Focus purely on facts that are useful to remember later. Do not include meta-commentary.]".to_string(),
+            name: None,
+            images: None,
+            db_id: None,
+        },
+        crate::prompt_engine::Message {
+            role: "user".to_string(),
+            content: chat_log,
+            name: None,
+            images: None,
+            db_id: None,
+        },
+    ];
     
     match profile.api_type.as_str() {
         "google" => {

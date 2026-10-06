@@ -221,7 +221,7 @@ fn default_sd_swarm_refiner_method() -> String {
     "pixel".to_string()
 }
 fn default_sd_swarm_refiner_control_percent() -> f32 {
-    0.8
+    0.2
 }
 fn default_sd_swarm_refiner_upscale_size() -> f32 {
     2.0
@@ -230,7 +230,56 @@ fn default_sd_horde_api_key() -> String {
     "0000000000".to_string()
 }
 pub fn default_sd_tool_description() -> String {
-    "Generates an image of the character or current scenario based on the provided prompt tags. Use this when the user explicitly asks for a picture/photo, or when the current narrative context strongly suggests generating a visual representation. The prompt MUST be a comma-separated list of visual tags (e.g. '1girl, red hair, blue eyes, smiling, forest background').\n\nCharacter tagging rules:\n- If the character is a well-known figure: include their name AND universe/franchise (e.g. 'toga himiko, my hero academia').\n- If the character is niche: use both name+universe AND a visual description via tags, since the SD model may not know them.\n- If the character is an OC (original character): do NOT use their name — describe them entirely through visual tags (hair color, eye color, clothing, etc.).\n\nOther rules:\n- If LoRAs are available, use them where appropriate (character LoRAs for matching characters, style/detail LoRAs as needed).\n- Do NOT add quality booster tags (e.g. 'masterpiece, best quality') — they are already handled by user settings.\n- Pay close attention to body proportions and physical traits described in the character card.".to_string()
+    "Generates an image of the character or current scenario based on the provided prompt tags. Use this when the user explicitly asks for a picture/photo, or when the current narrative context strongly suggests generating a visual representation. The prompt MUST be a comma-separated list of visual tags (e.g. '1girl, red hair, blue eyes, smiling, forest background').\n\nCharacter tagging rules:\n- If the character is a well-known figure: include their name AND universe/franchise (e.g. 'toga himiko, my hero academia').\n- If the character is niche: use both name+universe AND a visual description via tags, since the SD model may not know them.\n- If the character is an OC (original character): do NOT use their name — describe them entirely through visual tags (hair color, eye color, clothing, etc.).\n\nComposition & Aspect Ratio rules:\n- When generating 2 or more characters interacting side-by-side, wide vistas/scenery, or using regional tags (<region:...>), choose 'aspect_ratio': 'landscape' (1152x896) to give each subject enough horizontal room.\n- For single character solo portraits, selfies, or full-body vertical shots, choose 'aspect_ratio': 'portrait' (896x1152).\n- For icons or close-up avatars, choose 'aspect_ratio': 'square' (1024x1024).\n\nOther rules:\n- If LoRAs are available, use them where appropriate (character LoRAs for matching characters, style/detail LoRAs as needed).\n- Do NOT add quality booster tags (e.g. 'masterpiece, best quality') — they are already handled by user settings.\n- Pay close attention to body proportions and physical traits described in the character card.".to_string()
+}
+
+pub fn swarm_regional_prompting_instructions() -> &'static str {
+    "Regional Prompting Rules (SwarmUI Spatial Composition):\n\
+    - When a scene contains multiple distinct subjects (e.g. two characters, or a character and a distinct object/background), use SwarmUI regional syntax to prevent concept/color bleeding between subjects:\n  \
+    `<region:x,y,width,height,strength> subject tags here`\n  \
+    where x, y, width, height are normalized coordinates (0.0 to 1.0) and strength is 0.5 to 1.0 (default 0.9).\n\
+    - For background-only tags, use:\n  \
+    `<region:background> background scenery tags here`\n\
+    - Example multi-character composition:\n  \
+    `2people talking in a tavern <region:0.05,0.15,0.4,0.8,0.9> 1boy, knight, dark hair, steel armor <region:0.55,0.15,0.4,0.8,0.9> 1girl, elven mage, blonde hair, blue robe <region:background> cozy fantasy tavern interior, wooden tables, fireplace`\n\
+    - If character-specific LoRAs are used, place them directly inside their respective region tags:\n  \
+    `<region:0.55,0.15,0.4,0.8,0.9> 1girl, elven mage <lora:elven_mage:0.85>`"
+}
+
+/// Resolves effective width and height given the preset dimensions and an optional aspect ratio requested by the LLM.
+pub fn resolve_image_dimensions(preset_width: i32, preset_height: i32, aspect_ratio: Option<&str>) -> (i32, i32) {
+    match aspect_ratio.map(|s| s.trim().to_lowercase()).as_deref() {
+        Some("landscape") => {
+            if preset_width == preset_height {
+                (1152, 896)
+            } else {
+                let min_dim = preset_width.min(preset_height);
+                let max_dim = preset_width.max(preset_height);
+                (max_dim, min_dim)
+            }
+        }
+        Some("portrait") => {
+            if preset_width == preset_height {
+                (896, 1152)
+            } else {
+                let min_dim = preset_width.min(preset_height);
+                let max_dim = preset_width.max(preset_height);
+                (min_dim, max_dim)
+            }
+        }
+        Some("square") => {
+            let dim = preset_width.min(preset_height);
+            if dim <= 512 {
+                (512, 512)
+            } else if dim <= 768 {
+                (768, 768)
+            } else {
+                (1024, 1024)
+            }
+        }
+        Some("widescreen") => (1344, 768),
+        _ => (preset_width, preset_height),
+    }
 }
 
 impl Default for Preset {
@@ -456,7 +505,7 @@ pub struct OpenAITool {
     pub function: OpenAIFunctionDef,
 }
 
-pub fn get_available_tools(allow_image_gen: bool, custom_desc: Option<&str>, loras_summary: Option<&str>) -> Vec<OpenAITool> {
+pub fn get_available_tools(allow_image_gen: bool, custom_desc: Option<&str>, loras_summary: Option<&str>, is_swarm: bool) -> Vec<OpenAITool> {
     let mut tools = vec![
         OpenAITool {
             tool_type: "function".to_string(),
@@ -476,6 +525,10 @@ pub fn get_available_tools(allow_image_gen: bool, custom_desc: Option<&str>, lor
             Some(d) if !d.trim().is_empty() => d.trim().to_string(),
             _ => default_sd_tool_description(),
         };
+        if is_swarm {
+            desc.push_str("\n\n");
+            desc.push_str(swarm_regional_prompting_instructions());
+        }
         if let Some(loras) = loras_summary {
             if !loras.trim().is_empty() {
                 desc.push_str("\n\n");
@@ -494,6 +547,11 @@ pub fn get_available_tools(allow_image_gen: bool, custom_desc: Option<&str>, lor
                         "prompt": {
                             "type": "string",
                             "description": "A comma-separated list of visual tags describing the image to generate."
+                        },
+                        "aspect_ratio": {
+                            "type": "string",
+                            "enum": ["portrait", "landscape", "square", "widescreen"],
+                            "description": "Visual framing and composition. Choose 'landscape' (1152x896) for wide scenes, multiple characters side-by-side, environments, or regional compositions (<region:...>). Choose 'portrait' (896x1152) for single character solo shots or vertical focus. Choose 'square' (1024x1024) for avatars. Choose 'widescreen' (1344x768) for wide cinematic shots. Defaults to preset orientation."
                         }
                     },
                     "required": ["prompt"]
@@ -1536,13 +1594,13 @@ mod tests {
 
     #[test]
     fn test_get_available_tools() {
-        let tools = get_available_tools(true);
+        let tools = get_available_tools(true, None, None, false);
         assert_eq!(tools.len(), 2);
         assert_eq!(tools[0].tool_type, "function");
         assert_eq!(tools[0].function.name, "get_system_time");
         assert_eq!(tools[1].function.name, "generate_image");
 
-        let tools_no_img = get_available_tools(false);
+        let tools_no_img = get_available_tools(false, None, None, false);
         assert_eq!(tools_no_img.len(), 1);
         assert_eq!(tools_no_img[0].function.name, "get_system_time");
     }
@@ -1586,5 +1644,23 @@ mod tests {
         assert!(json.contains("tool_call_id"));
         assert!(json.contains("call_123"));
         Ok(())
+    }
+
+    #[test]
+    fn test_resolve_image_dimensions() {
+        // Portrait preset (896x1152)
+        assert_eq!(resolve_image_dimensions(896, 1152, None), (896, 1152));
+        assert_eq!(resolve_image_dimensions(896, 1152, Some("portrait")), (896, 1152));
+        assert_eq!(resolve_image_dimensions(896, 1152, Some("landscape")), (1152, 896));
+        assert_eq!(resolve_image_dimensions(896, 1152, Some("square")), (1024, 1024));
+        assert_eq!(resolve_image_dimensions(896, 1152, Some("widescreen")), (1344, 768));
+
+        // Landscape preset (1280x768)
+        assert_eq!(resolve_image_dimensions(1280, 768, Some("landscape")), (1280, 768));
+        assert_eq!(resolve_image_dimensions(1280, 768, Some("portrait")), (768, 1280));
+
+        // Square preset (1024x1024)
+        assert_eq!(resolve_image_dimensions(1024, 1024, Some("landscape")), (1152, 896));
+        assert_eq!(resolve_image_dimensions(1024, 1024, Some("portrait")), (896, 1152));
     }
 }

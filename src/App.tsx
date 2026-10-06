@@ -32,6 +32,7 @@ import { CharacterSelect } from "./components/character/CharacterSelect";
 import { MessageInput } from "./components/chat/MessageInput";
 import { MessageActions } from "./components/chat/MessageActions";
 import { ChatHeader } from "./components/chat/ChatHeader";
+import { ChatSkeleton } from "./components/chat/ChatSkeleton";
 import { Sidebar } from "./components/layout/Sidebar";
 import { ChatMemoryModal } from "./components/ChatMemoryModal";
 import { TavernAPI } from "./services/PluginAPI";
@@ -158,6 +159,8 @@ import i18next from 'i18next'
 const RenderedAttachment = ({ filename }: { filename: string }) => {
     const { t } = useTranslation()
     const [src, setSrc] = useState<string | null>(null);
+    const [showZoom, setShowZoom] = useState(false);
+
     useEffect(() => {
         let active = true;
         if (filename.startsWith("data:image/") || filename.startsWith("http")) {
@@ -176,10 +179,63 @@ const RenderedAttachment = ({ filename }: { filename: string }) => {
     }, [filename]);
 
     if (!src) return <div className="max-w-sm h-48 bg-gray-900 rounded-lg animate-pulse border border-white/10" />;
-    return <img src={src} className="max-w-full max-h-96 rounded-lg border border-white/10 object-contain" alt={t('userUpload', 'User upload')} />;
+    return (
+        <>
+            <img 
+                src={src} 
+                onClick={() => setShowZoom(true)}
+                className="max-w-full max-h-96 rounded-lg border border-white/10 object-contain cursor-pointer hover:opacity-95 hover:border-indigo-500/50 transition-all shadow-md active:scale-[0.99]" 
+                alt={t('userUpload', 'User upload')} 
+            />
+            {showZoom && (
+                <div
+                    className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setShowZoom(false)}
+                >
+                    <div className="relative max-w-full max-h-full flex items-center justify-center">
+                        <img
+                            src={src}
+                            alt={t('userUpload', 'User upload')}
+                            className="max-w-full max-h-[90vh] rounded-xl shadow-2xl object-contain border border-white/10"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                        <button
+                            onClick={() => setShowZoom(false)}
+                            className="absolute -top-12 right-0 p-2 text-white hover:text-gray-300 transition active:scale-95"
+                        >
+                            <X size={28} />
+                        </button>
+                    </div>
+                </div>
+            )}
+        </>
+    );
 };
 
-const MessageContent = React.memo(({ content, isUser, scale, userName, charName, images }: { content: string, isUser: boolean, scale?: number, userName?: string, charName?: string, images?: string[] }) => {
+const formatPreviewSrc = (preview?: string) => {
+    if (!preview) return null;
+    if (preview.startsWith("data:") || preview.startsWith("http:") || preview.startsWith("https:") || preview.startsWith("asset:")) {
+        return preview;
+    }
+    return `data:image/jpeg;base64,${preview}`;
+};
+
+const MessageContent = React.memo(({ content, isUser, scale, userName, charName, images, liveImageStatus }: { 
+    content: string, 
+    isUser: boolean, 
+    scale?: number, 
+    userName?: string, 
+    charName?: string, 
+    images?: string[],
+    liveImageStatus?: {
+        queue_position?: number;
+        wait_time?: number;
+        processing?: boolean;
+        progress?: number;
+        message?: string;
+        preview?: string;
+    } | null;
+}) => {
     const { t } = useTranslation();
     // Replace visual macros
     let finalContent = content;
@@ -221,6 +277,75 @@ const MessageContent = React.memo(({ content, isUser, scale, userName, charName,
                     {images.map((img, i) => (
                         <RenderedAttachment key={i} filename={img} />
                     ))}
+                </div>
+            )}
+            {liveImageStatus && (
+                <div className="relative mb-3 rounded-xl overflow-hidden border border-indigo-500/40 bg-gray-950/80 shadow-2xl group max-w-md animate-in fade-in zoom-in-95 duration-200">
+                    {liveImageStatus.preview ? (
+                        <div className="relative">
+                            <img 
+                                src={formatPreviewSrc(liveImageStatus.preview)!} 
+                                className="w-full max-h-96 object-contain rounded-xl transition-all duration-300 bg-black/40"
+                                alt={t('generatingImageStatus', 'Generating Image...')}
+                            />
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-gray-950/90 via-gray-950/50 to-transparent p-3 pt-6 flex flex-col gap-1.5">
+                                <div className="flex items-center justify-between text-xs text-white font-semibold drop-shadow">
+                                    <span className="flex items-center gap-1.5">
+                                        <RefreshCw size={13} className="animate-spin text-indigo-400" />
+                                        {liveImageStatus.message || t('generatingImageStatus', 'Generating Image...')}
+                                    </span>
+                                    {liveImageStatus.progress !== undefined && (
+                                        <span className="font-mono text-indigo-300 font-bold text-xs bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-500/30">
+                                            {Math.round(liveImageStatus.progress * 100)}%
+                                        </span>
+                                    )}
+                                </div>
+                                {liveImageStatus.progress !== undefined && (
+                                    <div className="w-full bg-gray-800/80 rounded-full h-1.5 overflow-hidden">
+                                        <div 
+                                            className="bg-indigo-500 h-1.5 rounded-full transition-all duration-200 shadow-[0_0_8px_rgba(99,102,241,0.8)]" 
+                                            style={{ width: `${Math.min(100, Math.max(0, Math.round(liveImageStatus.progress * 100)))}%` }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="p-4 flex flex-col gap-2 min-h-[130px] justify-center items-center bg-gray-900/40">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-indigo-300">
+                                <RefreshCw size={16} className="animate-spin text-indigo-400" />
+                                <span>{liveImageStatus.message || (
+                                  liveImageStatus.processing || !liveImageStatus.queue_position
+                                    ? t('generatingImageStatus', 'Generating Image...')
+                                    : t('queuedForGeneration', 'Queued for Generation')
+                                )}</span>
+                                {liveImageStatus.progress !== undefined && (
+                                    <span className="font-mono font-bold text-indigo-400 ml-1">
+                                        {Math.round(liveImageStatus.progress * 100)}%
+                                    </span>
+                                )}
+                            </div>
+                            {liveImageStatus.progress !== undefined ? (
+                                <div className="w-full max-w-[240px] bg-gray-800 rounded-full h-1.5 overflow-hidden mt-1">
+                                    <div 
+                                        className="bg-indigo-500 h-1.5 rounded-full transition-all duration-200 shadow-[0_0_8px_rgba(99,102,241,0.8)]" 
+                                        style={{ width: `${Math.min(100, Math.max(0, Math.round(liveImageStatus.progress * 100)))}%` }}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="w-full max-w-[240px] bg-gray-800/80 rounded-full h-1.5 overflow-hidden mt-1 animate-pulse" />
+                            )}
+                            <div className="text-[11px] text-gray-400 font-mono mt-1">
+                                {liveImageStatus.queue_position !== undefined && liveImageStatus.queue_position > 0 ? (
+                                    <span>{t('queuePosition', 'Queue Position:')} {liveImageStatus.queue_position}</span>
+                                ) : liveImageStatus.wait_time !== undefined && liveImageStatus.wait_time > 0 ? (
+                                    <span>{t('estimatedWait', 'Estimated Wait:')} {liveImageStatus.wait_time}s</span>
+                                ) : (
+                                    <span>{t('pleaseWaitGenerating', 'Please wait while image is being generated...')}</span>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
             {hasReasoning && (
@@ -450,6 +575,7 @@ function App() {
 
   // Generation State
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingChat, setIsLoadingChat] = useState(false);
 
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState("");
@@ -769,11 +895,27 @@ const refreshCharacters = async () => {
   const handleGenerateImage = async (mode: string) => {
     if (activeChatId === null || isGeneratingImage) return;
     
+    const activeImgPreset = localStorage.getItem("active_image_preset") || "Default.json";
+    let isSwarm = false;
+    try {
+        const imgPresetData = await invoke<any>("load_image_preset", { fileName: activeImgPreset });
+        if (imgPresetData) {
+            const parsed = typeof imgPresetData === "string" ? JSON.parse(imgPresetData) : imgPresetData;
+            if (parsed.sd_provider === "swarm") {
+                isSwarm = true;
+            }
+        }
+    } catch (_) {}
+
     let promptTemplate = "";
     if (mode === "character") {
         promptTemplate = "Provide an exhaustive comma-separated list of tags describing the appearance of the character in great detail. Start with 'full body portrait'.";
     } else if (mode === "scenario") {
-        promptTemplate = "Provide a detailed description of the current scenario in the form of a comma-delimited list of keywords and phrases.";
+        if (isSwarm) {
+            promptTemplate = "Provide a detailed description of the current scenario in the form of a comma-delimited list of keywords and phrases. If the scene contains multiple characters or distinct subjects, use SwarmUI regional syntax like `<region:0.05,0.15,0.4,0.8,0.9> character 1 tags` and `<region:0.55,0.15,0.4,0.8,0.9> character 2 tags` and `<region:background> background tags` to prevent color/concept bleeding.";
+        } else {
+            promptTemplate = "Provide a detailed description of the current scenario in the form of a comma-delimited list of keywords and phrases.";
+        }
     } else if (mode === "background") {
         promptTemplate = "Provide a detailed description of the character's surroundings in the form of a comma-delimited list of keywords and phrases. The list must include all of the following items in this order: location, time of day, weather, lighting, and any other relevant details. Do not include descriptions of characters and non-visual qualities such as names, personality, movements, scents, mental traits, or anything which could not be seen in a still photograph.";
     }
@@ -820,9 +962,11 @@ const refreshCharacters = async () => {
       try {
           setIsGeneratingImage(true);
           const activeImgPreset = localStorage.getItem("active_image_preset") || "Default.json";
+          const isLandscape = finalTags.includes("<region:") || finalTags.includes("landscape") || finalTags.includes("wide scenery");
           const imgPath = await invoke<string>("generate_image_stateless", {
               presetName: activeImgPreset,
-              prompt: finalTags
+              prompt: finalTags,
+              aspectRatio: isLandscape ? "landscape" : null,
           });
           addToast(t('imageGeneratedSuccessfully', 'Image generated successfully!'), "success");
           if (activeChatId) {
@@ -1831,6 +1975,7 @@ const refreshCharacters = async () => {
       if (activeChatId) {
           const chat = chats.find(c => c.id === activeChatId);
           setChatMemory(chat?.memory || "");
+          setIsLoadingChat(true);
           setMessages([]); 
           
           // Fetch manually here to handle race conditions during rapid chat switching
@@ -1844,11 +1989,16 @@ const refreshCharacters = async () => {
               setMessages(newMsgs);
               setOffset(limit);
               setHasMore(newMsgs.length === limit);
+              setIsLoadingChat(false);
             }
-          }).catch(console.error);
+          }).catch((err) => {
+            console.error(err);
+            if (isCurrent) setIsLoadingChat(false);
+          });
       } else {
           setChatMemory("");
           setMessages([]);
+          setIsLoadingChat(false);
       }
       return () => { isCurrent = false; };
     }, [activeChatId, chats]);
@@ -2037,7 +2187,7 @@ const refreshCharacters = async () => {
         />
       )}
 
-      <Sidebar isMobile={isMobile} sidebarVisible={sidebarVisible} setSidebarVisible={setSidebarVisible} setCurrentView={setCurrentView} handleNewChat={handleNewChat} handleImportChat={handleImportChat} chats={chats} activeChatId={activeChatId} characterId={activeCharacterId} setActiveChatId={setActiveChatId} handleRenameChat={handleRenameChat} handleDeleteChat={handleDeleteChat} addToast={addToast} />
+      <Sidebar isMobile={isMobile} sidebarVisible={sidebarVisible} setSidebarVisible={setSidebarVisible} setCurrentView={setCurrentView} handleNewChat={handleNewChat} handleImportChat={handleImportChat} chats={chats} activeChatId={activeChatId} characterId={activeCharacterId} setActiveChatId={setActiveChatId} handleRenameChat={handleRenameChat} handleDeleteChat={handleDeleteChat} addToast={addToast} onPresetChange={(presetName) => setActivePresetFile(presetName)} />
 
       {/* MAIN VIEW */}
       <main className="flex-1 flex flex-col min-w-0 relative">
@@ -2056,6 +2206,13 @@ const refreshCharacters = async () => {
           onStats={fetchStats}
           onPersona={() => setShowPersonaModal(true)}
           onSettings={() => setCurrentView("settings")}
+          addToast={addToast}
+          onModelChanged={(newModel) => setModelName(newModel)}
+          onProfileChanged={async (newProfile) => {
+            setActiveProfileName(newProfile);
+            localStorage.setItem("active_profile", newProfile);
+            await fetchModelName();
+          }}
         />
 
         {/* MESSAGES */}
@@ -2063,16 +2220,20 @@ const refreshCharacters = async () => {
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar"
         >
-          {hasMore && (
-            <div className="flex justify-center py-2">
-              <button
-                onClick={handleLoadMore}
-                className="text-xs text-gray-500 hover:text-white bg-gray-800/50 px-3 py-1 rounded-full transition hover:bg-gray-700"
-              >
-                {t('loadPreviousMessages', 'Load previous messages...')}
-              </button>
-            </div>
-          )}
+          {isLoadingChat ? (
+            <ChatSkeleton chatStyle={chatStyle} />
+          ) : (
+            <>
+              {hasMore && (
+                <div className="flex justify-center py-2">
+                  <button
+                    onClick={handleLoadMore}
+                    className="text-xs text-gray-500 hover:text-white bg-gray-800/50 px-3 py-1 rounded-full transition hover:bg-gray-700"
+                  >
+                    {t('loadPreviousMessages', 'Load previous messages...')}
+                  </button>
+                </div>
+              )}
           {messages.map((msg, index) => {
             const isUser = msg.role === "user";
             let avatarSrc = "default.png";
@@ -2174,6 +2335,7 @@ const refreshCharacters = async () => {
                                          userName={activePersona?.name} 
                                          charName={activeCharacter?.name} 
                                          images={msg.images}
+                                         liveImageStatus={isGeneratingImage && !isUser && (index === messages.length - 1 || msg.id === -1) ? imageGenStatus : null}
                                      />
                                  )}
                              </div>
@@ -2245,6 +2407,7 @@ const refreshCharacters = async () => {
                                                                        userName={activePersona?.name}
                                                                        charName={char?.name}
                                                                        images={msg.images}
+                                                                       liveImageStatus={isGeneratingImage && !isUser && (index === messages.length - 1 || msg.id === -1) ? imageGenStatus : null}
                                                                      />                                                   
                                                     <MessageActions
                                                       message={msg}
@@ -2326,6 +2489,8 @@ const refreshCharacters = async () => {
               </div>
             );
           })}
+            </>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -2604,51 +2769,6 @@ const refreshCharacters = async () => {
                 </button>
               </div>
             </div>
-        )}
-
-        {isGeneratingImage && (
-          <div className="fixed bottom-24 right-4 z-[100] bg-gray-900/95 border border-indigo-500/30 rounded-xl p-4 shadow-2xl flex flex-col gap-2 min-w-[260px] max-w-[320px] backdrop-blur-md animate-in slide-in-from-bottom-5">
-            <div className="flex items-center gap-3">
-              <RefreshCw size={16} className="text-indigo-400 animate-spin shrink-0" />
-              <span className="text-sm font-semibold text-white truncate">
-                {imageGenStatus?.message || (
-                  imageGenStatus?.processing || !imageGenStatus?.queue_position
-                    ? t('generatingImageStatus', 'Generating Image...')
-                    : t('queuedForGeneration', 'Queued for Generation')
-                )}
-              </span>
-              {imageGenStatus?.progress !== undefined && (
-                <span className="ml-auto text-xs font-mono font-bold text-indigo-400">
-                  {Math.round(imageGenStatus.progress * 100)}%
-                </span>
-              )}
-            </div>
-            {imageGenStatus?.progress !== undefined && (
-              <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                <div 
-                  className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300" 
-                  style={{ width: `${Math.min(100, Math.max(0, Math.round(imageGenStatus.progress * 100)))}%` }}
-                />
-              </div>
-            )}
-            <div className="text-xs text-gray-400 pl-7 space-y-1">
-              {imageGenStatus?.queue_position !== undefined && imageGenStatus.queue_position > 0 ? (
-                <>
-                  <div>{t('queuePosition', 'Queue Position:')} <span className="text-white font-mono">{imageGenStatus.queue_position}</span></div>
-                  {imageGenStatus?.wait_time !== undefined && imageGenStatus.wait_time > 0 && (
-                    <div>{t('estimatedWait', 'Estimated Wait:')} <span className="text-white font-mono">{imageGenStatus.wait_time}s</span></div>
-                  )}
-                </>
-              ) : imageGenStatus?.wait_time !== undefined && imageGenStatus.wait_time > 0 ? (
-                <>
-                  <div>{t('workerProcessing', 'Worker is processing...')}</div>
-                  <div>{t('estimatedWait', 'Estimated Wait:')} <span className="text-white font-mono">{imageGenStatus.wait_time}s</span></div>
-                </>
-              ) : (
-                <div>{t('pleaseWaitGenerating', 'Please wait while image is being generated...')}</div>
-              )}
-            </div>
-          </div>
         )}
 
         <ToastContainer toasts={toasts} onClose={removeToast} />

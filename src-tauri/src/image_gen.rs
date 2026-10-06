@@ -210,7 +210,7 @@ pub async fn generate_image_horde(
         tokio::time::sleep(Duration::from_secs(wait_time as u64)).await;
 
         let check_res = client
-            .get(&format!("https://stablehorde.net/api/v2/generate/check/{}", req_id))
+            .get(format!("https://stablehorde.net/api/v2/generate/check/{}", req_id))
             .send()
             .await;
 
@@ -240,7 +240,7 @@ pub async fn generate_image_horde(
 
     // Get final status (which contains the images)
     let status_res = client
-        .get(&format!("https://stablehorde.net/api/v2/generate/status/{}", req_id))
+        .get(format!("https://stablehorde.net/api/v2/generate/status/{}", req_id))
         .send()
         .await
         .map_err(|e| e.to_string())?;

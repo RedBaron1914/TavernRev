@@ -148,8 +148,8 @@ async fn execute_script(input: &str, context: &mut Evaluator, tx: Option<Sender<
     while i < atoms.len() {
         let atom = &atoms[i];
         
-        if atom.starts_with("/if ") {
-            let arg = atom[4..].trim();
+        if let Some(raw_arg) = atom.strip_prefix("/if ") {
+            let arg = raw_arg.trim();
             let cond_res = context.evaluate(arg).await;
             let is_true = cond_res == "true" || cond_res == "1";
             

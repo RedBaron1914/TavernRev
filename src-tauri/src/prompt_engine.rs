@@ -382,7 +382,7 @@ pub async fn assemble_prompt(
     let persona_disabled = modules.iter().any(|m| m.identifier == "personaDescription" && !m.enabled);
 
     let (mut in_chat_modules, mut relative_modules): (Vec<_>, Vec<_>) = modules.into_iter().filter(|m| m.enabled).partition(|m| m.injection_position == 1);
-    relative_modules.sort_by(|a, b| a.injection_order.cmp(&b.injection_order));
+    relative_modules.sort_by_key(|a| a.injection_order);
 
     let has_anchor_before = relative_modules.iter().any(|m| m.identifier == "main" && m.content.contains("{{anchorBefore}}"));
     let has_anchor_after = relative_modules.iter().any(|m| m.identifier == "main" && m.content.contains("{{anchorAfter}}"));

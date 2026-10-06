@@ -236,7 +236,7 @@ pub async fn build_chat_index(
     // Clear old memory for this chat
     crate::database::delete_memory_vectors(&conn, chat_id).map_err(|e| e.to_string())?;
 
-    for (idx, (text, emb)) in chunks.into_iter().zip(embeddings.into_iter()).enumerate() {
+    for (idx, (text, emb)) in chunks.into_iter().zip(embeddings).enumerate() {
         let c_idx = chunk_indices[idx];
         crate::database::insert_memory_vector(&conn, chat_id, c_idx, &text, &emb).map_err(|e| e.to_string())?;
     }
@@ -276,7 +276,7 @@ pub async fn query_chat_memory(
     scored.truncate(config.top_k);
     
     // Sort chronologically for prompt injection
-    scored.sort_by(|a, b| a.chunk_index.cmp(&b.chunk_index));
+    scored.sort_by_key(|a| a.chunk_index);
     
     Ok(scored)
 }
@@ -335,7 +335,7 @@ pub async fn build_lorebook_index(
     let embeddings = embed_texts(texts, config).await?;
 
     let conn = db_state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    for (idx, (text, emb)) in chunks.into_iter().zip(embeddings.into_iter()).enumerate() {
+    for (idx, (text, emb)) in chunks.into_iter().zip(embeddings).enumerate() {
         let e_id = entry_ids[idx];
         let c_idx = chunk_indices[idx];
         crate::database::insert_lore_vector(&conn, e_id, c_idx, &text, &emb).map_err(|e| e.to_string())?;
@@ -373,8 +373,8 @@ pub async fn query_lorebook_memory(
     
     let mut matched_entry_ids = Vec::new();
     for (e_id, score) in scored {
-        if score >= config.threshold {
-            if !matched_entry_ids.contains(&e_id) {
+        if score >= config.threshold
+            && !matched_entry_ids.contains(&e_id) {
                 matched_entry_ids.push(e_id);
                 // For lorebooks, maybe top_k represents max entries? 
                 // Let's rely on standard top_k limit
@@ -382,7 +382,6 @@ pub async fn query_lorebook_memory(
                     break;
                 }
             }
-        }
     }
 
     Ok(matched_entry_ids)

@@ -490,11 +490,10 @@ pub fn extract_lorebook_delta(
         if let Some(rel_end) = text[abs_start..].find('>') {
             let abs_end = abs_start + rel_end + 1;
             let tag_slice = &text[abs_start..abs_end];
-            if tag_slice.ends_with("'s Persona>") {
-                if abs_end > last_close_end {
+            if tag_slice.ends_with("'s Persona>")
+                && abs_end > last_close_end {
                     last_close_end = abs_end;
                 }
-            }
             search_from = abs_end;
         } else {
             break;

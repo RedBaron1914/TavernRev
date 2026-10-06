@@ -24,7 +24,7 @@ interface AboutTabProps {
 }
 
 const GITHUB_REPO_URL = "https://github.com/RedBaron1914/TavernRev";
-const APP_VERSION = "1.6.1";
+const APP_VERSION = "1.6.2";
 const COMMIT_HASH = "f03cf30";
 
 export function AboutTab({ addToast }: AboutTabProps) {

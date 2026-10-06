@@ -45,6 +45,7 @@ interface SidebarProps {
   handleRenameChat: (id: number, name: string) => void;
   handleDeleteChat: (id: number, name: string) => void;
   addToast: (msg: string, type?: "info" | "error" | "success") => void;
+  onPresetChange?: (presetName: string) => void;
 }
 
 export function Sidebar({
@@ -61,6 +62,7 @@ export function Sidebar({
   handleRenameChat,
   handleDeleteChat,
   addToast,
+  onPresetChange,
 }: SidebarProps) {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<SidebarTab>("chats");
@@ -275,7 +277,11 @@ export function Sidebar({
           <TextGenTab
             activePresetFile={activePresetFile}
             presetsList={presetsList}
-            loadPresetData={loadPresetData}
+            loadPresetData={async (fileName) => {
+              const res = await loadPresetData(fileName);
+              onPresetChange?.(fileName);
+              return res;
+            }}
             handleCreatePreset={() => setCurrentView("settings")}
             handleDeletePreset={() => setCurrentView("settings")}
             handleImportPreset={() => setCurrentView("settings")}

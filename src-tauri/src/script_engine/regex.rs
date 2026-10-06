@@ -135,26 +135,24 @@ pub async fn process_regex_scripts(content: &str, placement: &str, context: Exec
             let mut changed = false;
             let mut empty_match_preventer = None;
             
-            for cap_res in re.captures_iter(&final_content) {
-                if let Ok(caps) = cap_res {
-                    let m = caps.get(0).unwrap();
-                    
-                    // Prevent infinite loops on empty matches
-                    if m.start() == m.end() {
-                        if Some(m.start()) == empty_match_preventer {
-                            continue;
-                        }
-                        empty_match_preventer = Some(m.start());
+            for caps in re.captures_iter(&final_content).flatten() {
+                let m = caps.get(0).unwrap();
+                
+                // Prevent infinite loops on empty matches
+                if m.start() == m.end() {
+                    if Some(m.start()) == empty_match_preventer {
+                        continue;
                     }
-                    
-                    result.push_str(&final_content[last_end..m.start()]);
-                    result.push_str(&apply_js_replacement(&final_content, &script.replacement, &caps));
-                    last_end = m.end();
-                    changed = true;
-                    
-                    if !is_global {
-                        break;
-                    }
+                    empty_match_preventer = Some(m.start());
+                }
+                
+                result.push_str(&final_content[last_end..m.start()]);
+                result.push_str(&apply_js_replacement(&final_content, &script.replacement, &caps));
+                last_end = m.end();
+                changed = true;
+                
+                if !is_global {
+                    break;
                 }
             }
             
@@ -196,6 +194,8 @@ mod tests {
                 disabled: false,
                 run_on_markdown: false,
                 prompt_only: false,
+                group_id: None,
+                previous_disabled_state: false,
             }
         ];
         
@@ -223,6 +223,8 @@ mod tests {
                 disabled: false,
                 run_on_markdown: false,
                 prompt_only: false,
+                group_id: None,
+                previous_disabled_state: false,
             }
         ];
 
@@ -252,6 +254,8 @@ mod tests {
                 disabled: false,
                 run_on_markdown: false,
                 prompt_only: false,
+                group_id: None,
+                previous_disabled_state: false,
             },
             // Test full match ($&) and suffix ($')
             RegexScript {
@@ -263,6 +267,8 @@ mod tests {
                 disabled: false,
                 run_on_markdown: false,
                 prompt_only: false,
+                group_id: None,
+                previous_disabled_state: false,
             },
             // Test group backreferences ($1)
             RegexScript {
@@ -274,6 +280,8 @@ mod tests {
                 disabled: false,
                 run_on_markdown: false,
                 prompt_only: false,
+                group_id: None,
+                previous_disabled_state: false,
             }
         ];
 

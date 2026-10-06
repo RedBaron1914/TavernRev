@@ -817,7 +817,7 @@ pub fn get_preset(app_handle: AppHandle, preset_name: String) -> Result<serde_js
     let safe_preset = crate::sanitize_filename(&preset_name);
     let preset_path = presets_dir.join(&safe_preset);
     let content = std::fs::read_to_string(preset_path).map_err(|e| format!("File read error: {}", e))?;
-    serde_json::from_str(&content).map_err(|e| format!("get_preset JSON parse error: {}. Content starts with: {}", e, &content.chars().take(50).collect::<String>()))
+    serde_json::from_str(&content).map_err(|e| format!("get_preset JSON parse error: {}. Content starts with: {}", e, content.chars().take(50).collect::<String>()))
 }
 
 #[tauri::command]
@@ -1556,7 +1556,7 @@ pub fn delete_regex_group(group_id: String, db_state: tauri::State<DbState>) -> 
 
 // --- App Setup ---
 
-pub fn seed_default_connection(connections_dir: &PathBuf) -> Result<(), std::io::Error> {
+pub fn seed_default_connection(connections_dir: &std::path::Path) -> Result<(), std::io::Error> {
     // If empty or Default.json missing, create it
     let path = connections_dir.join("Default.json");
     if !path.exists() {
@@ -2374,7 +2374,7 @@ pub async fn sync_push_all(provider: String, app_handle: tauri::AppHandle, db_st
         let local_iso_time = db_time_to_iso(&char.updated_at);
         
         if let Some(cloud_mod) = cloud_chars.get(&path.to_lowercase()) {
-            if !local_iso_time.is_empty() && iso_to_timestamp(&cloud_mod) >= iso_to_timestamp(&local_iso_time) {
+            if !local_iso_time.is_empty() && iso_to_timestamp(cloud_mod) >= iso_to_timestamp(&local_iso_time) {
                 continue;
             }
         }
@@ -2418,7 +2418,7 @@ pub async fn sync_push_all(provider: String, app_handle: tauri::AppHandle, db_st
         let local_iso_time = db_time_to_iso(&group.updated_at);
         
         if let Some(cloud_mod) = cloud_groups.get(&path.to_lowercase()) {
-            if !local_iso_time.is_empty() && iso_to_timestamp(&cloud_mod) >= iso_to_timestamp(&local_iso_time) {
+            if !local_iso_time.is_empty() && iso_to_timestamp(cloud_mod) >= iso_to_timestamp(&local_iso_time) {
                 continue;
             }
         }
@@ -2461,7 +2461,7 @@ pub async fn sync_push_all(provider: String, app_handle: tauri::AppHandle, db_st
         let local_iso_time = db_time_to_iso(&updated_at);
 
         if let Some(cloud_mod) = cloud_chats.get(&path.to_lowercase()) {
-            if !local_iso_time.is_empty() && iso_to_timestamp(&cloud_mod) >= iso_to_timestamp(&local_iso_time) {
+            if !local_iso_time.is_empty() && iso_to_timestamp(cloud_mod) >= iso_to_timestamp(&local_iso_time) {
                 continue;
             }
         }
@@ -2740,7 +2740,7 @@ pub async fn init_custom_vector_model(_app_handle: AppHandle, folder_path: Strin
 
 #[tauri::command]
 pub async fn build_chat_index(chat_id: i64, chunk_size: usize, overlap: usize, config: vector_memory::RagConfig, db_state: tauri::State<'_, DbState>) -> Result<usize, String> {
-    vector_memory::build_chat_index(&*db_state, chat_id, chunk_size, overlap, &config).await
+    vector_memory::build_chat_index(&db_state, chat_id, chunk_size, overlap, &config).await
 }
 
 #[tauri::command]
@@ -2749,12 +2749,12 @@ pub async fn build_lorebook_index(chat_id: i64, chunk_size: usize, overlap: usiz
         let conn = db_state.0.lock().unwrap();
         conn.query_row("SELECT character_id FROM chats WHERE id = ?1", [chat_id], |r| r.get::<_, i64>(0)).unwrap_or(0)
     };
-    vector_memory::build_lorebook_index(&*db_state, char_id, chat_id, chunk_size, overlap, &config).await
+    vector_memory::build_lorebook_index(&db_state, char_id, chat_id, chunk_size, overlap, &config).await
 }
 
 #[tauri::command]
 pub async fn query_chat_memory(chat_id: i64, query_text: String, config: vector_memory::RagConfig, db_state: tauri::State<'_, DbState>) -> Result<Vec<vector_memory::RetrievalResult>, String> {
-    vector_memory::query_chat_memory(&*db_state, chat_id, &query_text, &config).await
+    vector_memory::query_chat_memory(&db_state, chat_id, &query_text, &config).await
 }
 
 #[tauri::command]
@@ -2780,8 +2780,9 @@ pub async fn generate_image_stateless(
     app_handle: AppHandle,
     preset_name: String,
     prompt: String,
+    aspect_ratio: Option<String>,
 ) -> Result<String, String> {
-    println!("DEBUG: generate_image_stateless called! preset={}, prompt={}", preset_name, prompt);
+    println!("DEBUG: generate_image_stateless called! preset={}, prompt={}, aspect_ratio={:?}", preset_name, prompt, aspect_ratio);
     let image_presets_dir = crate::commands::get_image_presets_dir(&app_handle);
     let safe_preset = crate::sanitize_filename(&preset_name);
     let mut preset_path = image_presets_dir.join(&safe_preset);
@@ -2809,7 +2810,13 @@ pub async fn generate_image_stateless(
     let preset_content = std::fs::read_to_string(&preset_path)
         .map_err(|e| format!("File read error for {:?}: {}", preset_path, e))?;
     let preset: crate::api_client::ImageGenPreset = serde_json::from_str(&preset_content)
-        .map_err(|e| format!("Preset JSON parse error: {}. Content starts with: {}", e, &preset_content.chars().take(50).collect::<String>()))?;
+        .map_err(|e| format!("Preset JSON parse error: {}. Content starts with: {}", e, preset_content.chars().take(50).collect::<String>()))?;
+
+    let (effective_width, effective_height) = crate::api_client::resolve_image_dimensions(
+        preset.sd_width,
+        preset.sd_height,
+        aspect_ratio.as_deref(),
+    );
 
     if preset.sd_provider == "auto" {
         crate::image_gen::generate_image_auto(
@@ -2819,8 +2826,8 @@ pub async fn generate_image_stateless(
             prompt,
             preset.sd_positive_prompt,
             preset.sd_negative_prompt,
-            preset.sd_width,
-            preset.sd_height,
+            effective_width,
+            effective_height,
             preset.sd_steps,
             preset.sd_sampler,
             preset.sd_cfg_scale,
@@ -2844,8 +2851,8 @@ pub async fn generate_image_stateless(
             preset.sd_positive_prompt,
             preset.sd_negative_prompt,
             preset.sd_model,
-            preset.sd_width,
-            preset.sd_height,
+            effective_width,
+            effective_height,
             preset.sd_steps,
             preset.sd_sampler,
             preset.sd_cfg_scale,
@@ -2866,8 +2873,8 @@ pub async fn generate_image_stateless(
             preset.sd_positive_prompt,
             preset.sd_negative_prompt,
             preset.sd_model,
-            preset.sd_width,
-            preset.sd_height,
+            effective_width,
+            effective_height,
             preset.sd_steps,
             preset.sd_sampler,
             preset.sd_cfg_scale,
@@ -3200,7 +3207,7 @@ pub async fn install_desktop_update(_app: AppHandle, url: String) -> Result<(), 
             Ok(_) => {
                 std::process::exit(0);
             },
-            Err(e) => return Err(format!("Failed to launch installer: {}", e)),
+            Err(e) => Err(format!("Failed to launch installer: {}", e)),
         }
     }
     
