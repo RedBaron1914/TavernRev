@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ConnectionProfile, Preset, DEFAULT_SD_TOOL_DESCRIPTION } from "./shared";
+import { ConnectionProfile, Preset, DEFAULT_SD_TOOL_DESCRIPTION, DEFAULT_VISUAL_COMPRESSION } from "./shared";
 import i18next from 'i18next'
 
 export const DEFAULT_PRESET_VALUES: Preset = {
@@ -89,6 +89,7 @@ export const DEFAULT_PRESET_VALUES: Preset = {
   sd_steps: 20,
   sd_sampler: "k_euler_a",
   sd_cfg_scale: 7.0,
+  visual_compression: DEFAULT_VISUAL_COMPRESSION,
 };
 
 export const DEFAULT_IMAGE_PRESET = {

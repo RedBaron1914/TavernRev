@@ -1,6 +1,6 @@
 [package]
 name = "tavernrev"
-version = "1.6.2"
+version = "1.6.3"
 description = "A TavernAI-compatible character chat application"
 license = "AGPL-3.0-only"
 authors = ["you"]
@@ -33,6 +33,7 @@ tiktoken-rs = "0.5"
 base64 = "0.21"
 handlebars = "6.2"
 image = "0.24"
+ab_glyph = "0.2"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "rustls-tls", "gzip", "brotli", "cookies"] }
 futures-util = "0.3"
 tokio = { version = "1", features = ["full"] }

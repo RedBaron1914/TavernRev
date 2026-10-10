@@ -29,6 +29,7 @@ interface ConnectionTabProps {
   setRetryTriggers: (val: string) => void;
   retryDelay: number;
   setRetryDelay: (val: number) => void;
+  presetsList?: string[];
 }
 
 export function ConnectionTab({
@@ -42,6 +43,7 @@ export function ConnectionTab({
   handleSaveConnection,
   fetchedModels,
   handleFetchModels,
+  presetsList = [],
   retryEnabled,
   setRetryEnabled,
   retryTriggers,
@@ -211,6 +213,32 @@ export function ConnectionTab({
               onChange={(v: any) => handleConnectionChange("post_processing", v)}
               options={POST_PROCESSING_OPTIONS}
             />
+          </div>
+
+          <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-4">
+            <h3 className="text-lg font-bold text-indigo-400 flex items-center gap-2">
+              <Link size={20} /> {t('linkedPreset', 'Linked Generation Preset')}
+            </h3>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-300">
+                {t('activePresetForProfile', 'Preset to activate for this model/profile')}
+              </label>
+              <select
+                value={connectionData.linked_preset || ""}
+                onChange={(e) => handleConnectionChange("linked_preset", e.target.value)}
+                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500"
+              >
+                <option value="">{t('noneKeepCurrent', 'None (Keep current preset)')}</option>
+                {presetsList?.map((p) => (
+                  <option key={p} value={p}>
+                    {p.replace(".json", "")}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-gray-500">
+                {t('linkedPresetHelp', 'When switching to this connection profile, automatically switches the active generation preset.')}
+              </p>
+            </div>
           </div>
 
           <div className="bg-gray-900/30 p-6 rounded-2xl border border-white/5 space-y-4">

@@ -106,6 +106,31 @@ export type Preset = {
   sd_steps: number;
   sd_sampler: string;
   sd_cfg_scale: number;
+  visual_compression?: VisualCompressionSettings;
+};
+
+export type VisualCompressionProfile = "auto" | "claude_fable" | "gemini_flash" | "openai_sol" | "custom";
+
+export type VisualCompressionSettings = {
+  enabled: boolean;
+  profile: VisualCompressionProfile;
+  compress_system: boolean;
+  compress_lorebook: boolean;
+  compress_memory: boolean;
+  compress_history: boolean;
+  history_keep_tail: number;
+  min_chars_threshold: number;
+};
+
+export const DEFAULT_VISUAL_COMPRESSION: VisualCompressionSettings = {
+  enabled: false,
+  profile: "auto",
+  compress_system: true,
+  compress_lorebook: true,
+  compress_memory: true,
+  compress_history: true,
+  history_keep_tail: 4,
+  min_chars_threshold: 1000,
 };
 
 export const DEFAULT_SD_TOOL_DESCRIPTION = "Generates an image of the character or current scenario based on the provided prompt tags. Use this when the user explicitly asks for a picture/photo, or when the current narrative context strongly suggests generating a visual representation. The prompt MUST be a comma-separated list of visual tags (e.g. '1girl, red hair, blue eyes, smiling, forest background').\n\nCharacter tagging rules:\n- If the character is a well-known figure: include their name AND universe/franchise (e.g. 'toga himiko, my hero academia').\n- If the character is niche: use both name+universe AND a visual description via tags, since the SD model may not know them.\n- If the character is an OC (original character): do NOT use their name — describe them entirely through visual tags (hair color, eye color, clothing, etc.).\n\nOther rules:\n- If LoRAs are available, use them where appropriate (character LoRAs for matching characters, style/detail LoRAs as needed).\n- Do NOT add quality booster tags (e.g. 'masterpiece, best quality') — they are already handled by user settings.\n- Pay close attention to body proportions and physical traits described in the character card.";
@@ -182,6 +207,7 @@ export type ConnectionProfile = {
   model_id: string;
   post_processing: PostProcessing;
   context_size: number;
+  linked_preset?: string;
 };
 
 export const DEFAULT_CONNECTION_PROFILE: ConnectionProfile = {

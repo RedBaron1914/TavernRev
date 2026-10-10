@@ -1,5 +1,5 @@
-import { SlidersHorizontal, Plus, Trash2, Download, Save, Ban, Settings as SettingsIcon, Eye } from "lucide-react";
-import { InputField, Preset, REASONING_OPTIONS, SelectField, Slider, Toggle } from "./shared";
+import { SlidersHorizontal, Plus, Trash2, Download, Save, Ban, Settings as SettingsIcon, Eye, Minimize2 } from "lucide-react";
+import { InputField, Preset, REASONING_OPTIONS, SelectField, Slider, Toggle, DEFAULT_VISUAL_COMPRESSION } from "./shared";
 import { useTranslation } from 'react-i18next'
 
 interface TextGenTabProps {
@@ -252,7 +252,148 @@ export function TextGenTab({
         </div>
       </div>
 
-      {/* PROMPT MANAGER INTEGRATED AT BOTTOM */}
+      {/* VISUAL CONTEXT COMPRESSION (pxpipe / VCC) */}
+      <div className={`bg-gray-900/30 rounded-2xl border border-white/5 ${compact ? "p-4" : "p-6"}`}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-cyan-400 flex items-center gap-2">
+            <Minimize2 size={20} /> {t('visualContextCompression', 'Visual Context Compression (pxpipe)')}
+          </h3>
+          <span className="text-[11px] px-2.5 py-1 rounded-full font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+            60-75% Token Save
+          </span>
+        </div>
+
+        <p className="text-xs text-gray-400 mb-5 leading-relaxed">
+          {t('vccDescription', 'Renders bulky context (character card, lorebooks, RAG memory, older dialogue) into dense PNG images. Reduces token bills by 60-75% on vision models (Claude, Gemini, GPT-4o) and bypasses textual input filters.')}
+        </p>
+
+        <div className="space-y-6">
+          <Toggle
+            label={t('enableVcc', 'Enable Visual Compression')}
+            field="vcc_enabled"
+            value={formData.visual_compression?.enabled ?? false}
+            onChange={(_: any, val: boolean) => {
+              const current = formData.visual_compression || DEFAULT_VISUAL_COMPRESSION;
+              handleFieldChange("visual_compression", { ...current, enabled: val });
+            }}
+            helpText={t('enableVccHelp', 'Convert long context into visual PNG blocks before sending to the model.')}
+          />
+
+          {formData.visual_compression?.enabled && (
+            <div className="space-y-5 pt-4 border-t border-white/10 animate-in fade-in duration-300">
+              {/* Profile Selection */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+                  <SlidersHorizontal size={14} className="text-cyan-400" />
+                  {t('vccProfile', 'Rendering Profile')}
+                </label>
+                <select
+                  value={formData.visual_compression?.profile || "auto"}
+                  onChange={(e) => {
+                    const current = formData.visual_compression || DEFAULT_VISUAL_COMPRESSION;
+                    handleFieldChange("visual_compression", { ...current, profile: e.target.value });
+                  }}
+                  className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+                >
+                  <option value="auto">{t('vccProfileAuto', 'Auto (Adaptive by model name)')}</option>
+                  <option value="claude_fable">{t('vccProfileClaude', 'Claude / Fable 5 (Spleen 5x8, 220 cols, 728px)')}</option>
+                  <option value="gemini_flash">{t('vccProfileGemini', 'Google Gemini 3.6/3.7 Flash (High Contrast, 180 cols)')}</option>
+                  <option value="openai_sol">{t('vccProfileOpenAI', 'OpenAI / Sol (JetBrains Mono 14px, 90 cols)')}</option>
+                  <option value="custom">{t('vccProfileCustom', 'Custom Balanced Profile')}</option>
+                </select>
+                <p className="text-[11px] text-gray-500">
+                  {t('vccProfileHelp', 'Auto automatically selects the optimal patch geometry for Claude, Gemini, or GPT.')}
+                </p>
+              </div>
+
+              {/* Granular What to Compress Checkboxes */}
+              <div className="bg-gray-950/40 p-4 rounded-xl border border-white/5 space-y-3">
+                <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+                  {t('whatToCompress', 'What to compress into images')}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <label className="flex items-center gap-2.5 text-xs text-gray-300 cursor-pointer hover:text-white">
+                    <input
+                      type="checkbox"
+                      checked={formData.visual_compression?.compress_system ?? true}
+                      onChange={(e) => {
+                        const current = formData.visual_compression || DEFAULT_VISUAL_COMPRESSION;
+                        handleFieldChange("visual_compression", { ...current, compress_system: e.target.checked });
+                      }}
+                      className="rounded bg-gray-900 border-gray-700 text-cyan-500 focus:ring-0 focus:ring-offset-0"
+                    />
+                    {t('compressSystem', 'System & Character Card')}
+                  </label>
+
+                  <label className="flex items-center gap-2.5 text-xs text-gray-300 cursor-pointer hover:text-white">
+                    <input
+                      type="checkbox"
+                      checked={formData.visual_compression?.compress_lorebook ?? true}
+                      onChange={(e) => {
+                        const current = formData.visual_compression || DEFAULT_VISUAL_COMPRESSION;
+                        handleFieldChange("visual_compression", { ...current, compress_lorebook: e.target.checked });
+                      }}
+                      className="rounded bg-gray-900 border-gray-700 text-cyan-500 focus:ring-0 focus:ring-offset-0"
+                    />
+                    {t('compressLorebook', 'Lorebook / World Info')}
+                  </label>
+
+                  <label className="flex items-center gap-2.5 text-xs text-gray-300 cursor-pointer hover:text-white">
+                    <input
+                      type="checkbox"
+                      checked={formData.visual_compression?.compress_memory ?? true}
+                      onChange={(e) => {
+                        const current = formData.visual_compression || DEFAULT_VISUAL_COMPRESSION;
+                        handleFieldChange("visual_compression", { ...current, compress_memory: e.target.checked });
+                      }}
+                      className="rounded bg-gray-900 border-gray-700 text-cyan-500 focus:ring-0 focus:ring-offset-0"
+                    />
+                    {t('compressMemory', 'Memory / RAG Context')}
+                  </label>
+
+                  <label className="flex items-center gap-2.5 text-xs text-gray-300 cursor-pointer hover:text-white">
+                    <input
+                      type="checkbox"
+                      checked={formData.visual_compression?.compress_history ?? true}
+                      onChange={(e) => {
+                        const current = formData.visual_compression || DEFAULT_VISUAL_COMPRESSION;
+                        handleFieldChange("visual_compression", { ...current, compress_history: e.target.checked });
+                      }}
+                      className="rounded bg-gray-900 border-gray-700 text-cyan-500 focus:ring-0 focus:ring-offset-0"
+                    />
+                    {t('compressHistory', 'Older Chat Messages')}
+                  </label>
+                </div>
+              </div>
+
+              {/* Number controls: history_keep_tail & min_chars_threshold */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField
+                  label={t('historyKeepTail', 'Recent turns to keep as raw text')}
+                  type="number"
+                  value={formData.visual_compression?.history_keep_tail ?? 4}
+                  onChange={(val: any) => {
+                    const current = formData.visual_compression || DEFAULT_VISUAL_COMPRESSION;
+                    handleFieldChange("visual_compression", { ...current, history_keep_tail: Math.max(0, parseInt(val) || 0) });
+                  }}
+                  helpText={t('historyKeepTailHelp', 'Newest turns remain plain text for maximum verbatim accuracy.')}
+                />
+
+                <InputField
+                  label={t('minCharsThreshold', 'Min character threshold')}
+                  type="number"
+                  value={formData.visual_compression?.min_chars_threshold ?? 1000}
+                  onChange={(val: any) => {
+                    const current = formData.visual_compression || DEFAULT_VISUAL_COMPRESSION;
+                    handleFieldChange("visual_compression", { ...current, min_chars_threshold: Math.max(100, parseInt(val) || 1000) });
+                  }}
+                  helpText={t('minCharsThresholdHelp', 'Text blocks shorter than this will not be rendered into images.')}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
       {renderPromptManager()}
     </div>
   );

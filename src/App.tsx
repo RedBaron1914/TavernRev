@@ -37,6 +37,7 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { ChatMemoryModal } from "./components/ChatMemoryModal";
 import { TavernAPI } from "./services/PluginAPI";
 import { logger } from "./services/Logger";
+import { loadConnectionProfileFile } from "./components/settings/runtime";
 import "./App.css";
 
 const getRagConfig = () => ({
@@ -2212,6 +2213,15 @@ const refreshCharacters = async () => {
             setActiveProfileName(newProfile);
             localStorage.setItem("active_profile", newProfile);
             await fetchModelName();
+            try {
+              const prof = await loadConnectionProfileFile(newProfile);
+              if (prof.linked_preset && prof.linked_preset.trim()) {
+                setActivePresetFile(prof.linked_preset.trim());
+                localStorage.setItem("active_preset", prof.linked_preset.trim());
+              }
+            } catch (e) {
+              console.error(e);
+            }
           }}
         />
 

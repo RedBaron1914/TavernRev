@@ -629,7 +629,7 @@ pub async fn prepare_prompt(
                                 resolved_img = format!("data:{};base64,{}", mime, b64);
                             }
                         }
-                        parts.push(api_client::OpenAIPart { part_type: "image_url".to_string(), text: None, image_url: Some(api_client::OpenAIImageUrl { url: resolved_img }) });
+                        parts.push(api_client::OpenAIPart { part_type: "image_url".to_string(), text: None, image_url: Some(api_client::OpenAIImageUrl { url: resolved_img, detail: None }) });
                     }
                     api_client::OpenAIContent::Array(parts)
                 }
@@ -643,6 +643,28 @@ pub async fn prepare_prompt(
             tool_call_id: None,
         }
     }).collect();
+
+    let final_messages = if ctx.preset.visual_compression.enabled && ctx.profile.api_type != "horde" {
+        let (v_msgs, chars, imgs) = crate::visual_context::apply_visual_compression(
+            final_messages,
+            &ctx.preset.visual_compression,
+            &ctx.profile.model_id,
+        );
+        if imgs > 0 {
+            let log_msg = format!(
+                "[AI] Visual Context Compression: compressed {} chars into {} image(s) [profile: {}]",
+                chars, imgs, ctx.preset.visual_compression.profile
+            );
+            println!("{}", log_msg);
+            let _ = app_handle.emit("backend-log", log_msg);
+        }
+        v_msgs
+    } else {
+        if ctx.preset.visual_compression.enabled && ctx.profile.api_type == "horde" {
+            let _ = app_handle.emit("backend-log", "[AI] Visual Context Compression bypassed: AI Horde is a text-only backend.".to_string());
+        }
+        final_messages
+    };
 
     Ok((final_messages, evaluator))
 }
@@ -665,21 +687,10 @@ pub async fn execute_api_loop(
         
         let tools_payload = if use_tools { 
             let allow_image = ctx.preset.sd_use_tool;
-            let loras_summary = if allow_image && ctx.preset.sd_send_loras && loop_count == 0 {
-                let loras = if ctx.preset.sd_provider == "swarm" {
-                    crate::image_gen::fetch_swarm_loras(&ctx.preset.sd_swarm_url, &ctx.preset.sd_swarm_auth_token).await.ok()
-                } else if ctx.preset.sd_provider == "auto" {
-                    crate::image_gen::fetch_a1111_loras(&ctx.preset.sd_auto_url, &ctx.preset.sd_auto_auth).await.ok()
-                } else {
-                    None
-                };
-                loras.map(|l| crate::image_gen::format_loras_for_prompt(&l))
-            } else {
-                None
-            };
+            let allow_loras = allow_image && ctx.preset.sd_send_loras;
             let is_swarm = ctx.preset.sd_provider == "swarm";
-            let list = api_client::get_available_tools(allow_image, Some(ctx.preset.sd_tool_description.as_str()), loras_summary.as_deref(), is_swarm);
-            let _ = app_handle.emit("backend-log", format!("[AI] Tool calling enabled (allow_image_gen: {}, tools_count: {})", allow_image, list.len()));
+            let list = api_client::get_available_tools(allow_image, allow_loras, Some(ctx.preset.sd_tool_description.as_str()), is_swarm);
+            let _ = app_handle.emit("backend-log", format!("[AI] Tool calling enabled (allow_image_gen: {}, allow_loras: {}, tools_count: {})", allow_image, allow_loras, list.len()));
             if list.is_empty() { None } else { Some(list) }
         } else { 
             None 
@@ -759,6 +770,26 @@ pub async fn execute_api_loop(
                 if tc.function.name == "get_system_time" {
                     result_string = format!("Current Local Time is {}", chrono::Local::now().to_rfc2822());
                     println!("Executed Tool get_system_time: {}", result_string);
+                } else if tc.function.name == "get_available_loras" {
+                    let loras = if ctx.preset.sd_provider == "swarm" {
+                        crate::image_gen::fetch_swarm_loras(&ctx.preset.sd_swarm_url, &ctx.preset.sd_swarm_auth_token).await.ok()
+                    } else if ctx.preset.sd_provider == "auto" {
+                        crate::image_gen::fetch_a1111_loras(&ctx.preset.sd_auto_url, &ctx.preset.sd_auto_auth).await.ok()
+                    } else {
+                        None
+                    };
+
+                    result_string = match &loras {
+                        Some(l) if !l.is_empty() => crate::image_gen::format_loras_for_prompt(l),
+                        _ => "No LoRAs found or provider is not configured for LoRA retrieval.".to_string(),
+                    };
+                    let _ = app_handle.emit(
+                        "backend-log",
+                        format!(
+                            "[AI] Tool get_available_loras executed (returned {} LoRAs)",
+                            loras.as_ref().map(|v| v.len()).unwrap_or(0)
+                        ),
+                    );
                 } else if tc.function.name == "generate_image" {
                     if let Ok(args) = serde_json::from_str::<serde_json::Value>(&tc.function.arguments) {
                         let prompt = args.get("prompt").and_then(|v| v.as_str()).unwrap_or("").to_string();

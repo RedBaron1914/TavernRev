@@ -581,7 +581,7 @@ pub async fn studio_assist(
                     parts.push(api_client::OpenAIPart {
                         part_type: "image_url".to_string(),
                         text: None,
-                        image_url: Some(api_client::OpenAIImageUrl { url: resolved }),
+                        image_url: Some(api_client::OpenAIImageUrl { url: resolved, detail: None }),
                     });
                 }
                 oai_msgs.push(api_client::OpenAIMessage {

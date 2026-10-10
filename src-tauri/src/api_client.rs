@@ -25,6 +25,8 @@ pub struct ConnectionProfile {
     pub post_processing: String,
     #[serde(default = "default_context_size")]
     pub context_size: i32,
+    #[serde(default)]
+    pub linked_preset: Option<String>,
 }
 
 fn default_post_processing() -> String {
@@ -170,6 +172,8 @@ pub struct Preset {
     #[serde(default = "default_sd_cfg")]
     pub sd_cfg_scale: f32,
     pub prompts: Vec<PromptModule>,
+    #[serde(default)]
+    pub visual_compression: crate::visual_context::VisualCompressionSettings,
 }
 
 fn default_sd_width() -> i32 {
@@ -356,6 +360,7 @@ impl Default for Preset {
             sd_sampler: default_sd_sampler(),
             sd_cfg_scale: default_sd_cfg(),
             prompts: vec![],
+            visual_compression: crate::visual_context::VisualCompressionSettings::default(),
         }
     }
 }
@@ -505,7 +510,7 @@ pub struct OpenAITool {
     pub function: OpenAIFunctionDef,
 }
 
-pub fn get_available_tools(allow_image_gen: bool, custom_desc: Option<&str>, loras_summary: Option<&str>, is_swarm: bool) -> Vec<OpenAITool> {
+pub fn get_available_tools(allow_image_gen: bool, allow_loras: bool, custom_desc: Option<&str>, is_swarm: bool) -> Vec<OpenAITool> {
     let mut tools = vec![
         OpenAITool {
             tool_type: "function".to_string(),
@@ -529,11 +534,20 @@ pub fn get_available_tools(allow_image_gen: bool, custom_desc: Option<&str>, lor
             desc.push_str("\n\n");
             desc.push_str(swarm_regional_prompting_instructions());
         }
-        if let Some(loras) = loras_summary {
-            if !loras.trim().is_empty() {
-                desc.push_str("\n\n");
-                desc.push_str(loras);
-            }
+        if allow_loras {
+            desc.push_str("\n\nLoRA models and triggers can be included in the prompt via `<lora:name:weight>`. Call the `get_available_loras` tool to inspect installed LoRA models and their trigger tags before generating.");
+
+            tools.push(OpenAITool {
+                tool_type: "function".to_string(),
+                function: OpenAIFunctionDef {
+                    name: "get_available_loras".to_string(),
+                    description: "Retrieves the list of installed LoRA models, syntax (<lora:name:weight>), and their associated trigger words and tags. Call this tool when you want to look up available LoRAs to include in your generate_image prompt.".to_string(),
+                    parameters: serde_json::json!({
+                        "type": "object",
+                        "properties": {}
+                    }),
+                }
+            });
         }
 
         tools.push(OpenAITool {
@@ -615,6 +629,8 @@ pub struct OpenAIPart {
 #[derive(Serialize, Debug, Clone)]
 pub struct OpenAIImageUrl {
     pub url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
 }
 
 #[derive(Serialize, Debug, Clone, Default)]
@@ -1003,15 +1019,11 @@ pub async fn generate_google(
                                 if let Some(comma_pos) = img.url.find(',') {
                                     let mime_part = &img.url[0..comma_pos];
                                     let data = &img.url[comma_pos + 1..];
-                                    let mime = if let Some(semi) = mime_part.find(';') {
-                                        if mime_part.len() > 5 {
-                                            &mime_part[5..semi]
-                                        } else {
-                                            "image/jpeg"
-                                        }
-                                    } else {
-                                        "image/jpeg"
-                                    };
+                                    let mime = mime_part
+                                        .strip_prefix("data:")
+                                        .and_then(|s| s.split(';').next())
+                                        .filter(|s| !s.is_empty())
+                                        .unwrap_or("image/jpeg");
 
                                     parts.push(GooglePart {
                                         text: None,
@@ -1594,13 +1606,22 @@ mod tests {
 
     #[test]
     fn test_get_available_tools() {
-        let tools = get_available_tools(true, None, None, false);
+        // Image gen enabled, no loras
+        let tools = get_available_tools(true, false, None, false);
         assert_eq!(tools.len(), 2);
         assert_eq!(tools[0].tool_type, "function");
         assert_eq!(tools[0].function.name, "get_system_time");
         assert_eq!(tools[1].function.name, "generate_image");
 
-        let tools_no_img = get_available_tools(false, None, None, false);
+        // Image gen enabled with on-demand loras
+        let tools_with_loras = get_available_tools(true, true, None, false);
+        assert_eq!(tools_with_loras.len(), 3);
+        assert_eq!(tools_with_loras[0].function.name, "get_system_time");
+        assert_eq!(tools_with_loras[1].function.name, "get_available_loras");
+        assert_eq!(tools_with_loras[2].function.name, "generate_image");
+
+        // No image gen
+        let tools_no_img = get_available_tools(false, false, None, false);
         assert_eq!(tools_no_img.len(), 1);
         assert_eq!(tools_no_img[0].function.name, "get_system_time");
     }

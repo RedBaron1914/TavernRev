@@ -494,11 +494,11 @@ export const ImageGenerationTab: React.FC<ImageGenerationTabProps> = ({
               helpText={t('sdEditPromptsHelp', 'Show a popup to edit the LLM\'s prompt before actually generating the image.')}
             />
             <Toggle
-              label={t('sendLorasToAi', 'Send available LoRAs to AI (at initial generation loop)')}
+              label={t('sendLorasToAi', 'Provide LoRAs to AI (on-demand via tool calling)')}
               field="sd_send_loras"
               value={formData.sd_send_loras}
               onChange={handleFieldChange}
-              helpText={t('sdSendLorasHelp', 'Provides the list of installed LoRAs and their trigger words to the LLM during the initial generation loop so it can use <lora:name:weight> tags.')}
+              helpText={t('sdSendLorasHelp', 'Enables the get_available_loras tool for the AI, allowing it to request installed LoRAs and triggers on-demand without bloating the chat context.')}
             />
 
             {formData.sd_use_tool && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ArrowLeft,
   Save,
@@ -19,6 +19,7 @@ import {
   Bug,
   Code,
   X,
+  Search,
   Cloud,
   Globe,
   UserCircle,
@@ -61,7 +62,7 @@ import {
   savePresetFile,
   useActivePreset,
 } from "./components/settings/runtime";
-import { DEFAULT_CONNECTION_PROFILE } from "./components/settings/shared";
+import { DEFAULT_CONNECTION_PROFILE, VisualCompressionSettings } from "./components/settings/shared";
 import { UserPersona, RegexScript, QuickReply } from "./types";
 import { ToastType } from "./components/Toast";
 
@@ -136,6 +137,7 @@ export type Preset = {
   send_user_avatar: boolean;
   char_avatar_prompt: string;
   user_avatar_prompt: string;
+  visual_compression?: VisualCompressionSettings;
 };
 
 type ImportedRegexScript = {
@@ -243,6 +245,7 @@ export type ConnectionProfile = {
   model_id: string;
   post_processing: PostProcessing;
   context_size: number;
+  linked_preset?: string;
 };
 
 // --- HELPER COMPONENTS ---
@@ -900,6 +903,34 @@ export default function Settings({
 
   // Collapse/Expand state for prompts
   const [allExpanded, setAllExpanded] = useState<boolean | null>(null);
+  const [promptSearchQuery, setPromptSearchQuery] = useState("");
+  const [promptStatusFilter, setPromptStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
+
+  const promptCounts = useMemo(() => {
+    const list = formData?.prompts || [];
+    let enabled = 0;
+    let disabled = 0;
+    for (const m of list) {
+      if (m.enabled) enabled++;
+      else disabled++;
+    }
+    return { total: list.length, enabled, disabled };
+  }, [formData?.prompts]);
+
+  const filteredPrompts = useMemo(() => {
+    const list = formData?.prompts || [];
+    const query = promptSearchQuery.trim().toLowerCase();
+
+    return list.filter((m) => {
+      if (promptStatusFilter === "enabled" && !m.enabled) return false;
+      if (promptStatusFilter === "disabled" && m.enabled) return false;
+
+      if (!query) return true;
+      const name = (m.name || "").toLowerCase();
+      const identifier = (m.identifier || "").toLowerCase();
+      return name.includes(query) || identifier.includes(query);
+    });
+  }, [formData?.prompts, promptSearchQuery, promptStatusFilter]);
 
   const fetchRegexScripts = useCallback(async () => {
       try {
@@ -939,13 +970,17 @@ export default function Settings({
 
   const loadConnectionProfile = useCallback(async (fileName: string) => {
     try {
-      setConnectionData(await loadConnectionProfileFile(fileName));
+      const profile = await loadConnectionProfileFile(fileName);
+      setConnectionData(profile);
       setActiveProfileName(fileName);
       localStorage.setItem("active_profile", fileName);
+      if (profile.linked_preset && profile.linked_preset.trim()) {
+        await loadPresetData(profile.linked_preset.trim());
+      }
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [loadPresetData]);
 
   // Init Effect (Moved here to access load functions)
   useEffect(() => {
@@ -1412,62 +1447,173 @@ export default function Settings({
     if (field === "contentScale") localStorage.setItem("ui_content_scale", val.toString());
   };
 
-  const renderPromptManager = () => (
-    <div className="space-y-4 pt-10 mt-10 border-t border-white/10">
-      <div className="flex justify-between items-center bg-gray-900/30 p-4 rounded-2xl border border-white/5">
-        <div className="flex flex-col">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            {t('prompts', 'Prompts')}
-          </h3>
-          <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">
-            {t('promptManager', 'Prompt Manager')}
-          </span>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setEditingModule({} as PromptModule)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-indigo-900/20"
-          >
-            <Plus size={16} /> {t('newModule', 'New Module')}
-          </button>
-          <div className="w-px h-8 bg-white/10 mx-1" />
-          <button
-            onClick={() => setAllExpanded(true)}
-            className="p-2 hover:bg-white/10 rounded-lg text-gray-400"
-            title={t('expandAll', 'Expand All')}
-          >
-            <Maximize2 size={18} />
-          </button>
-          <button
-            onClick={() => setAllExpanded(false)}
-            className="p-2 hover:bg-white/10 rounded-lg text-gray-400"
-            title={t('collapseAll', 'Collapse All')}
-          >
-            <Minimize2 size={18} />
-          </button>
-        </div>
-      </div>
+  const renderPromptManager = () => {
+    const isFiltered = promptSearchQuery.trim() !== "" || promptStatusFilter !== "all";
 
-      <div className="space-y-2">
-        {(formData?.prompts || []).map((m) => (
-          <PromptModuleItem
-            key={m.identifier}
-            module={m}
-            tokenCount={tokenCounts[m.identifier]}
-            onEdit={setEditingModule}
-            onDelete={handleDeleteModule}
-            onToggle={handleToggleModule}
-            isAllExpanded={allExpanded}
-          />
-        ))}
-        {(formData?.prompts?.length || 0) === 0 && (
-          <div className="text-center py-12 text-gray-600 border-2 border-dashed border-gray-800 rounded-2xl">
-            {t('noPromptModulesDefined', 'No prompt modules defined.')}
+    return (
+      <div className="space-y-4 pt-10 mt-10 border-t border-white/10">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-900/30 p-4 rounded-2xl border border-white/5">
+          <div className="flex flex-col">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              {t('prompts', 'Prompts')}
+              <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-gray-400 font-mono font-normal">
+                {promptCounts.total}
+              </span>
+            </h3>
+            <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">
+              {t('promptManager', 'Prompt Manager')}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <button
+              onClick={() => setEditingModule({} as PromptModule)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-indigo-900/20"
+            >
+              <Plus size={16} /> {t('newModule', 'New Module')}
+            </button>
+            <div className="w-px h-8 bg-white/10 mx-1" />
+            <button
+              onClick={() => setAllExpanded(true)}
+              className="p-2 hover:bg-white/10 rounded-lg text-gray-400"
+              title={t('expandAll', 'Expand All')}
+            >
+              <Maximize2 size={18} />
+            </button>
+            <button
+              onClick={() => setAllExpanded(false)}
+              className="p-2 hover:bg-white/10 rounded-lg text-gray-400"
+              title={t('collapseAll', 'Collapse All')}
+            >
+              <Minimize2 size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Search & Filter Controls */}
+        <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+            <input
+              type="text"
+              value={promptSearchQuery}
+              onChange={(e) => setPromptSearchQuery(e.target.value)}
+              placeholder={t('searchPromptModules', 'Search prompt modules...')}
+              className="w-full pl-9 pr-8 py-2 bg-gray-900/60 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/60 transition"
+            />
+            {promptSearchQuery && (
+              <button
+                onClick={() => setPromptSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition p-0.5"
+                title={t('clearSearch', 'Clear search')}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0 bg-gray-900/40 p-1 rounded-xl border border-white/5">
+            <button
+              onClick={() => setPromptStatusFilter("all")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                promptStatusFilter === "all"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span>{t('filterAll', 'All')}</span>
+              <span className="text-[10px] opacity-70 font-mono">({promptCounts.total})</span>
+            </button>
+            <button
+              onClick={() => setPromptStatusFilter("enabled")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                promptStatusFilter === "enabled"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>{t('filterEnabled', 'Enabled')}</span>
+              <span className="text-[10px] opacity-70 font-mono">({promptCounts.enabled})</span>
+            </button>
+            <button
+              onClick={() => setPromptStatusFilter("disabled")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                promptStatusFilter === "disabled"
+                  ? "bg-gray-700 text-white shadow-sm"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+              <span>{t('filterDisabled', 'Disabled')}</span>
+              <span className="text-[10px] opacity-70 font-mono">({promptCounts.disabled})</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Counter summary when filtered */}
+        {isFiltered && (
+          <div className="flex items-center justify-between text-xs text-gray-400 px-1">
+            <span>
+              {t('showingModulesCount', 'Showing {{shown}} of {{total}}', {
+                shown: filteredPrompts.length,
+                total: promptCounts.total,
+              })}
+            </span>
+            <button
+              onClick={() => {
+                setPromptSearchQuery("");
+                setPromptStatusFilter("all");
+              }}
+              className="text-xs text-indigo-400 hover:text-indigo-300 transition"
+            >
+              {t('clearSearch', 'Clear search')}
+            </button>
           </div>
         )}
+
+        {/* Modules List */}
+        <div className="space-y-2">
+          {filteredPrompts.map((m) => (
+            <PromptModuleItem
+              key={m.identifier}
+              module={m}
+              tokenCount={tokenCounts[m.identifier]}
+              onEdit={setEditingModule}
+              onDelete={handleDeleteModule}
+              onToggle={handleToggleModule}
+              isAllExpanded={allExpanded}
+            />
+          ))}
+
+          {(formData?.prompts?.length || 0) === 0 && (
+            <div className="text-center py-12 text-gray-600 border-2 border-dashed border-gray-800 rounded-2xl">
+              {t('noPromptModulesDefined', 'No prompt modules defined.')}
+            </div>
+          )}
+
+          {(formData?.prompts?.length || 0) > 0 && filteredPrompts.length === 0 && (
+            <div className="text-center py-12 text-gray-500 border border-dashed border-gray-800 rounded-2xl flex flex-col items-center gap-2">
+              <Search size={24} className="text-gray-600 mb-1" />
+              <p className="text-sm">
+                {promptSearchQuery
+                  ? t('noMatchingModules', 'No modules match "{{query}}"', { query: promptSearchQuery })
+                  : t('noPromptModulesDefined', 'No prompt modules defined.')}
+              </p>
+              <button
+                onClick={() => {
+                  setPromptSearchQuery("");
+                  setPromptStatusFilter("all");
+                }}
+                className="text-xs text-indigo-400 hover:text-indigo-300 transition underline mt-1"
+              >
+                {t('clearSearch', 'Clear search')}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (!formData)
     return (
@@ -1806,7 +1952,7 @@ export default function Settings({
             className="w-full py-2 px-3 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 hover:border-white/10 text-[11px] text-gray-400 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer group"
           >
             <Info size={13} className="text-indigo-400 group-hover:scale-110 transition-transform" />
-            <span className="font-medium">TavernRev v1.6.2</span>
+            <span className="font-medium">TavernRev v1.6.3</span>
           </button>
         </div>
       </aside>      {/*MAIN CONTENT AREA */}
@@ -1843,6 +1989,7 @@ export default function Settings({
                 setRetryTriggers={setRetryTriggers}
                 retryDelay={retryDelay}
                 setRetryDelay={setRetryDelay}
+                presetsList={presetsList}
             />
           )}
 

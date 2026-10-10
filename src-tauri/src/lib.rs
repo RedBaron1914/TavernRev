@@ -17,6 +17,7 @@ pub mod google_drive_manager;
 pub mod routing;
 pub mod vector_memory;
 pub mod image_gen;
+pub mod visual_context;
 
 pub struct GenerationState(pub Mutex<Option<Arc<AtomicBool>>>);
 pub struct StartupError(pub Mutex<Option<String>>);
